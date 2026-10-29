@@ -28,3 +28,7 @@ jobs:
         run: dotnet build src/WinISOPilot/ImageGuide.csproj --configuration Release
       - name: Run deterministic self-tests
         run: dotnet run --project src/WinISOPilot/ImageGuide.csproj --configuration Release --no-build -- --self-test
+      - name: Build native WPF desktop
+        run: dotnet build src/WinISOPilot.Desktop/WinISOPilot.Desktop.csproj --configuration Release
+      - name: Run WPF state and measured layout tests
+        run: dotnet run --project src/WinISOPilot.Desktop/WinISOPilot.Desktop.csproj --configuration Release --no-build -- --self-test
