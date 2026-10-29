@@ -4,13 +4,13 @@ A guided Windows 11 installation-image customization project. The current previe
 
 ## Current scope
 
-- A five-step Windows desktop walkthrough: Source ISO → Edition and checks → Your goals → Explore options → Review and export.
+- Ten shared-state Windows desktop workspaces: Overview, Source, Editions, Components, Apps & Features, Drivers & Updates, Settings, Unattended Setup, Build & Export, and Recovery & Logs. Fluent-inspired native WinForms styling uses deep slate, crimson accents, a light/dark toggle and Windows high-contrast colors.
 - A searchable catalog of 42 researched option families with purpose, prerequisites, consequences, evidence and separate implementation status. It is exploratory, not exhaustive, and is not a live image-component inventory.
 - Explicit separation between observed metadata, user choices, planned operations, and verification that has not run.
 - No paid-tool runtime dependencies. NTLite, MSMG ToolKit, DISMTools, WimWizard, and Dism++ inform research rather than supply copied application code.
 - No host-OS modification, component removal, writable WIM mounting, USB formatting, or setup execution. Read-only ISO attachments may be created or reused for inspection and media verification. ISO creation uses installed Microsoft ADK Oscdimg; no paid tool is required.
 
-## Use the walkthrough
+## Use the workspaces
 
 1. Choose a Windows installation file (`.iso`) on a local drive, then select **Inspect ISO**. Choose a parent folder for a new report; it can contain private local paths. The app reads versions inside the file without extracting or changing them.
 2. Choose an edition actually observed in the source. Review its self-reported metadata, source identity, local tools and compatibility result. Unknown compatibility does not mean success.
@@ -20,7 +20,7 @@ A guided Windows 11 installation-image customization project. The current previe
 
 Select **?** or press **F1** for step instructions and a plain-language glossary. Hover hints are off by default. Help offers optional short hints for buttons and small choices, with a delay; large text fields, labels, panels and window backgrounds never show hover help. Accessible descriptions and visible instructions remain available. Undo restores version/goal/edition-preference selections only, up to 100 snapshots. It does not undo source activity, reports, exported files or Windows changes.
 
-The unified desktop shell uses an 11-point system font, a fixed 920×660 logical client size and startup DPI/working-area clamping. Long paths, reports and explanations remain selectable or vertically scrollable; **Full details** preserves long status/error text. Light/dark switching changes app-owned surfaces only. Windows high-contrast colors take priority, and native file/folder pickers keep Windows styling. Geometry and palette tests do not substitute for visual testing at every DPI or display size.
+The unified desktop shell uses a left sidebar, an 11-point system font, a fixed 920×660 logical client size and startup DPI/working-area clamping. Long paths, reports and explanations remain selectable or vertically scrollable; **Full details** preserves long status/error text. Light/dark switching changes app-owned surfaces only. Windows high-contrast colors take priority, and native file/folder pickers keep Windows styling. Geometry and palette tests do not substitute for visual testing at every DPI or display size.
 
 The GUI supports inspection and ISO creation pause/resume and safe cancellation at checkpoints. Copying pauses between chunks; active Oscdimg/native reads finish before requests take effect. The original ISO is held read-only with writes/deletion denied for the entire build, rehashed against inspection, and checked again before publication. A partial ISO is renamed without overwrite only after readback verification and the final cancellation checkpoint. Unknown Windows servicing compatibility does not block this media-only operation, because no image servicing occurs. Active native reads finish before requests take effect; final source verification and native cleanup cannot pause. Closing the GUI during active work requests cancellation and waits rather than forcing process termination. These cooperative controls are GUI-only: CLI Ctrl+C or OS process termination is not a guaranteed safe cancellation path. Plan export is a separate noncancelable operation.
 
@@ -57,3 +57,13 @@ WinISOPilot.exe build --inspection C:\reports\inspection.json --index 6 --prefer
 ```
 
 Omit `--prefer-edition Retail` to preserve the original setup configuration. Index must be observed in the source; Home/Core and Pro/Professional are supported for preference writing. Requires local x64 Windows 11 media, standard BIOS/UEFI boot files, one `install.wim` or `install.esd`, installed ADK Oscdimg, a new output folder without `#`, and free space of three times the copied media size plus 1 GB. No input scripts or commands run. CLI Ctrl+C still does not offer guaranteed safe cancellation; use GUI Pause/Cancel for cooperative job controls. Completed outputs are never eligible for canceled-run cleanup. Existing outputs are never overwritten. A valid Windows license is supplied separately.
+
+## Container inventory and staged roadmap
+
+Source also offers **Inspect image containers**. It queries installation and boot WIM metadata inside an ISO, or a standalone WIM/ESD, using trusted query-only WIMGAPI. The generic parser accepts WinPE metadata without weakening the separate Windows 11 client validation used by actual ISO builds. Source files are held read-only and hashed before and after. Split SWM is recognized but blocked; no Windows image mount or extraction runs. Embedded WinRE discovery is not implemented. Reports may include private local paths. Canceling this inventory retains reports and explains that automatic cleanup is unavailable for this scope.
+
+Overview displays observed phase, bytes and elapsed time from real jobs, including paused time. It does not fabricate ETA, size savings, throughput or boot success. Sidebar navigation remains available while work is active; source/edition/goals/build changes stay locked. Unattended Setup is a **nonexecuting recipe simulation**: it previews current choices and missing implementation/compatibility checks. Its region wish is preview-only and is not an exported or executed setting.
+
+`WinISOPilot inventory --source <local.iso|wim|esd> --output <NEW directory>` exposes the same query-only inventory in the CLI. ESD support uses the installed WIMGAPI codec and still needs representative real ESD validation. Image mounting, orphan recovery and writable servicing remain unavailable. Scratch capacity assessment never approves an unknown expansion size or an unimplemented worker.
+
+See [the full six-phase roadmap](docs/roadmap.md) for the requested feature families, stable IDs, statuses, dependencies and evidence gates. The first foundations increment is partial; phases 2–6 are successive work, not completed capabilities. A matching [interactive design preview](docs/fluent-workspaces-mockup.html) is included.

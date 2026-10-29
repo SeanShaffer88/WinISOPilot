@@ -16,6 +16,8 @@ public static class WimMetadata
     [UnmanagedFunctionPointer(CallingConvention.Winapi,SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]delegate bool ImageInformation(IntPtr handle,out IntPtr data,out uint bytes);
     [UnmanagedFunctionPointer(CallingConvention.Winapi,SetLastError=true)][return:MarshalAs(UnmanagedType.Bool)]delegate bool CloseHandle(IntPtr handle);
     public static List<Edition> Read(string payload,string folder,List<WimObservation> observations)
+    {var raw=ReadRaw(payload,folder,observations);return Parse(raw.Xml,raw.Count);}
+    public static (string Xml,int Count) ReadRaw(string payload,string folder,List<WimObservation> observations)
     {
         string dll=Path.Combine(Environment.SystemDirectory,"wimgapi.dll");Engine.CheckPath(dll);
         IntPtr library=LoadLibraryEx(dll,IntPtr.Zero,0x800);
@@ -34,9 +36,9 @@ public static class WimMetadata
             bool ok=information(handle,out data,out uint bytes);error=ok?null:Marshal.GetLastWin32Error();observations.Add(new("WIMGetImageInformation(container handle)",ok+"; bytes="+bytes,error));
             if(!ok)throw new Win32Exception(error!.Value,"WIM root metadata query failed.");
             if(data==IntPtr.Zero||bytes<2||bytes>8*1024*1024||bytes%2!=0)throw new InvalidDataException("WIM XML buffer has invalid size.");
-            var raw=new byte[bytes];Marshal.Copy(data,raw,0,raw.Length);File.WriteAllBytes(Path.Combine(folder,"wim-container.xml"),raw);
+            var raw=new byte[bytes];Marshal.Copy(data,raw,0,raw.Length);using(var rawFile=new FileStream(Path.Combine(folder,"wim-container.xml"),FileMode.CreateNew,FileAccess.Write,FileShare.None))rawFile.Write(raw);
             string xml=System.Text.Encoding.Unicode.GetString(raw).TrimEnd('\0').TrimStart('\uFEFF');
-            return Parse(xml,checked((int)imageCount));
+            return (xml,checked((int)imageCount));
         } finally {
             bool cleanupFailed=false;
             if(data!=IntPtr.Zero){IntPtr remaining=LocalFree(data);observations.Add(new("LocalFree(XML buffer)",remaining==IntPtr.Zero?"NULL (freed)":"non-NULL (free failed)",remaining==IntPtr.Zero?null:Marshal.GetLastWin32Error()));cleanupFailed|=remaining!=IntPtr.Zero;}
