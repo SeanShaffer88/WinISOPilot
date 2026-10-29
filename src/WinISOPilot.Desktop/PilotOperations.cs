@@ -28,9 +28,9 @@ public sealed partial class PilotWindow
     {
         if(busy)return false;if(Engine.RestartRequired){SetStatus("A native cleanup uncertainty requires restarting the app. Keep the evidence; no new work was started.");return false;}busy=true;critical=false;UpdateChrome();return true;
     }
-    void BeginWork(string output)
+    void BeginWork(string output,bool clearResult=true)
     {
-        job=new JobControl();lastOutput=output;session.Result=null;progress=null;elapsed=TimeSpan.Zero;clock.Restart();fullStatus="Job started. Source protection and engine verification remain active.";Render();
+        job=new JobControl();lastOutput=output;if(clearResult)session.Result=null;progress=null;elapsed=TimeSpan.Zero;clock.Restart();fullStatus="Job started. Source protection and engine verification remain active.";Render();
     }
     IProgress<JobProgress> ProgressFor(JobControl active)=>new UiProgress(this,active);
     sealed class UiProgress(PilotWindow owner,JobControl active):IProgress<JobProgress>
