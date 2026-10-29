@@ -21,7 +21,7 @@ public sealed record ShellPalette(Color Surface,Color Field,Color Text,Color Mut
     public static ShellPalette For(bool dark,bool highContrast=false)
     {
         if(highContrast)return new(SystemColors.Control,SystemColors.Window,SystemColors.ControlText,SystemColors.ControlText,SystemColors.Control,SystemColors.WindowText,SystemColors.Highlight,SystemColors.HighlightText,SystemColors.GrayText){FieldText=SystemColors.WindowText};
-        return dark?new(Color.FromArgb(23,35,50),Color.FromArgb(15,23,35),Color.FromArgb(240,245,250),Color.FromArgb(192,204,218),Color.FromArgb(36,54,75),Color.FromArgb(93,116,140),Color.FromArgb(185,28,66),Color.White,Color.FromArgb(178,193,208)):
+        return dark?new(Color.FromArgb(14,17,22),Color.FromArgb(21,26,34),Color.FromArgb(240,245,250),Color.FromArgb(192,204,218),Color.FromArgb(29,35,45),Color.FromArgb(93,116,140),Color.FromArgb(190,24,49),Color.White,Color.FromArgb(178,193,208)):
             new(Color.White,Color.White,Color.FromArgb(23,35,51),Color.FromArgb(70,91,112),Color.FromArgb(231,237,243),Color.FromArgb(120,136,152),Color.FromArgb(165,20,55),Color.White,Color.FromArgb(91,107,123));
     }
     public static double Contrast(Color a,Color b)

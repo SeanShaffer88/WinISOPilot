@@ -12,7 +12,7 @@ public sealed partial class GuideForm
         var p=Page("Overview","Your original files remain protected.","Start with Source, choose an edition, then review Build & Export.");
         Field(p,"Current session • measured state",overview,"Actual inspected source and choices, never sample data.");
         Field(p,"Live job activity • measured only",telemetry,"Observed phase, bytes and elapsed time. No predicted completion time or invented savings.");
-        var actions=Flow();var start=Button("Choose a source");start.Click+=(_,_)=>Go(1);Help(start,"Open the Source workspace. No job starts.");var recipe=Button("Preview recipe");recipe.Click+=(_,_)=>Go(7);Help(recipe,"Open the nonexecuting recipe simulation.");actions.Controls.Add(start);actions.Controls.Add(recipe);p.Controls.Add(actions);return p;
+        var actions=Flow();var start=Button("Choose a source");start.Click+=(_,_)=>OpenWorkspace(Workspace.ImageIndexes);Help(start,"Open the Source workspace. No job starts.");var recipe=Button("Preview recipe");recipe.Click+=(_,_)=>OpenWorkspace(Workspace.Unattended);Help(recipe,"Open the nonexecuting recipe simulation.");actions.Controls.Add(start);actions.Controls.Add(recipe);p.Controls.Add(actions);return p;
     }
     TableLayoutPanel ReferencePage(string title,params string[] groups)
     {
@@ -21,7 +21,7 @@ public sealed partial class GuideForm
     TableLayoutPanel SimulationPage()
     {
         var p=Page("Unattended Setup • simulation only","This preview uses the edition and goals chosen in other workspaces.","Review checks. No answer file, account, password, disk layout or command is generated.");
-        previewRegion.Items.AddRange(new object[]{"Keep source region","Preview: English (United States)","Preview: English (United Kingdom)"});previewRegion.SelectedIndex=0;previewRegion.SelectedIndexChanged+=(_,_)=>RefreshWorkspaceState();Field(p,"Region wish • preview only",previewRegion,"This changes this simulation only; it does not change Windows or exported build settings.");
+        previewRegion.Items.AddRange(PreviewRecipe.Regions);previewRegion.SelectedIndex=0;previewRegion.SelectedIndexChanged+=(_,_)=>Changed();Field(p,"Region wish • preview only",previewRegion,"This changes this simulation only; it does not change Windows or exported build settings.");
         var refresh=Button("Simulate current recipe");Help(refresh,"Recalculate prerequisite checks from current choices. Does not execute commands or estimate savings.");refresh.Click+=(_,_)=>RefreshWorkspaceState();p.Controls.Add(refresh);Field(p,"Simulation result • no changes execute",simulation,"Declarative preview and checks. Not a build manifest and never passed to the image engine.");return p;
     }
     TableLayoutPanel RecoveryPage()
@@ -33,11 +33,11 @@ public sealed partial class GuideForm
     void EndTelemetry(){if(jobClock.IsRunning){jobClock.Stop();lastElapsed=jobClock.Elapsed;}RefreshWorkspaceState();}
     void RefreshWorkspaceState()
     {
-        if(IsDisposed)return;var selected=editions.SelectedItem as Edition;string[] selectedGoals=Keys.Where(k=>goals.TryGetValue(k,out var c)&&c.Checked).ToArray();
+        if(IsDisposed)return;RefreshReferenceState();var selected=editions.SelectedItem as Edition;string[] selectedGoals=Keys.Where(k=>goals.TryGetValue(k,out var c)&&c.Checked).ToArray();
         overview.Text=$"State: {(busy?"Working — selections locked":"Idle")}\r\nISO: {(result==null?"Not inspected":Path.GetFileName(result.Source))}\r\nEdition: {selected?.Name??"None selected"}\r\nAvailable: inspection, container inventory, separate ISO creation.\r\nPreview: recipe checks. Servicing and slimming: not implemented.";
         var elapsed=jobClock.IsRunning?jobClock.Elapsed:lastElapsed;string measured=lastProgress?.Completed is long done?$"{done:N0} bytes observed"+(lastProgress.Total is long total?$" / {total:N0} in this phase":""):"Byte progress: not reported for this phase";
         telemetry.Text=lastProgress==null?"No measured job activity yet.\r\nNo ETA or size savings are inferred.":$"Phase: {lastProgress.Phase}\r\n{measured}\r\nElapsed: {elapsed:hh\\:mm\\:ss} (includes safe pauses)\r\n{(job?.IsPaused==true?"Paused at a safe checkpoint":job?.CancellationRequested==true?"Cancellation requested; waiting for a safe boundary":jobClock.IsRunning?"Active":"Last observed job has ended; see operation evidence for outcome")}";
-        simulation.Text=RecipePreview.Create(result!=null,selected?.Name,selectedGoals,preferEdition.Checked,previewRegion.SelectedItem?.ToString()??"Keep source region",result?.Compatibility);
+        simulation.Text=RecipePreview.Create(result!=null,selected?.Name,selectedGoals,preferEdition.Checked,previewRegion.SelectedItem?.ToString()??"Keep source region",result?.Compatibility)+"\r\n\r\n"+PreviewRecipe.Diff(PreviewRecipe.Empty,CapturePreview());
         previewRegion.Enabled=!busy;
         recovery.Text=$"Image mounting: not implemented; no privileged worker runs.\r\nElevation: {(ContainerInventory.IsElevated?"Elevated token observed":"Standard token observed; mounting requires elevation")}\r\nServicing profile: {result?.Compatibility??"Unknown until an ISO is inspected"}\r\nScratch expansion: unknown; writable servicing is blocked.\r\nRecovery: no forced unmount, global mount cleanup or unrelated deletion.\r\nNative safety latch: {(Engine.RestartRequired?"Restart required; keep evidence":"No unresolved native cleanup reported in this process")}\r\n\r\nContainer inventory: {containerSummary}";
     }

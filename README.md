@@ -4,11 +4,19 @@ A guided Windows 11 installation-image customization project. The current previe
 
 ## Current scope
 
-- Ten shared-state Windows desktop workspaces: Overview, Source, Editions, Components, Apps & Features, Drivers & Updates, Settings, Unattended Setup, Build & Export, and Recovery & Logs. Fluent-inspired native WinForms styling uses deep slate, crimson accents, a light/dark toggle and Windows high-contrast colors.
+- Ten shared-state Windows desktop workspaces: Image & Indexes, Hardware & OOBE, Apps & Packages, System Components, Registry Settings, Services & Tasks, Drivers & Updates, Unattended Setup, Presets & Compare, and Build & Export. Fluent-inspired native WinForms styling uses deep slate, crimson accents, a light/dark toggle and Windows high-contrast colors.
 - A searchable catalog of 42 researched option families with purpose, prerequisites, consequences, evidence and separate implementation status. It is exploratory, not exhaustive, and is not a live image-component inventory.
 - Explicit separation between observed metadata, user choices, planned operations, and verification that has not run.
 - No paid-tool runtime dependencies. NTLite, MSMG ToolKit, DISMTools, WimWizard, and Dism++ inform research rather than supply copied application code.
 - No host-OS modification, component removal, writable WIM mounting, USB formatting, or setup execution. Read-only ISO attachments may be created or reused for inspection and media verification. ISO creation uses installed Microsoft ADK Oscdimg; no paid tool is required.
+
+## Reference-inspired interface
+
+The near-black/slate card layout and crimson navigation follow the supplied visual references while preserving WinISOPilot branding. Hardware, app, component, registry, service and integration cards are **preview wishes only**, default to unchanged, and are never passed to the build engine. Two-column hardware/component cards adapt to content width; long content scrolls inside the fixed window. No sample mount states, safe-removal badges, fictional payloads or reclaimed-space estimates are displayed.
+
+**Presets & Compare** imports/exports strictly validated, nonexecuting JSON preview recipes (64 KiB limit). The schema accepts only known option IDs, service startup wishes and fixed region choices. It excludes arbitrary commands, credentials and source paths. Imported recipes replace choices atomically, remain undoable, and never start a job. Comparison uses unchanged defaults initially or the choices present before the last import. Existing files cannot be overwritten. TOML is not implemented.
+
+Source inspection, edition selection and readiness are together in **Image & Indexes**. Actual ISO creation, measured activity and broad future-goal planning are in **Build & Export**.
 
 ## Use the workspaces
 
@@ -18,7 +26,7 @@ A guided Windows 11 installation-image customization project. The current previe
 4. Explore reference families. Catalog rows explain possibilities; they are not extra selectable changes and do not imply installed components.
 5. Review and export a future plan, or choose **Create customized ISO**. Creation copies all media into a new run folder and uses Microsoft ADK Oscdimg to create a separate ISO. Optionally ask Setup to use the selected observed Home or Pro edition through `sources/ei.cfg` (Retail channel, VL=0). This is a setup preference, not a license or activation, and all editions remain inside. Existing edition/product-ID/answer-file configuration blocks the preference; no configuration is silently replaced. Your future goals are not applied.
 
-Select **?** or press **F1** for step instructions and a plain-language glossary. Hover hints are off by default. Help offers optional short hints for buttons and small choices, with a delay; large text fields, labels, panels and window backgrounds never show hover help. Accessible descriptions and visible instructions remain available. Undo restores version/goal/edition-preference selections only, up to 100 snapshots. It does not undo source activity, reports, exported files or Windows changes.
+Select **?** or press **F1** for step instructions and a plain-language glossary. Hover hints are off by default. Help offers optional short hints for buttons and small choices, with a delay; large text fields, labels, panels and window backgrounds never show hover help. Accessible descriptions and visible instructions remain available. Undo restores version, broad goals, edition preference, preview option, service and region selections, up to 100 snapshots. It does not undo source activity, reports, exported files or Windows changes.
 
 The unified desktop shell uses a left sidebar, an 11-point system font, a fixed 920×660 logical client size and startup DPI/working-area clamping. Long paths, reports and explanations remain selectable or vertically scrollable; **Full details** preserves long status/error text. Light/dark switching changes app-owned surfaces only. Windows high-contrast colors take priority, and native file/folder pickers keep Windows styling. Geometry and palette tests do not substitute for visual testing at every DPI or display size.
 
