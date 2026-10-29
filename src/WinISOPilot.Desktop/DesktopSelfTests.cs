@@ -39,6 +39,47 @@ public static class DesktopSelfTests
         Check("WPF executable app choices support Undo without preview promotion",()=>{var session=new Session();var app=Engine.DescribeApp("Clipchamp.Clipchamp_4.0.0.0_neutral_~_yxz26nhyzhsrt");session.AppInventory=new(Guid.NewGuid(),"hash",1,"version","tool","version","toolhash","wimhash",[app]);session.Change(()=>session.RemoveApps=[app.PackageName]);if(session.ExecutableServicing?.RemovePackages.Length!=1)throw new Exception();session.Undo();if(session.ExecutableServicing!=null)throw new Exception();session.Change(()=>session.Preview=session.Preview with{Requested=["clipchamp","cleanup"]});if(session.ExecutableServicing!=null)throw new Exception("Preview became executable");});
         Check("WPF changing source or edition invalidates executable inventory",()=>{var session=new Session{EditionIndex=1,EditionConfirmed=true,CleanupComponents=true,RemoveApps=["fixture"]};session.Change(()=>session.EditionIndex=2);if(session.RemoveApps.Length!=0||session.CleanupComponents||session.AppInventory!=null||session.EditionConfirmed)throw new Exception();session.Undo();if(session.ExecutableServicing!=null||session.RemoveApps.Length!=0)throw new Exception("Undo restored stale authorization");session.Invalidate();if(session.AppInventory!=null)throw new Exception();});
         Check("WPF app and cleanup controls cannot bypass actual readiness",()=>{var window=new PilotWindow();window.Navigate(2);window.MeasureForTests(1280,800);if(window.FindTarget("Read apps")!.IsEnabled)throw new Exception("Missing inspection enabled inventory");window.Navigate(3);if(window.FindTarget("servicing:cleanup")!.IsEnabled)throw new Exception("Missing inventory enabled cleanup");window.Close();});
+        Check("WPF guided stages form a visible left rail without changing stage state",()=>
+        {
+            var window=new PilotWindow();
+            try
+            {
+                foreach(var size in new[]{new Size(1280,800),new Size(1024,660),new Size(800,600)})
+                {
+                    int before=window.State.GuideStage;window.MeasureForTests(size.Width,size.Height);
+                    var rail=(Panel)window.Stepper;var stages=rail.Children.Cast<FrameworkElement>().Select(button=>button.TransformToAncestor(window.LayoutRoot).TransformBounds(new Rect(button.RenderSize))).ToArray();
+                    var contentBounds=window.ContentHost.TransformToAncestor(window.LayoutRoot).TransformBounds(new Rect(window.ContentHost.RenderSize));
+                    if(stages.Length!=5||rail.Visibility!=Visibility.Visible||stages.Any(rect=>rect.Width<=0||rect.Height<48||rect.Right>contentBounds.Left||rect.Bottom>window.LayoutRoot.RenderSize.Height)||stages.Zip(stages.Skip(1)).Any(pair=>pair.First.Bottom>pair.Second.Top))throw new Exception("Guided left rail overflow or wrong ordering at "+size+" stages="+string.Join(";",stages.Select(rect=>rect.ToString()))+" content="+contentBounds+" root="+window.LayoutRoot.RenderSize);
+                    window.MeasureForTests(size.Width,size.Height,true);
+                    if(rail.Visibility!=Visibility.Collapsed||window.WorkspaceButtons.Any(button=>button.Visibility!=Visibility.Visible))throw new Exception("Guided and advanced navigation are not exclusive");
+                    if(window.State.GuideStage!=before)throw new Exception("Presentation toggle changed guide authority");
+                }
+            }
+            finally{window.Close();}
+        });
+        Check("WPF crimson charcoal surfaces retain readable text and focus in both themes",()=>
+        {
+            var window=new PilotWindow();var flags=BindingFlags.Instance|BindingFlags.NonPublic;
+            try
+            {
+                foreach(bool dark in new[]{true,false})
+                {
+                    typeof(PilotWindow).GetField("dark",flags)!.SetValue(window,dark);
+                    typeof(PilotWindow).GetMethod("ApplyPalette",flags)!.Invoke(window,null);
+                    window.MeasureForTests(1280,800,true);
+                    System.Drawing.Color ColorFor(string key){var brush=window.Resources[key] as SolidColorBrush??throw new Exception("Expected solid theme surface: "+key);return System.Drawing.Color.FromArgb(brush.Color.R,brush.Color.G,brush.Color.B);}
+                    foreach(string surface in new[]{"PageBrush","CardBrush","FieldBrush","SidebarBrush","ChromeBrush"})
+                    {
+                        foreach(string text in new[]{"TextBrush","MutedBrush","AccentBrush"})if(ShellPalette.Contrast(ColorFor(text),ColorFor(surface))<4.5)throw new Exception($"Low contrast {text}/{surface}, dark={dark}");
+                        if(ShellPalette.Contrast(ColorFor("AccentBrush"),ColorFor(surface))<3)throw new Exception($"Low focus contrast {surface}, dark={dark}");
+                    }
+                    if(ShellPalette.Contrast(ColorFor("OnAccentBrush"),ColorFor("BlueBrush"))<4.5)throw new Exception("Low primary text contrast");
+                    if(window.Stepper is not Panel guide||!ReferenceEquals(guide.Background,window.Resources["SidebarBrush"]))throw new Exception("Guide surface lost themed crimson background");
+                    foreach(var button in window.WorkspaceButtons)if(!ReferenceEquals(button.Background,window.Resources["SidebarBrush"])&&!ReferenceEquals(button.Background,window.Resources["BlueBrush"]))throw new Exception("Workspace surface not themed");
+                }
+            }
+            finally{window.Close();}
+        });
         Console.WriteLine(count+" WPF desktop tests passed.");
     }
 }
