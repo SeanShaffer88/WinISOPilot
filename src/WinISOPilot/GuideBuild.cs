@@ -10,11 +10,11 @@ public sealed partial class GuideForm
         string? folder=NewFolder("Choose a parent folder for a NEW media build (allow three times the ISO size plus 1 GB)");if(folder==null)return;
         var observed=result;var choices=new MediaBuildChoices(edition.Index,preferEdition.Checked);using var active=new JobControl();job=active;busy=true;activity=Activity.Building;critical=false;pause.Text="Pause";RefreshActions();bool canceled=false;
         try{
-            var progress=new Progress<JobProgress>(p=>{if(job!=active)return;critical=p.Phase.StartsWith("Final",StringComparison.Ordinal)||p.Phase=="Verifying source identity";SetStatus(p.Phase+": "+p.Message,p.Phase+(p.IsPaused?" — paused safely":p.CancellationPending?" — cancellation waiting for safe completion":""));RefreshActions();});
+            BeginTelemetry();var progress=new Progress<JobProgress>(p=>{if(job!=active)return;ObserveTelemetry(p);critical=p.Phase.StartsWith("Final",StringComparison.Ordinal)||p.Phase=="Verifying source identity";SetStatus(p.Phase+": "+p.Message,p.Phase+(p.IsPaused?" — paused safely":p.CancellationPending?" — cancellation waiting for safe completion":""));RefreshActions();});
             var built=await Engine.BuildIso(observed,choices,folder,active,progress);SetStatus("Created a separate ISO: "+built.IsoPath+"\nOriginal SHA-256: "+built.SourceSha256+"\nNew ISO SHA-256: "+built.OutputSha256+"\nAll editions preserved. Future goals were not applied. Boot, installation and setup preference behavior have NOT been tested.","Separate ISO created. Open Full details for its location and remaining checks.");
         }catch(OperationCanceledException){canceled=true;SetStatus("Build canceled after safe native completion and original-file verification. No completed ISO was published. Leftovers are kept unless you choose cleanup.");}
         catch(Exception ex){SetStatus("ISO build failed: "+ex.Message+"\nKeep the run folder and review its evidence. No completed ISO is approved for use.");}
-        finally{job=null;busy=false;activity=Activity.Idle;critical=false;CheckCurrent();ShowStep();}
+        finally{EndTelemetry();job=null;busy=false;activity=Activity.Idle;critical=false;CheckCurrent();ShowStep();}
         if(canceled)OfferBuildCleanup(folder,active.RunId);
     }
     void OfferBuildCleanup(string folder,Guid id)
