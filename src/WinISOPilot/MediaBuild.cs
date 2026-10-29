@@ -6,8 +6,8 @@ using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 namespace ImageGuide;
 
-public sealed record MediaBuildChoices(int SelectedIndex,bool PreferEdition=false);
-public sealed record MediaBuildResult(Guid RunId,string IsoPath,string SourceSha256,string OutputSha256,string Status,string[] Checks,string[] NotRun);
+public sealed record MediaBuildChoices(int SelectedIndex,bool PreferEdition=false,ServicingChoices? Servicing=null);
+public sealed record MediaBuildResult(Guid RunId,string IsoPath,string SourceSha256,string OutputSha256,string Status,string[] Checks,string[] NotRun,ServicingEvidence? Servicing=null,long? OutputBytes=null);
 public static partial class Engine
 {
     sealed class BuildRun(string root,string source,Guid id)
@@ -54,9 +54,9 @@ public static partial class Engine
         CheckBuildDirectories(run);string path=Path.Combine(run.Root,relative);BuildRelative(run.Root,path);run.Tracked.Add(path);
         using var file=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None);run.Created[path]=CleanupNative.CreatedIdentity(file.SafeFileHandle,path);byte[] data=Encoding.UTF8.GetBytes(text);file.Write(data);file.Flush(true);run.ExpectedHash[path]=Convert.ToHexString(SHA256.HashData(data));
     }
-    static List<Edition> BuildReadMetadata(string payload,string output)
+    static List<Edition> BuildReadMetadata(string payload,string output,Action<string>? observeXml=null)
     {
-        var observations=new List<WimObservation>();try{return WimMetadata.Read(payload,output,observations);}finally{
+        var observations=new List<WimObservation>();try{var raw=WimMetadata.ReadRaw(payload,output,observations);var parsed=WimMetadata.Parse(raw.Xml,raw.Count);observeXml?.Invoke(raw.Xml);return parsed;}finally{
             bool failed=observations.Any(o=>o.Operation=="ModuleRetained"||((o.Operation=="WIMCloseHandle"||o.Operation=="FreeLibrary")&&o.ReturnValue=="False")||(o.Operation=="LocalFree(XML buffer)"&&o.ReturnValue.StartsWith("non-NULL",StringComparison.Ordinal)));
             if(failed)RequireRestart("Build WIMGAPI resource cleanup unconfirmed.");
             File.WriteAllText(Path.Combine(output,"native-wim-observations.json"),JsonSerializer.Serialize(observations,Json));
@@ -66,13 +66,19 @@ public static partial class Engine
     {
         if(expected.Count!=actual.Count||expected.Zip(actual).Any(p=>p.First.Index!=p.Second.Index||p.First.EditionId!=p.Second.EditionId||p.First.Version!=p.Second.Version||p.First.Architecture!=p.Second.Architecture||p.First.Installation!=p.Second.Installation))throw new InvalidDataException("Installation edition metadata does not match the inspection.");
     }
-    public static Task<MediaBuildResult> BuildIso(Inspection inspection,MediaBuildChoices choices,string output,JobControl? control=null,IProgress<JobProgress>? progress=null)=>Task.Run(()=>
+    public static Task<MediaBuildResult> BuildIso(Inspection inspection,MediaBuildChoices choices,string output,JobControl? control=null,IProgress<JobProgress>? progress=null)
+    {
+        inspection=FreezeInspection(inspection);
+        choices=choices with{Servicing=choices.Servicing is {} c?c with{RemovePackages=c.RemovePackages?.ToArray()??throw new InvalidDataException("Missing app choices.")}:null};
+        return Task.Run(()=>
     {
         using var owned=control==null?new JobControl():null;control??=owned!;
+        using var servicingGate=choices.Servicing?.HasChanges==true?new ServicingLease():null;
         using var mutex=new Mutex(false,@"Local\WinISOPilot-MediaBuild-v1");bool acquired=false;
         try{try{acquired=mutex.WaitOne(0);}catch(AbandonedMutexException){acquired=true;}if(!acquired)throw new IOException("Another ISO build is active.");try{return BuildIsoCore(inspection,choices,output,control,progress).GetAwaiter().GetResult();}finally{if(buildRuns.TryGetValue(control.RunId,out var finished)){foreach(var lease in finished.DirectoryLeases)lease.Dispose();finished.DirectoryLeases.Clear();}}}
         finally{if(acquired)mutex.ReleaseMutex();}
     });
+    }
     static async Task<MediaBuildResult> BuildIsoCore(Inspection inspection,MediaBuildChoices choices,string output,JobControl control,IProgress<JobProgress>? progress)
     {
         if(RestartRequired)throw new IOException("Restart required after unresolved resource or integrity state.");
@@ -80,6 +86,7 @@ public static partial class Engine
         var selected=inspection.Editions.SingleOrDefault(x=>x.Index==choices.SelectedIndex)??throw new InvalidDataException("Select an observed edition.");
         if(selected.Architecture!="x64"||selected.Installation!="Client"||selected.Build<22000)throw new InvalidDataException("Media creation currently supports x64 Windows 11 client media only.");
         string? config=choices.PreferEdition?EditionConfiguration(selected):null;
+        if(choices.Servicing?.HasChanges==true){var servicingTool=RequireServicing(selected);RequireInventory(inspection,selected,choices.Servicing,servicingTool);ValidateServicingDestination(output,new FileInfo(inspection.Source).Length);}
         string source=ValidateSource(inspection.Source);output=Path.GetFullPath(output);if(output.Contains('#'))throw new InvalidDataException("Choose an output folder without #; Oscdimg boot paths use that separator.");
         if(output.Equals(source,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Output cannot be the source.");
         var tool=Discover().SingleOrDefault(x=>x.Kind=="Oscdimg")??throw new FileNotFoundException("Install Microsoft's Windows ADK Deployment Tools; Oscdimg was not found.");
@@ -89,12 +96,12 @@ public static partial class Engine
         string hash=HashControlled(source,control,progress,"Hashing source");if(!hash.Equals(inspection.SourceSha256,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Original ISO changed since inspection. Inspect it again.");
         string root=NewFolder(output);var run=new BuildRun(root,source,control.RunId);run.Directories.Add(root,CleanupNative.DirectoryIdentity(root));run.DirectoryLeases.Add(CleanupNative.LeaseDirectory(root));buildRuns[run.Id]=run;
         string marker=Path.Combine(root,".imageguide-owned");using(var markerFile=new FileStream(marker,FileMode.Open,FileAccess.Write,FileShare.None)){run.Created[marker]=CleanupNative.CreatedIdentity(markerFile.SafeFileHandle,marker);byte[] markerBytes=Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new{SchemaVersion=1,Purpose="media-build",run.Id,Session=sessionId,Root=root},Json));markerFile.Write(markerBytes);markerFile.SetLength(markerBytes.Length);markerFile.Flush(true);run.ExpectedHash[marker]=Convert.ToHexString(SHA256.HashData(markerBytes));}run.Tracked.Add(marker);
-        Exception? failure=null;MediaBuildResult? result=null;string partial=Path.Combine(root,"customized.partial.iso"),final=Path.Combine(root,"customized.iso");bool nativeSafe=true;NativeIso? original=null,created=null;FileStream? outputLease=null;
-        void Journal(string phase){BuildWrite(run,"journal-"+run.Tracked.Count+".json",JsonSerializer.Serialize(new{run.Id,Phase=phase,OriginalSha256=hash,FinalOriginalVerification="Pending",Servicing="Not performed",BootAndInstall="NotRun"},Json));}
+        Exception? failure=null;MediaBuildResult? result=null;string partial=Path.Combine(root,"customized.partial.iso"),final=Path.Combine(root,"customized.iso");bool nativeSafe=true;long servicingExpandedBytes=0;ServicingEvidence? servicingEvidence=null;NativeIso? original=null,created=null;FileStream? outputLease=null;
+        void Journal(string phase){BuildWrite(run,"journal-"+run.Tracked.Count+".json",JsonSerializer.Serialize(new{run.Id,Phase=phase,OriginalSha256=hash,FinalOriginalVerification="Pending",Servicing=choices.Servicing?.HasChanges==true?"Requested; consult servicing-result or failure evidence":"Not performed",BootAndInstall="NotRun"},Json));}
         try{
             control.Checkpoint("Opening source read-only",progress);original=new NativeIso(source);original.AttachOrReuse();original.VerifyAssociation();string mediaRoot=original.DriveRoot!;
-            string payload=ValidateMediaLayout(mediaRoot);if(config!=null)CheckSetupConflicts(mediaRoot);
-            string sourceMeta=Path.Combine(root,"source-metadata");BuildDirectory(run,sourceMeta);run.Tracked.Add(Path.Combine(sourceMeta,"wim-container.xml"));SameEditions(inspection.Editions,BuildReadMetadata(payload,sourceMeta));
+            string payload=ValidateMediaLayout(mediaRoot);if(choices.Servicing?.HasChanges==true&&!payload.EndsWith(".wim",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Servicing requires install.wim; ESD/SWM conversion is not implemented.");if(config!=null)CheckSetupConflicts(mediaRoot);
+            string sourceMeta=Path.Combine(root,"source-metadata");BuildDirectory(run,sourceMeta);run.Tracked.Add(Path.Combine(sourceMeta,"wim-container.xml"));SameEditions(inspection.Editions,BuildReadMetadata(payload,sourceMeta,choices.Servicing?.HasChanges==true?xml=>servicingExpandedBytes=ReadExpandedBytes(xml,selected.Index):null));if(choices.Servicing?.HasChanges==true)RequireExpandedSpace(servicingExpandedBytes,root,lease.Length);
             var manifest=new List<(string Relative,long Bytes)>();var dirs=new List<string>();var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);long total=0;
             void Scan(string directory,int depth){if(depth>32)throw new InvalidDataException("Media nesting exceeds bound.");foreach(string path in Directory.EnumerateFileSystemEntries(directory).OrderBy(x=>x,StringComparer.OrdinalIgnoreCase)){if(manifest.Count+dirs.Count>=100000)throw new InvalidDataException("Media entry count exceeds bound.");CheckPath(path);string relative=BuildRelative(mediaRoot,path);if(!seen.Add(relative))throw new InvalidDataException("Case-colliding media paths.");var attrs=File.GetAttributes(path);if((attrs&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Media reparse entry rejected.");if((attrs&FileAttributes.Directory)!=0){dirs.Add(relative);Scan(path,depth+1);}else{long length=new FileInfo(path).Length;total=checked(total+length);manifest.Add((relative,length));}}}
             Scan(mediaRoot,0);if(total<=0)throw new InvalidDataException("Empty media.");
@@ -103,7 +110,8 @@ public static partial class Engine
             long copied=0;var buffer=new byte[1024*1024];var hashes=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
             foreach(var entry in manifest){control.Checkpoint("Copying media",progress,copied,total);original.VerifyAssociation();CheckBuildDirectories(run);string from=Path.Combine(mediaRoot,entry.Relative),to=Path.Combine(media,entry.Relative);run.Tracked.Add(to);using var input=new FileStream(from,FileMode.Open,FileAccess.Read,FileShare.Read);if(input.Length!=entry.Bytes)throw new IOException("Media source length changed.");using var dest=new FileStream(to,FileMode.CreateNew,FileAccess.Write,FileShare.None);run.Created[to]=CleanupNative.CreatedIdentity(dest.SafeFileHandle,to);using var digest=IncrementalHash.CreateHash(HashAlgorithmName.SHA256);int count;while((count=input.Read(buffer))>0){control.Checkpoint("Copying media",progress,copied,total,true);dest.Write(buffer,0,count);digest.AppendData(buffer,0,count);copied+=count;}dest.Flush(true);string copiedHash=Convert.ToHexString(digest.GetHashAndReset());hashes.Add(entry.Relative,copiedHash);run.ExpectedHash[to]=copiedHash;}
             original.Dispose();original=null;
-            control.Checkpoint("Preparing setup preference",progress);if(config!=null){string relative=Path.Combine("media","sources","ei.cfg");BuildWrite(run,relative,config);hashes.Add(Path.Combine("sources","ei.cfg"),Hash(Path.Combine(root,relative)));}Journal(config==null?"Unchanged media copy prepared":"Retail edition preference written only to copy");
+            if(choices.Servicing?.HasChanges==true){string relative=Path.Combine("sources","install.wim");servicingEvidence=await ServiceBuildCopy(run,Path.Combine(media,relative),selected,inspection,choices.Servicing,servicingExpandedBytes,lease.Length,control,progress);hashes[relative]=Hash(Path.Combine(media,relative));}
+            control.Checkpoint("Preparing setup preference",progress);if(config!=null){string relative=Path.Combine("media","sources","ei.cfg");BuildWrite(run,relative,config);hashes.Add(Path.Combine("sources","ei.cfg"),Hash(Path.Combine(root,relative)));}Journal(choices.Servicing?.HasChanges==true?"Selected edition customized; optional setup preference prepared":config==null?"Unchanged media copy prepared":"Retail edition preference written only to copy");
             CheckBuildDirectories(run);foreach(var entry in hashes){control.Checkpoint("Checking working copy",progress);if(HashControlled(Path.Combine(media,entry.Key),control,progress,"Checking working copy")!=entry.Value)throw new IOException("Working copy changed before ISO creation.");}
             control.Checkpoint("Creating new ISO",progress);CheckBuildDirectories(run);string boot="-bootdata:2#p0,e,b"+Path.Combine(media,"boot","etfsboot.com")+"#pEF,e,b"+Path.Combine(media,"efi","microsoft","boot","efisys.bin");
             var arguments=new[]{"-m","-o","-u2","-udfver102",boot,media,partial};var start=new ProcessStartInfo(tool.Path){UseShellExecute=false,RedirectStandardOutput=true,RedirectStandardError=true,CreateNoWindow=true};foreach(string arg in arguments)start.ArgumentList.Add(arg);run.Tracked.Add(partial);
@@ -111,7 +119,7 @@ public static partial class Engine
             control.Checkpoint("Verifying created ISO",progress);outputLease=new FileStream(partial,FileMode.Open,FileAccess.Read,FileShare.Read);created=new NativeIso(partial);created.AttachOrReuse();created.VerifyAssociation();string builtRoot=created.DriveRoot!;string builtPayload=ValidateMediaLayout(builtRoot);string verify=Path.Combine(root,"output-metadata");BuildDirectory(run,verify);run.Tracked.Add(Path.Combine(verify,"wim-container.xml"));SameEditions(inspection.Editions,BuildReadMetadata(builtPayload,verify));
             var actual=new HashSet<string>(StringComparer.OrdinalIgnoreCase);int verifiedEntries=0;void Verify(string directory,int depth){if(depth>32)throw new InvalidDataException("Output media nesting exceeds bound.");foreach(string path in Directory.EnumerateFileSystemEntries(directory)){if(++verifiedEntries>100000)throw new InvalidDataException("Output media entry count exceeds bound.");CheckPath(path);if(Directory.Exists(path))Verify(path,depth+1);else{string relative=BuildRelative(builtRoot,path);if(!actual.Add(relative)||!hashes.TryGetValue(relative,out var expected)||HashControlled(path,control,progress,"Verifying created ISO")!=expected)throw new IOException("Created ISO file set or content mismatch: "+relative);}}}Verify(builtRoot,0);if(actual.Count!=hashes.Count)throw new IOException("Created ISO is missing copied media files.");
             created.Dispose();created=null;Journal("Created ISO file content and edition inventory verified");
-            string outputHash=HashControlled(partial,control,progress,"Hashing created ISO");result=new(run.Id,final,hash,outputHash,"Created; boot and installation not tested",new[]{"Original identity rechecked","All copied file hashes match output","Edition inventory preserved","Standard boot files present",config==null?"No edition preference requested":"Retail edition preference bytes verified"},new[]{"Firmware boot","Windows installation","Setup honoring edition preference","Activation","Updates and recovery"});
+            string outputHash=HashControlled(partial,control,progress,"Hashing created ISO");result=new(run.Id,final,hash,outputHash,"Created; boot and installation not tested",new[]{"Original identity rechecked",choices.Servicing?.HasChanges==true?"Output file hashes match approved working copy; selected WIM serviced":"All copied file hashes match output","Edition inventory preserved","Standard boot files present",config==null?"No edition preference requested":"Retail edition preference bytes verified"},new[]{"Firmware boot","Windows installation","Setup honoring edition preference","Activation","Updates and recovery","Removed-app behavior and update rollback"},servicingEvidence,new FileInfo(partial).Length);
         }catch(Exception ex){failure=ex;}
         finally{
             JobControl.Publish(progress,new("Final verification and cleanup","Releasing read-only ISO handles and checking the original; pause/cancel waits.",CancellationPending:control.CancellationRequested));
