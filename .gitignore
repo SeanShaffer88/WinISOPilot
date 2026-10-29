@@ -1,0 +1,48 @@
+# .NET outputs and editor state
+**/bin/
+**/obj/
+.vs/
+.idea/
+*.user
+*.suo
+
+# Local packaged builds and inspection/test outputs
+app*/
+**/app*/
+real-inspection*/
+**/real-inspection*/
+logs/
+**/logs/
+reports/
+**/reports/
+TestResults/
+**/TestResults/
+*.log
+*.binlog
+
+# Installation media and private project inputs/results
+*.iso
+*.wim
+*.esd
+*.swm
+*.vhd
+*.vhdx
+*.ffu
+*.saz
+*.har
+inspection.json
+inspection-report.json
+inspection-report.md
+plan.json
+plan-report.md
+choices.local.json
+*.local.json
+.env
+.env.*
+secrets/
+private/
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
