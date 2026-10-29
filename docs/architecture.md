@@ -30,3 +30,11 @@ Original media is preserved. No ISO workflow may silently substitute host `/Onli
 Native DISM package/feature/app provisioning operations are not equivalent to arbitrary NTLite or MSMG component removal. Such parity remains a research gap; working software must not promise it without build-specific implementation and test evidence.
 
 This repository does not currently implement the future servicing stages above.
+
+## Low-level components and future boundaries
+
+The present C# implementation already uses low-level Windows facilities where they serve the read-only task: `NativeIso.AttachOrReuse` and `VerifyAssociation` manage and recheck ISO access; `WimMetadata.Read` performs query-only native metadata calls; `JobControl` coordinates cooperative checkpoints. The engine bounds captured output, verifies source hashes and latches unresolved cleanup failures. Generated-file cleanup uses validated ownership and identity instead of treating a folder name as deletion authority. These are implemented safeguards, not an image-customization engine.
+
+Future servicing should introduce three independent contracts, **none implemented yet**: an `IImageWorker.ExecuteAsync(ApprovedImageOperation, JobContext)` boundary for a separate privileged worker that independently validates an allowlist of typed operations and accepts no raw commands; an `IResourceJournal.Record(ResourceEvent)` / `Reconcile(JobId)` boundary for observed app-owned resources without assumed cleanup authority; and an `IImageVerifier.VerifyAsync(ExpectedImageState, ObservedArtifact)` boundary for independent checks reported as passed, failed or not run. A successful tool exit is never proof that media boots or Windows installs.
+
+Prefer Microsoft APIs and the standard library. There is no plan to invent ISO/WIM parsers or cryptography or to rewrite the application in Rust. A future isolated native component would require a demonstrated need, a reviewed interface and its own evidence and tests before changing that decision.
