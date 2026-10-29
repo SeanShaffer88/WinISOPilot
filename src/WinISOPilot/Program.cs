@@ -12,7 +12,7 @@ internal static class Program
     {
         if(args.SequenceEqual(new[]{"--controlled-query-fixture"})){Console.WriteLine("fixture-start");await Task.Delay(300);Console.Error.WriteLine("fixture-error-end");Console.WriteLine("fixture-end");return 0;}
         if(args.SequenceEqual(new[]{"--controlled-query-failure-fixture"})){await Task.Delay(100);Console.Error.WriteLine("controlled failure");return 17;}
-        if(args.SequenceEqual(new[]{"--self-test"})){int code=SelfTests.Run();if(code!=0)return code;CoreControlSelfTests.Run();Engine.BuildSelfTests();WorkspaceSelfTests.Run();ReferenceSelfTests.Run();return 0;}
+        if(args.SequenceEqual(new[]{"--self-test"})){int code=SelfTests.Run();if(code!=0)return code;CoreControlSelfTests.Run();Engine.BuildSelfTests();WorkspaceSelfTests.Run();ReferenceSelfTests.Run();GuidanceSelfTests.Run();return 0;}
         if(args.Length==1&&args[0] is "--help" or "-h"){Console.WriteLine("WinISOPilot inventory --source <local.iso|wim|esd> --output <NEW directory>\nWinISOPilot inspect --source <local.iso> --output <NEW directory>\nWinISOPilot plan --inspection <inspection.json> [--choices <choices.json>] --output <NEW directory>\nWinISOPilot --self-test\nWinISOPilot build --inspection <inspection.json> --index <observed index> [--prefer-edition Retail] --output <NEW directory>\nNo arguments opens the GUI. Build copies media and optionally adds a Retail edition preference; no WIM servicing or slimming. CLI Ctrl+C is not guaranteed safe cancellation.");return 0;}
         if(args.Length<1||args[0] is not("inspect" or "plan" or "build" or "inventory"))throw new ArgumentException("Use --help for supported commands.");
         var options=new Dictionary<string,string>(StringComparer.Ordinal);

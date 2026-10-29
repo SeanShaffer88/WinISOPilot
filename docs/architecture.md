@@ -1,5 +1,15 @@
 # Architecture and verification boundaries
 
+## WPF presentation boundary
+
+`WinISOPilot.Desktop` is a separate, package-free .NET 10 WPF presentation project referencing the existing engine assembly. It is the default desktop executable. It does not copy engine source, issue raw DISM/process commands, or instantiate a hidden WinForms guide as a state bridge. Legacy CLI and WinForms safety tests remain available through the original project.
+
+The WPF session owns immutable serialized preview snapshots (bounded to 100), explicit edition confirmation, original inspection identity and actual build result. Atomic preview imports cannot add commands or executable capabilities. Source changes invalidate inspection, confirmation, history and result. Selecting a source, navigating, searching and changing a preview never starts image work. The primary guide uses only the supported inspection/edition/preference/review/build/result path; all advanced workspaces are optional.
+
+Engine progress is marshaled to the WPF Dispatcher. Pause/cancel buttons in the main footer and owned job view share one `JobControl`, including the final-verification lock. Closing the main window during work requests cancellation and waits. Closing the job view does not cancel work. UI clocks stop before modal results or cleanup prompts. The ring displays a percentage only when an observed phase reports valid completed/total bytes; it does not invent overall completion or space savings. Cleanup remains confined to existing engine-owned allowlists and defaults to Keep; inventory reports have no deletion authority.
+
+The presentation uses native WPF gradients, borders, vector shapes and shadows with cyan/blue accents. It does not claim Mica/Acrylic or use an image as a fake interactive surface. Hardware connections are labeled illustrations. No component dependency edges or safe-removal scores are drawn without an inventory. Read-only configuration code is preview JSON, explicitly not an executable unattended answer file. Window size is fixed at 1280×800 DIPs and clamped to the work area; content stacks and scrolls at smaller widths. Measured layout tests complement live GUI checks, not a claim of every-DPI visual coverage.
+
 ## Present prototype
 
 The Windows GUI and CLI expose inspection, plan review and a bounded media-copy/build workflow. Ten workspace pages share one source, edition, broad-goal and job state. Overview/recovery views expose observations; Source/Editions/Build retain existing engine guards. Reference catalogs and recipe simulations never authorize operations. Native installation-media querying remains independent of any future privileged servicing worker. Reports distinguish observations from planned actions and unknowns. Selected media is not executed.

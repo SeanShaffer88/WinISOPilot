@@ -33,7 +33,7 @@ public sealed partial class GuideForm
     void EndTelemetry(){if(jobClock.IsRunning){jobClock.Stop();lastElapsed=jobClock.Elapsed;}RefreshWorkspaceState();}
     void RefreshWorkspaceState()
     {
-        if(IsDisposed)return;RefreshReferenceState();var selected=editions.SelectedItem as Edition;string[] selectedGoals=Keys.Where(k=>goals.TryGetValue(k,out var c)&&c.Checked).ToArray();
+        if(IsDisposed)return;RefreshReferenceState();RefreshGuidance();var selected=editions.SelectedItem as Edition;string[] selectedGoals=Keys.Where(k=>goals.TryGetValue(k,out var c)&&c.Checked).ToArray();
         overview.Text=$"State: {(busy?"Working — selections locked":"Idle")}\r\nISO: {(result==null?"Not inspected":Path.GetFileName(result.Source))}\r\nEdition: {selected?.Name??"None selected"}\r\nAvailable: inspection, container inventory, separate ISO creation.\r\nPreview: recipe checks. Servicing and slimming: not implemented.";
         var elapsed=jobClock.IsRunning?jobClock.Elapsed:lastElapsed;string measured=lastProgress?.Completed is long done?$"{done:N0} bytes observed"+(lastProgress.Total is long total?$" / {total:N0} in this phase":""):"Byte progress: not reported for this phase";
         telemetry.Text=lastProgress==null?"No measured job activity yet.\r\nNo ETA or size savings are inferred.":$"Phase: {lastProgress.Phase}\r\n{measured}\r\nElapsed: {elapsed:hh\\:mm\\:ss} (includes safe pauses)\r\n{(job?.IsPaused==true?"Paused at a safe checkpoint":job?.CancellationRequested==true?"Cancellation requested; waiting for a safe boundary":jobClock.IsRunning?"Active":"Last observed job has ended; see operation evidence for outcome")}";
