@@ -1,6 +1,6 @@
 # WinISOPilot
 
-A guided Windows 11 installation-image customization project. The current prototype is a **read-only inspector and planning tool**. It does not service Windows images or create installation media.
+A guided Windows 11 installation-image customization project. The current preview inspects media, saves future plans, and **creates a separate ISO copy**, optionally adding a Retail Home/Pro setup edition preference. It does not service or slim Windows images.
 
 ## Current scope
 
@@ -8,7 +8,7 @@ A guided Windows 11 installation-image customization project. The current protot
 - A searchable catalog of 42 researched option families with purpose, prerequisites, consequences, evidence and separate implementation status. It is exploratory, not exhaustive, and is not a live image-component inventory.
 - Explicit separation between observed metadata, user choices, planned operations, and verification that has not run.
 - No paid-tool runtime dependencies. NTLite, MSMG ToolKit, DISMTools, WimWizard, and Dism++ inform research rather than supply copied application code.
-- No host-OS modification, component removal, writable WIM mounting, ISO creation, USB formatting, or setup execution. Read-only ISO attachments may be created or reused to query the media.
+- No host-OS modification, component removal, writable WIM mounting, USB formatting, or setup execution. Read-only ISO attachments may be created or reused for inspection and media verification. ISO creation uses installed Microsoft ADK Oscdimg; no paid tool is required.
 
 ## Use the walkthrough
 
@@ -16,15 +16,15 @@ A guided Windows 11 installation-image customization project. The current protot
 2. Choose an edition actually observed in the source. Review its self-reported metadata, source identity, local tools and compatibility result. Unknown compatibility does not mean success.
 3. Record any of the six broad future goals: updates, drivers, languages, apps, setup and recovery-image planning. All requested operations remain `NotImplemented` and nonexecuting.
 4. Explore reference families. Catalog rows explain possibilities; they are not extra selectable changes and do not imply installed components.
-5. Review and export a future plan into a new output folder. Export rechecks source identity and cannot build or modify installation media.
+5. Review and export a future plan, or choose **Create customized ISO**. Creation copies all media into a new run folder and uses Microsoft ADK Oscdimg to create a separate ISO. Optionally ask Setup to use the selected observed Home or Pro edition through `sources/ei.cfg` (Retail channel, VL=0). This is a setup preference, not a license or activation, and all editions remain inside. Existing edition/product-ID/answer-file configuration blocks the preference; no configuration is silently replaced. Your future goals are not applied.
 
-Select **?** or press **F1** for step instructions and a plain-language glossary. Hover hints are off by default. Help offers optional short hints for buttons and small choices, with a delay; large text fields, labels, panels and window backgrounds never show hover help. Accessible descriptions and visible instructions remain available. Undo restores version/goal selections only, up to 100 snapshots. It does not undo source activity, reports, exported files or Windows changes.
+Select **?** or press **F1** for step instructions and a plain-language glossary. Hover hints are off by default. Help offers optional short hints for buttons and small choices, with a delay; large text fields, labels, panels and window backgrounds never show hover help. Accessible descriptions and visible instructions remain available. Undo restores version/goal/edition-preference selections only, up to 100 snapshots. It does not undo source activity, reports, exported files or Windows changes.
 
 The unified desktop shell uses an 11-point system font, a fixed 920×660 logical client size and startup DPI/working-area clamping. Long paths, reports and explanations remain selectable or vertically scrollable; **Full details** preserves long status/error text. Light/dark switching changes app-owned surfaces only. Windows high-contrast colors take priority, and native file/folder pickers keep Windows styling. Geometry and palette tests do not substitute for visual testing at every DPI or display size.
 
-The GUI supports inspection pause/resume and safe cancellation at checkpoints. Active native reads finish before requests take effect; final source verification and native cleanup cannot pause. Closing the GUI during active work requests cancellation and waits rather than forcing process termination. These cooperative controls are GUI-only: CLI Ctrl+C or OS process termination is not a guaranteed safe cancellation path. Plan export is a separate noncancelable operation.
+The GUI supports inspection and ISO creation pause/resume and safe cancellation at checkpoints. Copying pauses between chunks; active Oscdimg/native reads finish before requests take effect. The original ISO is held read-only with writes/deletion denied for the entire build, rehashed against inspection, and checked again before publication. A partial ISO is renamed without overwrite only after readback verification and the final cancellation checkpoint. Unknown Windows servicing compatibility does not block this media-only operation, because no image servicing occurs. Active native reads finish before requests take effect; final source verification and native cleanup cannot pause. Closing the GUI during active work requests cancellation and waits rather than forcing process termination. These cooperative controls are GUI-only: CLI Ctrl+C or OS process termination is not a guaranteed safe cancellation path. Plan export is a separate noncancelable operation.
 
-After an eligible canceled inspection, keeping generated diagnostic files is the default. Optional deletion is limited to that run's validated generated-file allowlist; unknown identity, unrelated entries, locks or cleanup problems retain files. It never deletes the source ISO, package inputs, exported plans or mounts. Deletion does not undo Windows changes or repair an image.
+After an eligible canceled inspection or build, keeping generated diagnostic files is the default. Optional deletion is limited to that run's validated generated-file allowlist; build files also require identity recorded on their creation handle. Build folders, unexpected entries, external-tool partial ISO files and native diagnostics without creation ownership evidence are retained. No recursive deletion is used; unknown identity, unrelated entries, locks or cleanup problems retain files. It never deletes the source ISO, package inputs, exported plans or mounts. Deletion does not undo Windows changes or repair an image.
 
 ## Read-only metadata boundary
 
@@ -46,6 +46,14 @@ Run `--help` for supported CLI commands. No arguments opens the GUI. Self-tests 
 
 ## Direction
 
-Detailed customization and build stages remain future work. A servicing engine must use compatible Microsoft DISM/ADK tooling, typed operations, explicit input validation and owned-resource recovery. Deep component removal remains unvalidated. The current compatibility profiles are conservative; preview or unrecognized builds remain Unknown. The catalog cannot grant execution permission.
+Windows-image servicing and slimming remain future work. The first actual media-customization feature adds an optional edition preference and creates a new ISO. Its verifier reads back every media file and compares hashes and edition inventory, but does not prove bootability, installation or Setup honoring the preference. Real firmware/VM boot and installation gates remain NotRun. A servicing engine must use compatible Microsoft DISM/ADK tooling, typed operations, explicit input validation and owned-resource recovery. Deep component removal remains unvalidated. The current compatibility profiles are conservative; preview or unrecognized builds remain Unknown. The catalog cannot grant execution permission.
 
 See [architecture](docs/architecture.md) for boundaries and validation gates. The MIT [license](LICENSE) applies to this repository; generated icon provenance is recorded alongside the source assets. Windows media and Microsoft deployment tools are supplied separately under their own terms.
+
+## Create a separate ISO from the command line
+
+```powershell
+WinISOPilot.exe build --inspection C:\reports\inspection.json --index 6 --prefer-edition Retail --output C:\builds\new-run
+```
+
+Omit `--prefer-edition Retail` to preserve the original setup configuration. Index must be observed in the source; Home/Core and Pro/Professional are supported for preference writing. Requires local x64 Windows 11 media, standard BIOS/UEFI boot files, one `install.wim` or `install.esd`, installed ADK Oscdimg, a new output folder without `#`, and free space of three times the copied media size plus 1 GB. No input scripts or commands run. CLI Ctrl+C still does not offer guaranteed safe cancellation; use GUI Pause/Cancel for cooperative job controls. Completed outputs are never eligible for canceled-run cleanup. Existing outputs are never overwritten. A valid Windows license is supplied separately.
