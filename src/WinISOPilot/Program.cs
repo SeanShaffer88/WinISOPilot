@@ -5,16 +5,30 @@ internal static class Program
     [STAThread]
     static int Main(string[] args)
     {
-        if(args.Length==0){ApplicationConfiguration.Initialize();Application.Run(new GuideForm());return 0;}
+        if(args.Length==0)
+        {
+            try
+            {
+                using var instance=GuiInstance.Acquire();if(instance==null)return 0;
+                ApplicationConfiguration.Initialize();using var window=new GuideForm();
+                window.Shown+=(_,_)=>instance.Listen(()=>{if(!window.IsDisposed&&window.IsHandleCreated)window.BeginInvoke(()=>GuiInstance.ActivateWindow(window.Handle));});
+                Application.Run(window);return 0;
+            }
+            catch(Exception ex){MessageBox.Show("WinISOPilot could not acquire or contact its single-instance guard. No second window was opened.\n\n"+ex.Message,"WinISOPilot",MessageBoxButtons.OK,MessageBoxIcon.Warning);return 1;}
+        }
         try{return Run(args).GetAwaiter().GetResult();}catch(Exception ex){Console.Error.WriteLine(ex.Message);return 1;}
     }
     static async Task<int> Run(string[] args)
     {
+        if(args.Length==3&&args[0]=="--gui-instance-fixture")return GuiInstanceSelfTests.Fixture(args);
+        if(args.SequenceEqual(new[]{"--gui-instance-self-test"})){GuiInstanceSelfTests.Run();return 0;}
+        if(args.SequenceEqual(new[]{"--download-self-test"})){Engine.DownloadSelfTests();return 0;}
+        if(args.Length==2&&args[0]=="--iso-link-probe"){using var control=new JobControl();var link=await Engine.GenerateMicrosoftIsoLink(args[1],control);Console.WriteLine(JsonSerializer.Serialize(new{Generated=true,link.Host,Filename=Path.GetFileName(link.AbsolutePath),FullIsoDownload="NotRun"}));return 0;}
         if(args.SequenceEqual(new[]{"--controlled-query-fixture"})){Console.WriteLine("fixture-start");await Task.Delay(300);Console.Error.WriteLine("fixture-error-end");Console.WriteLine("fixture-end");return 0;}
         if(args.SequenceEqual(new[]{"--controlled-query-failure-fixture"})){await Task.Delay(100);Console.Error.WriteLine("controlled failure");return 17;}
         if(args.SequenceEqual(new[]{"--servicing-self-test"})){Engine.ServicingSelfTests();return 0;}
         if(args.Length==3&&args[0]=="--servicing-preflight"){var inspection=JsonSerializer.Deserialize<Inspection>(File.ReadAllText(args[1]),Engine.Json)??throw new InvalidDataException("Invalid inspection.");if(!int.TryParse(args[2],out int index))throw new ArgumentException("Invalid index.");var edition=inspection.Editions.Single(x=>x.Index==index);var readiness=Engine.CheckServicing(edition);Console.WriteLine(JsonSerializer.Serialize(readiness,Engine.Json));return readiness.Available?0:18;}
-        if(args.SequenceEqual(new[]{"--self-test"})){int code=SelfTests.Run();if(code!=0)return code;CoreControlSelfTests.Run();Engine.BuildSelfTests();WorkspaceSelfTests.Run();ReferenceSelfTests.Run();GuidanceSelfTests.Run();Engine.ServicingSelfTests();return 0;}
+        if(args.SequenceEqual(new[]{"--self-test"})){int code=SelfTests.Run();if(code!=0)return code;CoreControlSelfTests.Run();Engine.BuildSelfTests();WorkspaceSelfTests.Run();ReferenceSelfTests.Run();GuidanceSelfTests.Run();Engine.ServicingSelfTests();GuiInstanceSelfTests.Run();Engine.DownloadSelfTests();return 0;}
         if(args.Length==1&&args[0] is "--help" or "-h"){Console.WriteLine("WinISOPilot inventory --source <local.iso|wim|esd> --output <NEW directory>\nWinISOPilot inspect --source <local.iso> --output <NEW directory>\nWinISOPilot plan --inspection <inspection.json> [--choices <choices.json>] --output <NEW directory>\nWinISOPilot --self-test\nWinISOPilot build --inspection <inspection.json> --index <observed index> [--prefer-edition Retail] --output <NEW directory>\nNo arguments opens the GUI. Build copies media and optionally adds a Retail edition preference; no WIM servicing or slimming. CLI Ctrl+C is not guaranteed safe cancellation.");return 0;}
         if(args.Length<1||args[0] is not("inspect" or "plan" or "build" or "inventory"))throw new ArgumentException("Use --help for supported commands.");
         var options=new Dictionary<string,string>(StringComparer.Ordinal);

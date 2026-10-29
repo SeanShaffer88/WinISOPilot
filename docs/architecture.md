@@ -1,5 +1,13 @@
 # Architecture and verification boundaries
 
+## GUI ownership and download boundary
+
+Both GUI entry points share a native named mutex and auto-reset activation event scoped to the current Windows SID and session. Explicit current-user/SYSTEM DACLs and a medium integrity label permit a same-user unelevated launcher to signal an elevated owner. The owner holds the mutex on its STA main thread through safe shutdown; abandoned ownership is recoverable. An activation carries no payload and only queues restoration/focus of the current window/modal, with taskbar flash fallback. Wait callbacks drain before event disposal and mutex release. CLI and test entry points never own the GUI guard. Cross-elevation live validation remains outstanding.
+
+The bundled Fido source is pinned by exact bytes and held read-only through its fixed-argument Windows PowerShell process. It supplies a link only; it is not an image worker or downloader. An elevated app refuses to invoke it. Script policy is respected. Output is bounded/drained and accepted only on actual successful exit with one allowlisted HTTPS ISO URL. Raw output and signed query strings are not logged; the native transfer independently validates the URL. The unmodified source and GPL license/provenance accompany the app. `.gitattributes` preserves the signed source bytes.
+
+Native HTTP transfer is separate from image servicing. A typed result becomes selectable only after length, descriptor, checksum/readback and no-overwrite handle-based publication. The source session is unchanged until explicit adoption. A parent-directory lease and the exclusive partial handle prevent path substitution during transfer/publication. Cancel eligibility freezes only bytes matching the hash/length written under that handle and the timestamp captured before close; cleanup previews and deletion recheck identity/content and retain unexpected files. No folder recursion, URL execution, ISO execution or HTTP authentication occurs. Actual multi-GB transfer and successful Fido generation are not claimed by deterministic fixtures.
+
 ## WPF presentation boundary
 
 `WinISOPilot.Desktop` is a separate, package-free .NET 10 WPF presentation project referencing the existing engine assembly. It is the default desktop executable. It does not copy engine source, issue raw DISM/process commands, or instantiate a hidden WinForms guide as a state bridge. Legacy CLI and WinForms safety tests remain available through the original project.
