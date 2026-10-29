@@ -12,15 +12,16 @@ internal static class Program
     {
         if(args.SequenceEqual(new[]{"--controlled-query-fixture"})){Console.WriteLine("fixture-start");await Task.Delay(300);Console.Error.WriteLine("fixture-error-end");Console.WriteLine("fixture-end");return 0;}
         if(args.SequenceEqual(new[]{"--controlled-query-failure-fixture"})){await Task.Delay(100);Console.Error.WriteLine("controlled failure");return 17;}
-        if(args.SequenceEqual(new[]{"--self-test"})){int code=SelfTests.Run();if(code!=0)return code;CoreControlSelfTests.Run();return 0;}
-        if(args.Length==1&&args[0] is "--help" or "-h"){Console.WriteLine("WinISOPilot inspect --source <local.iso> --output <NEW directory>\nWinISOPilot plan --inspection <inspection.json> [--choices <choices.json>] --output <NEW directory>\nWinISOPilot --self-test\nNo arguments opens the read-only GUI. No servicing/build commands exist.");return 0;}
-        if(args.Length<1||args[0] is not("inspect" or "plan"))throw new ArgumentException("Use --help for supported commands.");
+        if(args.SequenceEqual(new[]{"--self-test"})){int code=SelfTests.Run();if(code!=0)return code;CoreControlSelfTests.Run();Engine.BuildSelfTests();return 0;}
+        if(args.Length==1&&args[0] is "--help" or "-h"){Console.WriteLine("WinISOPilot inspect --source <local.iso> --output <NEW directory>\nWinISOPilot plan --inspection <inspection.json> [--choices <choices.json>] --output <NEW directory>\nWinISOPilot --self-test\nWinISOPilot build --inspection <inspection.json> --index <observed index> [--prefer-edition Retail] --output <NEW directory>\nNo arguments opens the GUI. Build copies media and optionally adds a Retail edition preference; no WIM servicing or slimming. CLI Ctrl+C is not guaranteed safe cancellation.");return 0;}
+        if(args.Length<1||args[0] is not("inspect" or "plan" or "build"))throw new ArgumentException("Use --help for supported commands.");
         var options=new Dictionary<string,string>(StringComparer.Ordinal);
         for(int i=1;i<args.Length;i+=2){if(i+1>=args.Length||!args[i].StartsWith("--",StringComparison.Ordinal)||!options.TryAdd(args[i],args[i+1]))throw new ArgumentException("Malformed or duplicate option.");}
-        var allowed=args[0]=="inspect"?new[]{"--source","--output"}:new[]{"--inspection","--choices","--output"};
+        var allowed=args[0]=="inspect"?new[]{"--source","--output"}:args[0]=="build"?new[]{"--inspection","--index","--prefer-edition","--output"}:new[]{"--inspection","--choices","--output"};
         if(options.Keys.Any(k=>!allowed.Contains(k)))throw new ArgumentException("Unknown option.");
         string Need(string key)=>options.TryGetValue(key,out var value)?value:throw new ArgumentException("Missing "+key);
         if(args[0]=="inspect"){var result=await Engine.Inspect(Need("--source"),Need("--output"));Console.WriteLine(JsonSerializer.Serialize(result,Engine.Json));}
+        else if(args[0]=="build"){var inspection=JsonSerializer.Deserialize<Inspection>(await File.ReadAllTextAsync(Need("--inspection")),Engine.Json)??throw new InvalidDataException("Invalid inspection.");if(!int.TryParse(Need("--index"),out int index))throw new ArgumentException("Invalid index.");bool prefer=options.TryGetValue("--prefer-edition",out var preference)&&preference=="Retail";if(options.ContainsKey("--prefer-edition")&&!prefer)throw new ArgumentException("Edition preference must explicitly be Retail.");Console.WriteLine(JsonSerializer.Serialize(await Engine.BuildIso(inspection,new(index,prefer),Need("--output")),Engine.Json));}
         else {var choices=options.TryGetValue("--choices",out var file)?JsonSerializer.Deserialize<Choices>(await File.ReadAllTextAsync(file),Engine.Json)??throw new InvalidDataException("Invalid choices."):new Choices();Console.WriteLine(await Engine.Plan(Need("--inspection"),choices,Need("--output")));}
         return 0;
     }
