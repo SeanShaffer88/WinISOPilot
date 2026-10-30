@@ -58,6 +58,7 @@ winisopilot (egui app) ──► wip-engine (Windows work) ──► wip-core (p
 | WIP-E070–E072 | Output exists, missing boot files, oscdimg failure |
 | WIP-E080–E084 | Drive list, drive gone/changed, no drive letter, drive not allowed |
 | WIP-E085–E093 | USB source not Windows media, read/plan/split failures, diskpart, bootsect, verification mismatch |
+| WIP-E094 | Copying a file to the USB drive failed (write-through copy) |
 | WIP-E100–E107 | Boot test: Hyper-V missing/not running, no oscdimg, ISO missing, test folder, answer disc, VM creation, unreadable results |
 | WIP-E110–E120 | Download: curl missing, host refused, download failed, catalog folder/unpack/parse, unsafe name, no hash, hash mismatch, export, unexpected ESD layout |
 | WIP-E121 | ADK installer not validly signed by Microsoft Corporation (deleted, never run) |

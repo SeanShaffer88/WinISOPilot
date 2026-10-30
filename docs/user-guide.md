@@ -78,7 +78,8 @@ Choose **USB** at the top of the left panel.
 
 1. **What to write**: an ISO, or a folder of setup files.
 2. **USB drive**: plug it in and select **Refresh**. Only USB drives of 8 GB or more are offered; internal disks and the drive holding your files never are. In Guided, drives over 300 GB are treated as backup drives and not offered; Advanced shows them with a warning.
-3. **Options**: keep **MBR** unless you know you need GPT. Leave **Check every file** on.
+3. **Options**: Guided always uses MBR + FAT32, which boots on almost every PC. Advanced also offers GPT + FAT32 (UEFI only) and GPT + NTFS (UEFI only, no file splitting, but only PCs whose firmware reads NTFS can boot it). Leave **Check every file** on: it reads each file back from the stick itself, not from Windows' cache.
+   - On sticks larger than about 33 GB with FAT32, the setup partition stops at 32 GB. Tick **Use the remaining … as a second drive** to turn the rest into an exFAT drive named DATA for your own files.
 4. Select **Write to USB** and type `ERASE` to confirm.
 
 ## Settings
