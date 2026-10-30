@@ -66,6 +66,7 @@ If WinISOPilot is closed while an edition is open, the next launch offers to cle
 Rust 1.82+. No Visual Studio is needed.
 
 - **GitHub Actions**: every push builds and tests on `windows-latest` and uploads `WinISOPilot.exe` as an artifact.
+- **Releases**: pushing a `v*` tag builds, tests and publishes `WinISOPilot-<version>-x64.exe` with `SHA256SUMS.txt` on the Releases page.
 - **Windows with the GNU toolchain**: `rustup toolchain install stable-x86_64-pc-windows-gnu`, then `cargo +stable-x86_64-pc-windows-gnu build --release`. Without MSYS2's `windres` the icon and administrator manifest aren't embedded; run the exe with **Run as administrator**.
 - **Linux cross-build**: install `mingw-w64`, `rustup target add x86_64-pc-windows-gnu`, then `cargo build --release --target x86_64-pc-windows-gnu`.
 

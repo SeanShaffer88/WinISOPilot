@@ -1,0 +1,51 @@
+name: Release
+
+# Builds, tests and publishes a GitHub release when a v* tag is pushed.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - name: Test
+        run: cargo test --workspace --locked
+      - name: Release build
+        run: cargo build --release --locked -p winisopilot
+      - name: Package
+        shell: pwsh
+        run: |
+          $v = '${{ github.ref_name }}'.TrimStart('v')
+          New-Item -ItemType Directory dist | Out-Null
+          Copy-Item target/release/WinISOPilot.exe "dist/WinISOPilot-$v-x64.exe"
+          Get-ChildItem dist/*.exe | ForEach-Object { '{0}  {1}' -f (Get-FileHash $_ -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+            Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          $log = Get-Content CHANGELOG.md -Raw
+          $section = [regex]::Match($log, "(?s)## \[$([regex]::Escape($v))\].*?(?=\r?\n## \[|\z)").Value
+          $head = ''
+          if ($v.StartsWith('0.')) {
+            $head = "**Pre-release.** Built and tested on CI; not yet verified end to end on real hardware (see AUDIT.md). Test results in a VM first.`n`nRequires Windows 10/11 x64, run as administrator. Windows ADK Deployment Tools recommended.`n`n"
+          }
+          $sums = Get-Content dist/SHA256SUMS.txt -Raw
+          Set-Content -Encoding utf8 dist/notes.md ($head + $section + "`n`n### SHA-256`n``````n" + $sums + "``````n")
+      - name: Publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = '${{ github.ref_name }}'
+          $pre = @()
+          if ($v.StartsWith('v0.')) { $pre = @('--prerelease') }
+          gh release create $v (Get-ChildItem dist/*.exe).FullName dist/SHA256SUMS.txt --title "WinISOPilot $v" --notes-file dist/notes.md --verify-tag @pre
