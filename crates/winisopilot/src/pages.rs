@@ -146,10 +146,10 @@ fn show_error(app: &App, ui: &mut Ui) {
                 if ui.button("Open log folder").clicked() {
                     open_folder(wip_engine::app_data_dir().join("logs"));
                 }
-                ui.label(
-                    RichText::new("The Details section below shows what happened step by step.").color(theme::TEXT_DIM),
-                );
             });
+            if app.job.is_none() {
+                log_tail(app, ui, 6);
+            }
         }
         ui.add_space(8.0);
     }
@@ -855,7 +855,6 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
                 app.discard_workspace();
             }
         }
-        log_tail(app, ui, 6);
     });
 }
 

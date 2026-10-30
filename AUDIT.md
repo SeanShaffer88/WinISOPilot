@@ -31,7 +31,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Boot test answer file, check generation, in-guest script, scoring, encoded loader size | Verified | `boottest` tests |
 | Boot test end to end on Hyper-V; footprint numbers from a real build | **Unverified** | Run docs/verification-checklist.md |
 | Catalog parsing, host allow-list, file-name safety, ESD image classification | Verified | `download` tests (fixture shaped after the documented `MCT/Catalogs/Catalog/PublishedMedia/Files/File` layout) |
-| Live catalog download, ESD download/resume/hash check, ESD→ISO conversion, booting the result | **Unverified** | Needs a real run; the real products.xml has not been inspected in this environment |
+| Live catalog download, ESD download/resume/hash check, ESD→ISO conversion, booting the result | **Unverified** | Needs a real run; the real products.xml has not been inspected in this environment. A first real run failed with WIP-E114 (products.xml not found after `expand -F:products.xml`); unpacking now takes every file and picks the product list by content. Re-test pending |
 
 ## Destructive operations review
 

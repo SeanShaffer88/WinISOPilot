@@ -94,12 +94,51 @@ pub fn fetch_catalog(win11: bool, job: &Job) -> Result<Vec<EsdFile>> {
     let out_dir = dir.join(name);
     let _ = fs::remove_dir_all(&out_dir);
     fs::create_dir_all(&out_dir).map_err(|e| EngineError::new("WIP-E113", e.to_string()))?;
-    let expand = system32().map(|s| s.join("expand.exe")).unwrap_or_else(|| PathBuf::from("expand.exe"));
-    let args = vec![cab.display().to_string(), "-F:products.xml".into(), out_dir.display().to_string()];
-    expect_ok(run(&expand, &args, job)?, "Unpacking the catalog", "WIP-E114")?;
-    let bytes = fs::read(out_dir.join("products.xml"))
-        .map_err(|e| EngineError::new("WIP-E114", format!("The catalog had no products.xml: {e}")))?;
-    let xml = String::from_utf8_lossy(&bytes);
+    let raw = fs::read(&cab).map_err(|e| EngineError::new("WIP-E114", format!("Couldn't read the catalog: {e}")))?;
+    job.log(format!("Catalog download: {} bytes", raw.len()));
+    let xml = if download::is_cab(&raw) {
+        // Unpack everything: the XML inside isn't always named products.xml.
+        let expand = system32().map(|s| s.join("expand.exe")).unwrap_or_else(|| PathBuf::from("expand.exe"));
+        let args = vec![cab.display().to_string(), "-F:*".into(), out_dir.display().to_string()];
+        expect_ok(run(&expand, &args, job)?, "Unpacking the catalog", "WIP-E114")?;
+        let mut entries = Vec::new();
+        let _ = crate::win::workflow::walk(&out_dir, Path::new(""), &mut entries);
+        let found: Vec<PathBuf> = entries.into_iter().map(|(rel, _)| out_dir.join(rel)).collect();
+        job.log(format!(
+            "Catalog contains: {}",
+            found
+                .iter()
+                .filter_map(|p| p.file_name())
+                .map(|n| n.to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let mut xmls: Vec<String> = found
+            .iter()
+            .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("xml")))
+            .filter_map(|p| fs::read(p).ok())
+            .map(|b| download::decode_text(&b))
+            .filter(|t| download::looks_like_catalog(t))
+            .collect();
+        if xmls.is_empty() {
+            return Err(EngineError::new(
+                "WIP-E114",
+                "Microsoft's catalog file didn't contain a product list. Try again later; the Details log lists what it contained.",
+            ));
+        }
+        xmls.swap_remove(0)
+    } else {
+        let text = download::decode_text(&raw);
+        if !download::looks_like_catalog(&text) {
+            let start: String = text.chars().take(120).filter(|c| !c.is_control()).collect();
+            job.log(format!("Unexpected catalog content: {start}"));
+            return Err(EngineError::new(
+                "WIP-E114",
+                "Microsoft's server didn't send a catalog (perhaps a network filter or proxy page). The Details log shows what arrived.",
+            ));
+        }
+        text
+    };
     download::parse_products(&xml).map_err(|e| EngineError::new("WIP-E115", e))
 }
 

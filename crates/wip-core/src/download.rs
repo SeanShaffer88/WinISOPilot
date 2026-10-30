@@ -69,6 +69,32 @@ fn tag(block: &str, name: &str) -> Option<String> {
     (!v.is_empty()).then_some(v)
 }
 
+/// True when `bytes` start with the Microsoft Cabinet signature.
+pub fn is_cab(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"MSCF")
+}
+
+/// Decodes catalog text: UTF-8 (with or without BOM) or UTF-16 with a BOM.
+pub fn decode_text(bytes: &[u8]) -> String {
+    let utf16 = |b: &[u8], le: bool| {
+        let units: Vec<u16> = b
+            .chunks_exact(2)
+            .map(|c| if le { u16::from_le_bytes([c[0], c[1]]) } else { u16::from_be_bytes([c[0], c[1]]) })
+            .collect();
+        String::from_utf16_lossy(&units)
+    };
+    match bytes {
+        [0xFF, 0xFE, rest @ ..] => utf16(rest, true),
+        [0xFE, 0xFF, rest @ ..] => utf16(rest, false),
+        _ => String::from_utf8_lossy(bytes).trim_start_matches('\u{feff}').to_string(),
+    }
+}
+
+/// True when the text looks like a Media Creation Tool product list.
+pub fn looks_like_catalog(text: &str) -> bool {
+    text.contains("<MCT") && text.contains("<File")
+}
+
 /// Parses products.xml. Entries without a name, URL or size are skipped;
 /// duplicates (same file name) are dropped.
 pub fn parse_products(xml: &str) -> Result<Vec<EsdFile>, String> {
@@ -206,6 +232,22 @@ mod tests {
         let de = f.iter().find(|e| e.language_code == "de-de").unwrap();
         assert!(de.expected_hash().is_none(), "malformed hash is rejected");
         assert!(parse_products("<MCT/>").is_err());
+    }
+
+    #[test]
+    fn decodes_and_detects_catalogs() {
+        assert!(is_cab(b"MSCF\0\0\0\0"));
+        assert!(!is_cab(b"<html>"));
+        let utf16: Vec<u8> = [0xFF, 0xFE]
+            .into_iter()
+            .chain(XML.trim_start_matches('\u{feff}').encode_utf16().flat_map(|u| u.to_le_bytes()))
+            .collect();
+        let text = decode_text(&utf16);
+        assert!(looks_like_catalog(&text));
+        assert_eq!(parse_products(&text).unwrap().len(), 2);
+        let utf8 = decode_text(XML.as_bytes());
+        assert!(looks_like_catalog(&utf8));
+        assert!(!looks_like_catalog("<html><body>Access denied</body></html>"));
     }
 
     #[test]
