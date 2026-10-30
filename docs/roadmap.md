@@ -3,9 +3,9 @@
 Planned, not implemented. Order may change.
 
 ## 0.2 — USB writer (in progress)
-- Done: USB drive list with safety filters, MBR/GPT FAT32, automatic `install.wim` split, BIOS boot code, read-back verify, typed confirmation.
-- Remaining: NTFS layout with a UEFI:NTFS boot partition; FAT32 beyond 32 GB without diskpart's limit; real-hardware boot tests.
-- Planned (from [windows2usb](https://github.com/ValdikSS/windows2usb), ideas only): offer its layout set — MBR+FAT32 (default, BIOS+UEFI+Secure Boot, split wim), GPT+FAT32, GPT+NTFS (UEFI only, no split) — and keep Microsoft's own boot files so Secure Boot stays intact; write with write-through/unbuffered I/O so progress reflects data actually on the stick, not in the cache.
+- Done: USB drive list with safety filters; MBR + FAT32, GPT + FAT32 and GPT + NTFS layouts (windows2usb's set, Microsoft boot files only); automatic `install.wim` split on FAT32; BIOS boot code; write-through copy; uncached read-back verify; optional exFAT DATA partition for space beyond the 32 GB FAT32 cap; backup-drive guard; typed confirmation.
+- Decided against: UEFI:NTFS boot partition (decision 24).
+- Remaining: real-hardware boot tests.
 
 ## 0.3 — Evidence (in progress)
 - Done in code: measured footprint, Hyper-V boot test, recipe porting. Remaining: real-hardware verification (docs/verification-checklist.md).

@@ -7,7 +7,7 @@ use crate::theme::{self, body, check_line, dim, eyebrow, h1, h2};
 use eframe::egui::{self, RichText};
 use std::path::{Path, PathBuf};
 use wip_core::human_bytes;
-use wip_core::usb::{ineligible, ineligible_for, likely_backup_drive, sanitize_fat_label, Disk, Scheme};
+use wip_core::usb::{ineligible, ineligible_for, leftover_mb, likely_backup_drive, sanitize_label, Disk, Scheme};
 use wip_engine::{BuildReport, UsbReport, UsbRequest, UsbSource};
 
 const CONFIRM_WORD: &str = "ERASE";
@@ -20,6 +20,8 @@ pub struct UsbState {
     pub scheme: Scheme,
     pub label: String,
     pub verify: bool,
+    /// Make a second exFAT partition from space beyond the 32 GB FAT32 cap.
+    pub data_partition: bool,
     pub confirm: bool,
     pub confirm_text: String,
     pub report: Option<UsbReport>,
@@ -35,6 +37,7 @@ impl Default for UsbState {
             scheme: Scheme::Mbr,
             label: "WINSETUP".into(),
             verify: true,
+            data_partition: false,
             confirm: false,
             confirm_text: String::new(),
             report: None,
@@ -255,31 +258,47 @@ fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
     });
 }
 
+/// Optional second partition for files on FAT32 sticks over 32 GB.
+fn data_partition_option(app: &mut App, ui: &mut egui::Ui, scheme: Scheme) {
+    let Some(left) = app.usb.chosen_disk().and_then(|d| leftover_mb(d.size, scheme)) else { return };
+    let size = human_bytes(left * 1024 * 1024);
+    ui.checkbox(&mut app.usb.data_partition, format!("Use the remaining {size} as a second drive for your files"))
+        .on_hover_text(
+            "FAT32 setup partitions stop at 32 GB. The rest becomes an exFAT drive named DATA (Windows 10 1703 or later shows both).",
+        );
+}
+
 fn options_card(app: &mut App, ui: &mut egui::Ui) {
     let g = guided(app);
     theme::card().show(ui, |ui| {
         theme::card_body(ui);
         if g {
-            // Safe defaults for beginners: MBR boots on old and new PCs.
+            // Safe defaults for beginners: MBR + FAT32 boots on old and new PCs.
             h2(ui, "3. Check the copy?");
             ui.checkbox(&mut app.usb.verify, "Yes, check every file after copying (recommended)");
             dim(ui, "Takes a few extra minutes but catches faulty USB sticks.");
+            data_partition_option(app, ui, Scheme::Mbr);
             return;
         }
         h2(ui, "Options");
-        ui.radio_value(&mut app.usb.scheme, Scheme::Mbr, Scheme::Mbr.label())
-            .on_hover_text("Active FAT32 partition + bootsect; boots BIOS and UEFI (CSM or not).");
-        ui.radio_value(&mut app.usb.scheme, Scheme::Gpt, Scheme::Gpt.label())
-            .on_hover_text("GPT with a FAT32 data partition; UEFI only.");
+        for sch in Scheme::ALL {
+            if ui.radio_value(&mut app.usb.scheme, sch, sch.label()).on_hover_text(sch.hint()).changed() {
+                app.usb.label = sanitize_label(&app.usb.label, sch);
+            }
+        }
+        dim(ui, app.usb.scheme.hint());
+        let limit = if app.usb.scheme.is_fat32() { 11 } else { 32 };
         ui.horizontal(|ui| {
             ui.label("Volume label:");
-            let r = ui.add(egui::TextEdit::singleline(&mut app.usb.label).char_limit(11).desired_width(160.0));
+            let r = ui.add(egui::TextEdit::singleline(&mut app.usb.label).char_limit(limit).desired_width(200.0));
             if r.lost_focus() {
-                app.usb.label = sanitize_fat_label(&app.usb.label);
+                app.usb.label = sanitize_label(&app.usb.label, app.usb.scheme);
             }
         });
-        ui.checkbox(&mut app.usb.verify, "Verify (hash every copied file)");
-        dim(ui, "FAT32; install.wim over 4 GB is split into .swm with DISM.");
+        ui.checkbox(&mut app.usb.verify, "Verify (reads every copied file back from the drive, uncached)")
+            .on_hover_text("Copies use write-through I/O, so progress reflects data actually on the drive.");
+        let scheme = app.usb.scheme;
+        data_partition_option(app, ui, scheme);
     });
 }
 
@@ -329,8 +348,9 @@ fn confirm(app: &mut App, ctx: &egui::Context, protected: Vec<PathBuf>) {
             source,
             disk,
             scheme: if g { Scheme::Mbr } else { app.usb.scheme },
-            label: if g { "WINSETUP".to_string() } else { sanitize_fat_label(&app.usb.label) },
+            label: if g { "WINSETUP".to_string() } else { sanitize_label(&app.usb.label, app.usb.scheme) },
             verify: app.usb.verify,
+            data_partition: app.usb.data_partition,
             protected_paths: protected,
         };
         let host = app.host.clone();
@@ -351,6 +371,9 @@ fn done_view(app: &mut App, ui: &mut egui::Ui, r: &UsbReport) {
             r.verified,
             if r.verified { "Every copied file checked" } else { "Files not checked (verification was off)" },
         );
+        if let Some(d) = &r.data_letter {
+            check_line(ui, true, &format!("Extra drive {d}: (DATA) is free for your files"));
+        }
         body(ui, "Eject the drive from the taskbar before unplugging it.");
     });
     if !r.warnings.is_empty() {

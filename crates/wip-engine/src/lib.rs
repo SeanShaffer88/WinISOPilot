@@ -276,6 +276,9 @@ pub struct UsbRequest {
     pub scheme: wip_core::usb::Scheme,
     pub label: String,
     pub verify: bool,
+    /// FAT32 sticks over 32 GB: turn the space after the setup partition
+    /// into a second exFAT partition for the user's files.
+    pub data_partition: bool,
     /// Paths whose drives must never be erased (e.g. the working folder).
     pub protected_paths: Vec<PathBuf>,
 }
@@ -286,6 +289,9 @@ pub struct UsbReport {
     pub bytes_written: u64,
     pub split: bool,
     pub verified: bool,
+    /// Drive letter of the extra exFAT partition, if one was made.
+    #[serde(default)]
+    pub data_letter: Option<String>,
     pub warnings: Vec<String>,
 }
 
