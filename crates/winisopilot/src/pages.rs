@@ -187,7 +187,11 @@ pub fn guided(app: &App) -> bool {
 
 pub fn welcome(app: &mut App, ctx: &egui::Context) {
     let ready = app.host.is_admin && app.host.dism_api.is_some();
-    let status = if ready { "This PC is ready." } else { "Some checks need attention." };
+    let status = match (ready, app.host.oscdimg.is_some()) {
+        (true, true) => "This PC is ready.",
+        (true, false) => "Ready, but one optional tool is missing (see Before you start).",
+        _ => "Some checks need attention.",
+    };
     if let Nav::Next = footer(ctx, status, false, Some(("Get started", !app.busy()))) {
         app.goto(Step::Source);
     }
@@ -258,40 +262,68 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
     });
 }
 
+/// Offer to install the ADK Deployment Tools (oscdimg) for the user.
+pub fn adk_offer(app: &mut App, ui: &mut Ui) {
+    if app.host.oscdimg.is_some() {
+        return;
+    }
+    let g = guided(app);
+    ui.horizontal_wrapped(|ui| {
+        let label = if g { "Install it for me" } else { "Install Deployment Tools (silent)" };
+        if theme::primary(ui, label, !app.busy() && app.host.is_admin)
+            .on_hover_text("Downloads Microsoft's ADK installer, checks Microsoft's signature, installs only the Deployment Tools (about 100 MB).")
+            .clicked()
+        {
+            app.start_adk_install();
+        }
+        if ui.button(if g { "I installed it, check again" } else { "Re-probe" }).clicked() {
+            app.recheck_host();
+            if app.host.oscdimg.is_none() {
+                app.notify("Still not found. If you just installed it, wait for the installer to finish.");
+            }
+        }
+        ui.hyperlink_to(
+            if g { "or install it yourself" } else { "Manual download" },
+            "https://learn.microsoft.com/windows-hardware/get-started/adk-install",
+        );
+    });
+}
+
 /// Guided: one plain line when everything is fine, otherwise what to do.
-fn simple_ready(app: &App, ui: &mut Ui) {
-    let h = &app.host;
+fn simple_ready(app: &mut App, ui: &mut Ui) {
+    let (admin, dism, iso_tool) = (app.host.is_admin, app.host.dism_api.is_some(), app.host.oscdimg.is_some());
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
-        if h.is_admin && h.dism_api.is_some() && h.oscdimg.is_some() {
+        if admin && dism && iso_tool {
             check_line(ui, true, "This PC has everything needed.");
             return;
         }
         h2(ui, "Before you start");
-        if !h.is_admin {
+        if !admin {
             check_line(
                 ui,
                 false,
                 "WinISOPilot needs permission to change Windows files. Close it, right-click it and choose \"Run as administrator\".",
             );
         }
-        if h.dism_api.is_none() || h.oscdimg.is_none() {
+        if !dism {
+            check_line(ui, false, "A part of Windows that WinISOPilot needs (DISM) wasn't found. Installing the tool below adds it.");
+        }
+        if !iso_tool {
             check_line(
                 ui,
-                h.dism_api.is_some(),
-                "Install one free Microsoft tool, the Windows ADK \"Deployment Tools\", then restart WinISOPilot. Without it you get a folder of files instead of a single ISO file.",
+                false,
+                "One free Microsoft tool is missing (Windows ADK \"Deployment Tools\"). It's needed to make a single ISO file and to download Windows.",
             );
-            ui.hyperlink_to(
-                "Get the Windows ADK from Microsoft (choose only \"Deployment Tools\" when installing)",
-                "https://learn.microsoft.com/windows-hardware/get-started/adk-install",
-            );
+            adk_offer(app, ui);
         }
     });
 }
 
 /// Advanced: everything WinISOPilot detected about the host.
-fn diagnostics(app: &App, ui: &mut Ui) {
-    let h = &app.host;
+fn diagnostics(app: &mut App, ui: &mut Ui) {
+    let h = app.host.clone();
+    let h = &h;
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
         h2(ui, "Host");
@@ -887,7 +919,8 @@ fn output_card(app: &mut App, ui: &mut Ui) {
                     choose_output(app);
                 }
             } else {
-                dim(ui, "You'll get a folder of setup files (install the Windows ADK Deployment Tools to get a single ISO file).");
+                dim(ui, "You'll get a folder of setup files. For a single ISO file, install one free Microsoft tool:");
+                adk_offer(app, ui);
             }
             return;
         }
@@ -909,7 +942,8 @@ fn output_card(app: &mut App, ui: &mut Ui) {
             });
             ui.end_row();
             ui.label("Volume label");
-            let r = ui.add(egui::TextEdit::singleline(&mut app.output.volume_label).desired_width(200.0).char_limit(32));
+            let r =
+                ui.add(egui::TextEdit::singleline(&mut app.output.volume_label).desired_width(200.0).char_limit(32));
             if r.lost_focus() {
                 app.output.volume_label = sanitize_label(&app.output.volume_label);
             }

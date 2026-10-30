@@ -9,6 +9,13 @@ use serde::{Deserialize, Serialize};
 pub const CATALOG_WIN11: &str = "https://go.microsoft.com/fwlink/?LinkId=2156292";
 pub const CATALOG_WIN10: &str = "https://go.microsoft.com/fwlink/?LinkId=841361";
 
+/// Windows ADK online installer (adksetup.exe), as linked from
+/// learn.microsoft.com/windows-hardware/get-started/adk-install.
+pub const ADK_SETUP: &str = "https://go.microsoft.com/fwlink/?linkid=2289980";
+
+/// adksetup.exe arguments: Deployment Tools only (oscdimg, DISM), silent.
+pub const ADK_SETUP_ARGS: &[&str] = &["/features", "OptionId.DeploymentTools", "/quiet", "/norestart", "/ceip", "off"];
+
 /// Hosts WinISOPilot will download from.
 const ALLOWED_HOSTS: &[&str] = &["dl.delivery.mp.microsoft.com", "download.microsoft.com", "go.microsoft.com"];
 

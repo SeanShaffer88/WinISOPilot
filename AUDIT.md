@@ -23,6 +23,8 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Stronger contrast, reduce motion, tips, help panel, review summary | Partially verified | Rendered on Linux/Mesa with `--demo --review` / `--help-panel`; settings back-compat unit test |
 | Undo/redo history | Verified | `history` tests |
 | Guided and Advanced differ on every page (see user guide table) | Partially verified | Linux/Mesa `--demo` screenshots of every page in both layouts at 1200×760 and 1024×700; not yet tested with real beginners or on Windows |
+| ADK auto-install (download, Microsoft signature check, silent Deployment Tools install, re-probe) | **Unverified** | Link and arguments from learn.microsoft.com and published scripts; not run yet |
+| Backup-drive guard (> 300 GB) | Verified | `eligibility_rules` test |
 | Live Microsoft catalog parses (Windows 10 and 11) | Verified on Windows | Sean's run after the BOM-less UTF-16 fix listed language/architecture/package for both |
 | Every page fits without a scrollbar at 1200×760 and 1024×700 (100% text); Settings dialog closes with Done/Esc | Partially verified | Linux/Mesa `--demo` screenshots of every page in both layouts at both sizes; demo data has few editions and options, so multi-page lists were checked on Customize only. Not yet on Windows or at 125–200% scaling (a scrollbar appears there as a safety net) |
 | Windows 10 host | **Unverified** | Supported by design; not run |

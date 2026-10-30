@@ -7,7 +7,7 @@ use crate::theme::{self, body, check_line, dim, eyebrow, h1, h2};
 use eframe::egui::{self, RichText};
 use std::path::{Path, PathBuf};
 use wip_core::human_bytes;
-use wip_core::usb::{ineligible, sanitize_fat_label, Disk, Scheme};
+use wip_core::usb::{ineligible, ineligible_for, likely_backup_drive, sanitize_fat_label, Disk, Scheme};
 use wip_engine::{BuildReport, UsbReport, UsbRequest, UsbSource};
 
 const CONFIRM_WORD: &str = "ERASE";
@@ -108,7 +108,8 @@ fn letters(paths: &[PathBuf]) -> Vec<char> {
 pub fn show(app: &mut App, ctx: &egui::Context) {
     let protected = protected_paths(app);
     let prot_letters = letters(&protected);
-    let disk_ok = app.usb.chosen_disk().is_some_and(|d| ineligible(d, &prot_letters).is_none());
+    let strict = guided(app);
+    let disk_ok = app.usb.chosen_disk().is_some_and(|d| ineligible_for(d, &prot_letters, strict).is_none());
     let can_write = app.usb.source.is_some() && disk_ok && !app.busy();
     let done = app.usb.report.is_some();
     let next = if done { ("Write another", !app.busy()) } else { ("Write to USB", can_write) };
@@ -143,7 +144,14 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                 source_card(app, ui);
                 if let Some(d) = app.usb.chosen_disk().filter(|_| disk_ok) {
                     ui.add_space(10.0);
-                    theme::warn_box(ui, "Everything on this drive will be erased", &[d.label()]);
+                    let mut lines = vec![d.label()];
+                    if likely_backup_drive(d) {
+                        lines.push(format!(
+                            "{} is much bigger than a USB stick. Make sure this isn't a backup or external hard drive.",
+                            human_bytes(d.size)
+                        ));
+                    }
+                    theme::warn_box(ui, "Everything on this drive will be erased", &lines);
                 }
                 show_error(app, ui);
                 log_tail(app, ui, 6);
@@ -220,7 +228,9 @@ fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
                 }
             });
         });
-        let (ok, bad): (Vec<&Disk>, Vec<&Disk>) = app.usb.disks.iter().partition(|d| ineligible(d, prot).is_none());
+        let strict = g;
+        let (ok, bad): (Vec<&Disk>, Vec<&Disk>) =
+            app.usb.disks.iter().partition(|d| ineligible_for(d, prot, strict).is_none());
         if ok.is_empty() {
             body(ui, "No usable USB drive found. Plug in a USB drive of 8 GB or more, then select Refresh.");
         }
@@ -232,7 +242,7 @@ fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
         if !bad.is_empty() {
             egui::CollapsingHeader::new(format!("Other drives ({}) can't be used", bad.len())).show(ui, |ui| {
                 for d in bad {
-                    dim(ui, &format!("{} — {}", d.label(), ineligible(d, prot).unwrap_or_default()));
+                    dim(ui, &format!("{} — {}", d.label(), ineligible_for(d, prot, strict).unwrap_or_default()));
                 }
             });
         }
@@ -279,6 +289,16 @@ fn confirm(app: &mut App, ctx: &egui::Context, protected: Vec<PathBuf>) {
         h2(ui, &format!("Erase Disk {}?", disk.number));
         body(ui, &disk.label());
         body(ui, "All files and partitions on this drive will be permanently deleted.");
+        if likely_backup_drive(&disk) {
+            ui.label(
+                RichText::new(format!(
+                    "This drive is {}: far bigger than a USB stick. If it holds backups, they will be lost.",
+                    human_bytes(disk.size)
+                ))
+                .strong()
+                .color(theme::ERR_TEXT),
+            );
+        }
         ui.add_space(6.0);
         ui.label(format!("Type {CONFIRM_WORD} to confirm:"));
         let r = ui.add(egui::TextEdit::singleline(&mut app.usb.confirm_text).desired_width(200.0));

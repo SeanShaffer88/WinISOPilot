@@ -145,6 +145,47 @@ pub fn fetch_catalog(win11: bool, job: &Job) -> Result<Vec<EsdFile>> {
     download::parse_products(&xml).map_err(|e| EngineError::new("WIP-E115", e))
 }
 
+/// Downloads adksetup.exe from Microsoft, requires a valid Authenticode
+/// signature from Microsoft Corporation, and installs Deployment Tools.
+pub fn install_adk(job: &Job) -> Result<()> {
+    job.stage(1, 3, "Downloading Microsoft's installer");
+    let dir = crate::app_data_dir().join("adk");
+    fs::create_dir_all(&dir).map_err(|e| EngineError::new("WIP-E113", e.to_string()))?;
+    let exe = dir.join("adksetup.exe");
+    let _ = fs::remove_file(&exe);
+    curl_download(download::ADK_SETUP, &exe, job)?;
+    job.stage(2, 3, "Checking it's really from Microsoft");
+    let script = format!(
+        "$s = Get-AuthenticodeSignature -LiteralPath {}; \"$($s.Status)|$($s.SignerCertificate.Subject)\"",
+        wip_core::boottest::ps_lit(&exe.display().to_string())
+    );
+    let sig = ps(&script, job)?;
+    job.log(format!("Signature: {}", sig.trim()));
+    let (status, subject) = sig.trim().split_once('|').unwrap_or(("", ""));
+    if status != "Valid" || !subject.contains("O=Microsoft Corporation") {
+        let _ = fs::remove_file(&exe);
+        return Err(EngineError::new(
+            "WIP-E121",
+            "The downloaded installer isn't validly signed by Microsoft, so WinISOPilot deleted it without running it.",
+        ));
+    }
+    job.stage(3, 3, "Installing the Deployment Tools (several minutes)");
+    job.indeterminate();
+    let args: Vec<String> = download::ADK_SETUP_ARGS.iter().map(|s| s.to_string()).collect();
+    let out = run(&exe, &args, job)?;
+    // 3010 = success, restart required (not needed for oscdimg).
+    if out.code != 0 && out.code != 3010 {
+        return Err(EngineError::new(
+            "WIP-E122",
+            format!(
+                "Microsoft's installer stopped with code {}. Its logs are in %TEMP%\\adk. You can also install it by hand from the link.",
+                out.code
+            ),
+        ));
+    }
+    Ok(())
+}
+
 fn file_hash(path: &Path, algo: &str, job: &Job) -> Result<String> {
     let script = format!(
         "(Get-FileHash -Algorithm {algo} -LiteralPath {}).Hash",

@@ -378,6 +378,14 @@ impl App {
                 self.source = None;
                 self.chosen_index = None;
             }
+            Outcome::AdkInstalled => {
+                self.recheck_host();
+                if self.host.oscdimg.is_some() {
+                    self.notify("Deployment Tools installed. WinISOPilot can now make ISO files.");
+                } else {
+                    self.notify("The installer finished, but oscdimg.exe still wasn't found. Restart WinISOPilot.");
+                }
+            }
             Outcome::LeftoverCleaned(dir) => {
                 self.leftovers.retain(|l| l.mount_dir != dir);
                 self.notify("Cleaned up the earlier session.");
@@ -536,6 +544,16 @@ impl App {
                 self.view = View::Cat(Category::Apps);
             }
         }
+    }
+
+    /// Looks for DISM and oscdimg again (after installing the ADK).
+    pub fn recheck_host(&mut self) {
+        let dism_folder = (!self.settings.dism_folder.is_empty()).then(|| PathBuf::from(&self.settings.dism_folder));
+        self.host = wip_engine::probe_host(dism_folder.as_deref());
+    }
+
+    pub fn start_adk_install(&mut self) {
+        self.start(Kind::InstallAdk, |job| wip_engine::install_adk(job).map(|_| Outcome::AdkInstalled));
     }
 
     pub fn switch_tool(&mut self, t: Tool) {

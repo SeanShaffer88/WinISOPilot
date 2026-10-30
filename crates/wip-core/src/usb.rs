@@ -70,6 +70,28 @@ pub fn parse_disks(json: &str) -> Result<Vec<Disk>, String> {
 }
 
 /// Why a disk can't be used, or `None` when it can.
+/// Drives above this size are almost always external hard drives or SSDs
+/// (backups), not USB sticks.
+pub const LARGE_DISK_BYTES: u64 = 300 * 1000 * 1000 * 1000;
+
+/// A USB disk large enough that it's probably someone's backup drive.
+pub fn likely_backup_drive(d: &Disk) -> bool {
+    d.size > LARGE_DISK_BYTES
+}
+
+/// Like `ineligible`, and in `strict` (beginner) mode also refuses likely
+/// backup drives.
+pub fn ineligible_for(d: &Disk, protected_letters: &[char], strict: bool) -> Option<String> {
+    ineligible(d, protected_letters).or_else(|| {
+        (strict && likely_backup_drive(d)).then(|| {
+            format!(
+                "{} is too big to be a USB stick; it looks like an external or backup drive. (Advanced layout can use it.)",
+                crate::human_bytes(d.size)
+            )
+        })
+    })
+}
+
 pub fn ineligible(d: &Disk, protected_letters: &[char]) -> Option<String> {
     if d.is_system || d.is_boot {
         return Some("This is the disk Windows is running from.".into());
@@ -259,6 +281,11 @@ mod tests {
         let mut ro = disk(1, 16 * GB, "USB");
         ro.is_read_only = true;
         assert!(ineligible(&ro, &[]).is_some());
+        let big = disk(1, 1000 * GB, "USB");
+        assert!(likely_backup_drive(&big));
+        assert!(ineligible_for(&big, &[], false).is_none());
+        assert!(ineligible_for(&big, &[], true).unwrap().contains("backup"));
+        assert!(ineligible_for(&disk(1, 64 * GB, "USB"), &[], true).is_none());
     }
 
     #[test]

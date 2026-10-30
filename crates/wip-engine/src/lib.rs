@@ -226,6 +226,20 @@ pub fn fetch_catalog(win11: bool, job: &Job) -> Result<Vec<wip_core::download::E
     }
 }
 
+/// Downloads Microsoft's ADK installer, checks its Microsoft signature and
+/// silently installs the Deployment Tools (oscdimg). Needs elevation.
+pub fn install_adk(job: &Job) -> Result<()> {
+    #[cfg(windows)]
+    {
+        win::download::install_adk(job)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = job;
+        Err(EngineError::unsupported())
+    }
+}
+
 /// Downloads the chosen ESD into `dest_dir` (resuming if interrupted),
 /// verifies Microsoft's hash, and builds a bootable ISO at `iso_out`.
 pub fn download_iso(

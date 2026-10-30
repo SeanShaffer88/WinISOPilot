@@ -68,12 +68,16 @@ When it's done you see:
 - **Test it in a virtual machine**: installs your ISO in a temporary Hyper-V VM and checks from inside Windows that every change landed (needs Windows Pro/Enterprise/Education with Hyper-V).
 - **Write it to a USB drive**.
 
+## Missing tool: Windows ADK Deployment Tools
+
+Making an ISO file (and downloading Windows) needs Microsoft's free Deployment Tools. Select **Install it for me**: WinISOPilot downloads Microsoft's installer, checks it's signed by Microsoft, and installs only the Deployment Tools (about 100 MB, a few minutes). If you install it yourself, select **I installed it, check again**.
+
 ## Write to USB
 
 Choose **Write to USB** at the top of the left panel.
 
 1. **What to write**: an ISO, or a folder of setup files.
-2. **USB drive**: plug it in and select **Refresh**. Only USB drives of 8 GB or more are offered; internal disks and the drive holding your files never are.
+2. **USB drive**: plug it in and select **Refresh**. Only USB drives of 8 GB or more are offered; internal disks and the drive holding your files never are. In Guided, drives over 300 GB are treated as backup drives and not offered; Advanced shows them with a warning.
 3. **Options**: keep **MBR** unless you know you need GPT. Leave **Check every file** on.
 4. Select **Write to USB** and type `ERASE` to confirm.
 

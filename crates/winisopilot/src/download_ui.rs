@@ -195,7 +195,7 @@ pub fn card(app: &mut App, ui: &mut egui::Ui, locked: bool) {
         let parent = app.workspace_parent.clone();
         let blocked = if app.host.oscdimg.is_none() {
             Some(if guided {
-                "One free Microsoft tool is missing: install the Windows ADK \"Deployment Tools\" (link on the Welcome page), then restart WinISOPilot."
+                "One free Microsoft tool is needed first (Windows ADK \"Deployment Tools\")."
             } else {
                 "oscdimg.exe not found (Windows ADK Deployment Tools)."
             })
@@ -208,6 +208,9 @@ pub fn card(app: &mut App, ui: &mut egui::Ui, locked: bool) {
         };
         if let Some(why) = blocked {
             dim(ui, why);
+        }
+        if app.host.oscdimg.is_none() {
+            crate::pages::adk_offer(app, ui);
         }
         let button = if guided { "Download Windows" } else { "Download and make ISO" };
         if theme::primary(ui, button, blocked.is_none() && !locked).clicked() {
