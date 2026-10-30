@@ -2,7 +2,7 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.1] - 2026-10-30
 
 ### Added
 - docs/references.md: curated primary sources (Windows deployment, disc formats, boot, security, testing).
