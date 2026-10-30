@@ -2,7 +2,7 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.0.0] - 2026-10-30
 
 ### Added
 - **USB layouts**: GPT + NTFS (Advanced; UEFI only, no file splitting) alongside MBR + FAT32 and GPT + FAT32.
@@ -10,6 +10,8 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Volume labels up to 32 characters on NTFS.
 
 ### Changed
+- **Text size is now Scale**: the whole window and everything in it grows or shrinks together (75–200%, applied when the slider is released). Ctrl +, Ctrl − and Ctrl 0 do the same and are remembered; scale is capped so the window still fits the screen.
+- First stable version number. Unverified areas are unchanged and listed in AUDIT.md.
 - USB copies use write-through I/O, so progress shows data actually on the stick.
 
 ### Fixed

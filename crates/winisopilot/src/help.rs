@@ -107,7 +107,7 @@ pub const SHORTCUTS: &[(&str, &str)] = &[
     ("Ctrl+F", "Search options (Customize)"),
     ("Tab / Shift+Tab", "Move between controls"),
     ("Space / Enter", "Tick a box or press a button"),
-    ("Ctrl + / Ctrl −", "Bigger / smaller text"),
+    ("Ctrl + / Ctrl − / Ctrl 0", "Scale window up / down / reset"),
     ("PageUp / PageDown", "Previous / next page of a list"),
 ];
 
