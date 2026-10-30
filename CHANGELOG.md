@@ -24,6 +24,7 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Free disk space is checked at most every 5 seconds instead of every frame.
 - Guided toolbar wraps on narrow windows; Help and Settings share one row in the rail.
 - **Every page fits the window without scrollbars** (default 1200×760, minimum now 1024×700): Welcome, Choose ISO, Review, results and Write to USB use two columns; editions, options, the Advanced table and the Review list are split into pages (Previous/Next, PageUp/PageDown or the mouse wheel over the list).
+- Switching layout (Guided ↔ Advanced) in Settings returns to step 1 of Customize ISO and keeps everything entered: ISO, working folder, opened edition, ticked changes, search text and output settings. While a task runs, the page stays where it is.
 - Review: risky changes are confirmed with a **Confirm** tick on their own row; output settings are a compact form.
 - Results: "What changed" opens as a pop-up list.
 - The Details log shows the last 6 lines and links to the log folder instead of scrolling.

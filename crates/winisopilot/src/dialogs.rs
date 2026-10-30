@@ -115,8 +115,11 @@ fn settings(app: &mut App, ctx: &egui::Context) {
                     changed |= ui.radio_value(&mut mode, Mode::Guided, "Guided").changed();
                     changed |= ui.radio_value(&mut mode, Mode::Advanced, "Advanced").changed();
                 });
-                app.settings.mode = Some(mode);
-                dim(ui, "Guided explains one section at a time. Advanced shows a dense table with technical details.");
+                if Some(mode) != app.settings.mode {
+                    app.settings.mode = Some(mode);
+                    app.layout_changed();
+                }
+                dim(ui, "Guided explains one section at a time. Advanced shows a dense table with technical details. Switching returns to step 1; your choices are kept.");
                 ui.add_space(6.0);
                 h2(ui, "Options shown in Guided mode");
                 ui.horizontal(|ui| {

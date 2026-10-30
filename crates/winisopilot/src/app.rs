@@ -519,6 +519,25 @@ impl App {
         }
     }
 
+    /// Called after the layout (Guided/Advanced) changes: back to step 1 of
+    /// Customize ISO. Everything entered so far (ISO, working folder, opened
+    /// edition, ticked changes, search text, output settings) is shared by
+    /// both layouts and kept. While a task runs the page stays put, so its
+    /// progress stays in view.
+    pub fn layout_changed(&mut self) {
+        if self.busy() {
+            return;
+        }
+        self.tool = Tool::Customize;
+        self.step = Step::Welcome;
+        self.last_error = None;
+        if let View::Raw = self.view {
+            if self.mode() == Mode::Guided {
+                self.view = View::Cat(Category::Apps);
+            }
+        }
+    }
+
     pub fn switch_tool(&mut self, t: Tool) {
         self.tool = t;
         self.last_error = None;

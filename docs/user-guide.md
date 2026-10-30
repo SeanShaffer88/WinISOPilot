@@ -71,7 +71,7 @@ Choose **Write to USB** at the top of the left panel.
 
 Select **Settings** at the bottom of the left panel. Changes are saved straight away; close with **Done** or Esc.
 
-- **Layout**: Guided or Advanced.
+- **Layout**: Guided or Advanced. Switching takes you back to step 1; your ISO, folders, opened edition, ticked changes and other entries are kept.
 - **Options shown in Guided mode**: Beginner, Intermediate or Expert.
 - **Text size** 75–200% (Ctrl + and Ctrl − also work).
 - **Stronger contrast**, **Reduce motion**, **Show tips**.
