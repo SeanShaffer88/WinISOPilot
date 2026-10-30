@@ -277,6 +277,27 @@ pub fn load_demo_done(app: &mut App) {
     app.step = Step::Build;
 }
 
+/// Sample Microsoft catalog entries for `--demo`.
+pub fn demo_catalog() -> Vec<wip_core::download::EsdFile> {
+    let e = |code: &str, lang: &str, arch: &str, size: u64| wip_core::download::EsdFile {
+        file_name: format!("26100.1742.demo_CLIENTCONSUMER_RET_{arch}FRE_{code}.esd"),
+        language_code: code.into(),
+        language: lang.into(),
+        edition: "Professional".into(),
+        architecture: arch.into(),
+        size,
+        sha1: Some("0123456789ABCDEF0123456789ABCDEF01234567".into()),
+        sha256: None,
+        url: "https://dl.delivery.mp.microsoft.com/demo.esd".into(),
+    };
+    vec![
+        e("en-us", "English (United States)", "x64", 4_310_000_000),
+        e("en-gb", "English (United Kingdom)", "x64", 4_300_000_000),
+        e("de-de", "German", "x64", 4_320_000_000),
+        e("en-us", "English (United States)", "ARM64", 4_100_000_000),
+    ]
+}
+
 /// Sample drives for `--demo`.
 pub fn demo_disks() -> Vec<wip_core::usb::Disk> {
     let d = |n: u32, name: &str, size: u64, bus: &str, sys: bool, l: &str| wip_core::usb::Disk {

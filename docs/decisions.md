@@ -21,3 +21,6 @@
 | 17 | 2026-10-30 | Boot test answer disc built with `oscdimg`; Setup only searches removable/optical media for `autounattend.xml` | Keeps the user's ISO untouched | Needs the ADK |
 | 18 | 2026-10-30 | Boot test uses Microsoft's published KMS client setup keys to pick the edition | Published for setup use; they don't activate | Home editions have no published key |
 | 19 | 2026-10-30 | Boot test polls VM state every 15 s on the job thread | Hyper-V has no completion event reachable without WMI eventing; 15 s is negligible load | Up to 15 s latency |
+| 20 | 2026-10-30 | In-app download from the Media Creation Tool catalog (products.cab) instead of scraping Microsoft's website or bundling Fido | Catalog is Microsoft's own distribution path with per-file hashes; no website scraping or GPL script | Only the current release is offered |
+| 21 | 2026-10-30 | Use Windows' built-in `curl.exe`, `expand.exe` and `Get-FileHash` | No new Rust dependencies or TLS stack; resumable downloads | Needs Windows 10 1803+ |
+| 22 | 2026-10-30 | Releases published by a workflow on `v*` tags or `release/v*` branches | This environment can't create tags or releases directly | Release appears after CI finishes |

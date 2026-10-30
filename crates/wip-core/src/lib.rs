@@ -6,6 +6,7 @@
 
 pub mod boottest;
 pub mod catalog;
+pub mod download;
 pub mod footprint;
 pub mod fsutil;
 pub mod inventory;

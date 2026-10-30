@@ -9,15 +9,15 @@ Planned, not implemented. Order may change.
 ## 0.3 — Evidence (in progress)
 - Done in code: measured footprint, Hyper-V boot test, recipe porting. Remaining: real-hardware verification (docs/verification-checklist.md).
 
-## 0.4 — Get Windows
-- In-app download of official Windows 10/11 ISOs from Microsoft (release, edition, language, architecture), with hash verification.
+## 0.4 — Get Windows (in progress)
+- Done in code: Media Creation Tool catalog, hash-verified ESD download, ESD→ISO. Remaining: real-run verification; optional older releases.
 
-## 0.4 — Integrate
+## 0.5 — Integrate
 - Drivers (INF folders) into install, boot and WinRE images.
 - Updates (SSU/LCU/.NET CAB/MSU) with order and applicability checks.
 - Windows language packs and Features on Demand.
 
-## 0.5 — Unattended setup
+## 0.6 — Unattended setup
 - `autounattend.xml` builder: region, keyboard, local account, privacy pages, disk layout (never a default wipe), first-logon commands.
 
 ## Later
