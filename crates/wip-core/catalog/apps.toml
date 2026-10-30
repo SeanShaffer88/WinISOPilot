@@ -1,0 +1,442 @@
+# Provisioned (built-in) apps. `prefix` matches the start of the package's
+# DisplayName as reported by Get-AppxProvisionedPackage, case-insensitively.
+# Removing a provisioned app only affects user accounts created after setup.
+# Framework packages (VCLibs, .NET Native, UI.Xaml, WindowsAppRuntime) are
+# never offered: other apps depend on them.
+
+[[option]]
+id = "apps.clipchamp"
+category = "apps"
+title = "Clipchamp video editor"
+summary = "Microsoft's online video editor."
+details = "A web-backed video editor that asks you to sign in. Removing it does not affect the Photos app or video playback."
+risk = "safe"
+undo = "Install Clipchamp from the Microsoft Store."
+applies = "win11"
+actions = [{ kind = "remove_appx", prefix = "Clipchamp.Clipchamp" }]
+
+[[option]]
+id = "apps.news"
+category = "apps"
+title = "News"
+summary = "MSN News reader app."
+details = "Shows headlines from MSN. Widgets has its own news feed and keeps working without this app."
+risk = "safe"
+undo = "Install Microsoft News from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.BingNews" }]
+
+[[option]]
+id = "apps.weather"
+category = "apps"
+title = "Weather"
+summary = "MSN Weather app."
+details = "A forecast app from MSN. The taskbar weather in Widgets does not depend on it."
+risk = "safe"
+undo = "Install MSN Weather from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.BingWeather" }]
+
+[[option]]
+id = "apps.bing_search"
+category = "apps"
+title = "Bing Search app"
+summary = "Standalone Bing search app included in recent builds."
+details = "A separate Bing search app. Start menu search on this PC keeps working."
+risk = "safe"
+undo = "Install Bing Search from the Microsoft Store."
+applies = "win11"
+actions = [{ kind = "remove_appx", prefix = "Microsoft.BingSearch" }]
+
+[[option]]
+id = "apps.solitaire"
+category = "apps"
+title = "Solitaire Collection"
+summary = "Ad-supported card games."
+details = "Card games with ads and an optional paid subscription."
+risk = "safe"
+undo = "Install Microsoft Solitaire Collection from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.MicrosoftSolitaireCollection" }]
+
+[[option]]
+id = "apps.get_started"
+category = "apps"
+title = "Get Started and Tips"
+summary = "First-run tour app."
+details = "Walks new users through Windows features. Nothing else depends on it."
+risk = "safe"
+undo = "Install Tips from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.Getstarted" }]
+
+[[option]]
+id = "apps.get_help"
+category = "apps"
+title = "Get Help"
+summary = "Microsoft support chat app."
+details = "Opens Microsoft's online support. Some built-in troubleshooter links open this app and will do nothing after removal."
+risk = "low"
+breaks = ["\"Get help\" links in Settings and troubleshooters"]
+undo = "Install Get Help from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.GetHelp" }]
+
+[[option]]
+id = "apps.feedback_hub"
+category = "apps"
+title = "Feedback Hub"
+summary = "Sends feedback and bug reports to Microsoft."
+details = "Only needed if you report problems to Microsoft or use Windows Insider builds."
+risk = "safe"
+undo = "Install Feedback Hub from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.WindowsFeedbackHub" }]
+
+[[option]]
+id = "apps.office_hub"
+category = "apps"
+title = "Microsoft 365 (Office) hub"
+summary = "Launcher that promotes Microsoft 365."
+details = "A launcher for Office web apps and a Microsoft 365 sign-up prompt. Installed Office apps are not affected."
+risk = "safe"
+undo = "Install Microsoft 365 (Office) from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.MicrosoftOfficeHub" }]
+
+[[option]]
+id = "apps.people"
+category = "apps"
+title = "People"
+summary = "Contacts app."
+details = "Shows contacts from signed-in accounts. Mail and Calendar have their own contact pickers."
+risk = "low"
+undo = "Install Microsoft People from the Microsoft Store where offered."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.People" }]
+
+[[option]]
+id = "apps.mail_calendar"
+category = "apps"
+title = "Mail and Calendar"
+summary = "Classic Mail and Calendar apps."
+details = "Microsoft is retiring these apps in favor of the new Outlook. Remove them if you use another mail program."
+risk = "low"
+breaks = ["Mail and Calendar apps", "Calendar entries in the taskbar flyout from Mail accounts"]
+undo = "Install Mail and Calendar from the Microsoft Store while still offered."
+actions = [{ kind = "remove_appx", prefix = "microsoft.windowscommunicationsapps" }]
+
+[[option]]
+id = "apps.outlook_new"
+category = "apps"
+title = "Outlook (new)"
+summary = "The new Outlook for Windows app."
+details = "Web-based Outlook client. Remove it if you use a different mail program."
+risk = "safe"
+undo = "Install Outlook (new) from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.OutlookForWindows" }]
+
+[[option]]
+id = "apps.teams"
+category = "apps"
+title = "Microsoft Teams (personal)"
+summary = "Consumer Teams chat app."
+details = "Chat and calls for personal Microsoft accounts. Work Teams is installed separately by organizations."
+risk = "safe"
+undo = "Download Microsoft Teams from microsoft.com."
+applies = "win11"
+actions = [
+  { kind = "remove_appx", prefix = "MicrosoftTeams" },
+  { kind = "remove_appx", prefix = "MSTeams" },
+]
+
+[[option]]
+id = "apps.todo"
+category = "apps"
+title = "Microsoft To Do"
+summary = "Task list app."
+details = "Syncs tasks with a Microsoft account."
+risk = "safe"
+undo = "Install Microsoft To Do from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.Todos" }]
+
+[[option]]
+id = "apps.power_automate"
+category = "apps"
+title = "Power Automate"
+summary = "Desktop automation tool."
+details = "Records and runs automation flows. Rarely used outside offices."
+risk = "safe"
+undo = "Install Power Automate from the Microsoft Store."
+applies = "win11"
+actions = [{ kind = "remove_appx", prefix = "Microsoft.PowerAutomateDesktop" }]
+
+[[option]]
+id = "apps.maps"
+category = "apps"
+title = "Maps"
+summary = "Offline-capable maps app."
+details = "Microsoft is retiring Maps. Removing it is harmless if you use a web map."
+risk = "safe"
+undo = "Install Windows Maps from the Microsoft Store while still offered."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.WindowsMaps" }]
+
+[[option]]
+id = "apps.alarms"
+category = "apps"
+title = "Clock (Alarms)"
+summary = "Alarms, timers and focus sessions."
+details = "Removes the Clock app, including Focus sessions started from it."
+risk = "low"
+breaks = ["Alarms, timers and stopwatch", "Focus sessions launched from Clock"]
+undo = "Install Windows Clock from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.WindowsAlarms" }]
+
+[[option]]
+id = "apps.sound_recorder"
+category = "apps"
+title = "Sound Recorder"
+summary = "Simple audio recording app."
+details = "Records from the microphone. Other recording apps are unaffected."
+risk = "safe"
+undo = "Install Windows Sound Recorder from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.WindowsSoundRecorder" }]
+
+[[option]]
+id = "apps.media_player"
+category = "apps"
+title = "Media Player (Groove Music)"
+summary = "Default music and video player."
+details = "On Windows 11 this is the default Media Player. Without it, audio files open with whatever player you install, or Windows asks which app to use."
+risk = "moderate"
+breaks = ["Double-click to play music files until another player is installed"]
+undo = "Install Media Player from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.ZuneMusic" }]
+
+[[option]]
+id = "apps.movies_tv"
+category = "apps"
+title = "Movies & TV"
+summary = "Video player and store front."
+details = "Plays local videos and sells films. Windows 11 Media Player can also play video."
+risk = "low"
+undo = "Install Movies & TV from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.ZuneVideo" }]
+
+[[option]]
+id = "apps.phone_link"
+category = "apps"
+title = "Phone Link"
+summary = "Connects an Android phone or iPhone to the PC."
+details = "Shows phone texts, photos and calls on the PC."
+risk = "low"
+breaks = ["Phone texts, calls and photos on the PC"]
+undo = "Install Phone Link from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.YourPhone" }]
+
+[[option]]
+id = "apps.xbox"
+category = "apps"
+title = "Xbox app and Game Bar"
+summary = "Xbox app, Win+G Game Bar and speech overlay."
+details = "Removes the Xbox app and Game Bar overlays from new accounts. The Xbox sign-in component is a separate option because many PC games need it."
+risk = "moderate"
+breaks = ["Win+G screen recording and performance overlay", "Game Pass installs", "Xbox party chat"]
+undo = "Install Xbox and Xbox Game Bar from the Microsoft Store."
+actions = [
+  { kind = "remove_appx", prefix = "Microsoft.GamingApp" },
+  { kind = "remove_appx", prefix = "Microsoft.XboxGamingOverlay" },
+  { kind = "remove_appx", prefix = "Microsoft.XboxGameOverlay" },
+  { kind = "remove_appx", prefix = "Microsoft.XboxSpeechToTextOverlay" },
+  { kind = "remove_appx", prefix = "Microsoft.XboxApp" },
+]
+
+[[option]]
+id = "apps.xbox_identity"
+category = "apps"
+title = "Xbox sign-in components"
+summary = "Xbox Identity Provider and Xbox TCUI."
+details = "Used by PC games that sign in with an Xbox account, including many Microsoft Store and Game Pass titles. Removing them can make those games fail to start or save."
+risk = "high"
+breaks = ["Xbox sign-in in PC games", "Cloud saves for Xbox-enabled games"]
+undo = "Install Xbox Identity Provider from the Microsoft Store."
+requires = []
+actions = [
+  { kind = "remove_appx", prefix = "Microsoft.XboxIdentityProvider" },
+  { kind = "remove_appx", prefix = "Microsoft.Xbox.TCUI" },
+]
+
+[[option]]
+id = "apps.cortana"
+category = "apps"
+title = "Cortana"
+summary = "Retired voice assistant app."
+details = "Microsoft has retired Cortana. Windows search does not depend on this app."
+risk = "safe"
+undo = "Not available any more; Microsoft has retired it."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.549981C3F5F10" }]
+
+[[option]]
+id = "apps.copilot"
+category = "apps"
+title = "Copilot app"
+summary = "Microsoft's AI assistant app."
+details = "Removes the Copilot app from new accounts. Copilot in Edge and Microsoft 365 is separate."
+risk = "safe"
+undo = "Install Microsoft Copilot from the Microsoft Store."
+applies = "win11"
+actions = [{ kind = "remove_appx", prefix = "Microsoft.Copilot" }]
+
+[[option]]
+id = "apps.family"
+category = "apps"
+title = "Microsoft Family Safety"
+summary = "Parental controls app."
+details = "Keep this if you manage children's accounts with Microsoft Family."
+risk = "low"
+breaks = ["Family Safety app (web dashboard still works)"]
+undo = "Install Microsoft Family Safety from the Microsoft Store."
+applies = "win11"
+actions = [{ kind = "remove_appx", prefix = "MicrosoftCorporationII.MicrosoftFamily" }]
+
+[[option]]
+id = "apps.quick_assist"
+category = "apps"
+title = "Quick Assist"
+summary = "Remote help app."
+details = "Lets someone view or control this PC to help. Scammers also use it; remove it if no one helps you remotely this way."
+risk = "low"
+breaks = ["Receiving remote help through Quick Assist"]
+undo = "Install Quick Assist from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "MicrosoftCorporationII.QuickAssist" }]
+
+[[option]]
+id = "apps.dev_home"
+category = "apps"
+title = "Dev Home"
+summary = "Developer dashboard app."
+details = "Microsoft has retired Dev Home. Developer tools you install separately are unaffected."
+risk = "safe"
+undo = "Not available any more; Microsoft has retired it."
+applies = "win11"
+actions = [{ kind = "remove_appx", prefix = "Microsoft.Windows.DevHome" }]
+
+[[option]]
+id = "apps.mixed_reality"
+category = "apps"
+title = "Mixed Reality Portal and 3D Viewer"
+summary = "Windows Mixed Reality headset tools."
+details = "Only needed for Windows Mixed Reality headsets, which Microsoft has discontinued."
+risk = "safe"
+undo = "Install from the Microsoft Store where still offered."
+applies = "win10"
+actions = [
+  { kind = "remove_appx", prefix = "Microsoft.MixedReality.Portal" },
+  { kind = "remove_appx", prefix = "Microsoft.Microsoft3DViewer" },
+]
+
+[[option]]
+id = "apps.paint3d"
+category = "apps"
+title = "Paint 3D"
+summary = "3D drawing app."
+details = "Microsoft has retired Paint 3D. Classic Paint is a separate app and is kept."
+risk = "safe"
+undo = "Not available any more; Microsoft has retired it."
+applies = "win10"
+actions = [{ kind = "remove_appx", prefix = "Microsoft.MSPaint" }]
+
+[[option]]
+id = "apps.skype"
+category = "apps"
+title = "Skype"
+summary = "Retired calling app."
+details = "Microsoft has retired Skype."
+risk = "safe"
+undo = "Not available any more; Microsoft has retired it."
+applies = "win10"
+actions = [{ kind = "remove_appx", prefix = "Microsoft.SkypeApp" }]
+
+[[option]]
+id = "apps.onenote_store"
+category = "apps"
+title = "OneNote for Windows 10"
+summary = "Store version of OneNote."
+details = "The Store edition of OneNote. The desktop OneNote that comes with Microsoft 365 is separate."
+risk = "safe"
+undo = "Install OneNote from microsoft.com."
+applies = "win10"
+actions = [{ kind = "remove_appx", prefix = "Microsoft.Office.OneNote" }]
+
+[[option]]
+id = "apps.wallet"
+category = "apps"
+title = "Microsoft Pay (Wallet)"
+summary = "Retired payment app."
+details = "Not used by Windows itself."
+risk = "safe"
+undo = "Not available any more."
+applies = "win10"
+actions = [{ kind = "remove_appx", prefix = "Microsoft.Wallet" }]
+
+[[option]]
+id = "apps.widgets"
+category = "apps"
+title = "Widgets"
+summary = "Widgets board and taskbar weather."
+details = "Removes the Widgets board and its taskbar button. Some app widgets depend on it."
+risk = "moderate"
+breaks = ["Widgets board and taskbar weather", "Third-party widgets"]
+undo = "Install Windows Web Experience Pack from the Microsoft Store."
+applies = "win11"
+actions = [{ kind = "remove_appx", prefix = "MicrosoftWindows.Client.WebExperience" }]
+
+[[option]]
+id = "apps.sticky_notes"
+category = "apps"
+title = "Sticky Notes"
+summary = "Desktop notes app."
+details = "Notes sync with a Microsoft account and OneNote."
+risk = "low"
+undo = "Install Microsoft Sticky Notes from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.MicrosoftStickyNotes" }]
+
+[[option]]
+id = "apps.camera"
+category = "apps"
+title = "Camera"
+summary = "Webcam app."
+details = "Video calls in other apps still use the webcam; only the Camera app is removed."
+risk = "low"
+breaks = ["Taking photos or video with the built-in Camera app"]
+undo = "Install Windows Camera from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.WindowsCamera" }]
+
+[[option]]
+id = "apps.photos"
+category = "apps"
+title = "Photos"
+summary = "Default photo viewer and editor."
+details = "Images will not open with a viewer until you install another one."
+risk = "moderate"
+breaks = ["Double-click to view pictures until another viewer is installed"]
+undo = "Install Microsoft Photos from the Microsoft Store."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.Windows.Photos" }]
+
+[[option]]
+id = "apps.store"
+category = "apps"
+title = "Microsoft Store"
+summary = "The app store itself."
+details = "Without the Store you cannot easily reinstall any app removed here, and Store apps stop updating. Reinstalling the Store needs command-line steps."
+risk = "high"
+breaks = ["Installing and updating Store apps", "Undoing any other app removal"]
+undo = "Run 'wsreset -i' as administrator; may need an internet connection."
+conflicts = []
+actions = [
+  { kind = "remove_appx", prefix = "Microsoft.WindowsStore" },
+  { kind = "remove_appx", prefix = "Microsoft.StorePurchaseApp" },
+]
+
+[[option]]
+id = "apps.app_installer"
+category = "apps"
+title = "App Installer (winget)"
+summary = "Installs .msix packages and provides winget."
+details = "winget and double-click installs of .msix/.appx files stop working."
+risk = "high"
+breaks = ["winget command", "Installing .msix and .appx files"]
+undo = "Download App Installer from Microsoft's GitHub releases."
+actions = [{ kind = "remove_appx", prefix = "Microsoft.DesktopAppInstaller" }]

@@ -1,0 +1,58 @@
+# Audit — WinISOPilot 0.1.0 (pre-release)
+
+Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Verified** (run and observed), **Partially verified**, **Unverified**.
+
+## Verification matrix
+
+| Area | Status | Evidence |
+|---|---|---|
+| Catalog loads; every entry valid (IDs, risk vs. "what breaks", hive paths, no `CurrentControlSet`, presets reference real IDs) | Verified | `wip-core` tests, `catalog_rejects_bad_entries` |
+| Availability against an inventory (present / already done / missing / wrong Windows) | Verified | `availability_with_inventory`, `netfx3_needs_sxs` |
+| Plan compile order (apps → capabilities → features → files → registry groups → cleanup; boot.wim separate; every hive load paired with unload) | Verified | `compile_orders_and_resolves` |
+| Conflicts, unknown IDs, high-risk and unrated confirmations | Verified | `conflicts_are_errors_and_high_risk_warns`, `raw_items_exclude_catalogued_and_protected` |
+| Recipe format: round trip, unknown IDs dropped, future schema rejected, size cap | Verified | `recipe_roundtrip_and_unknowns` |
+| Atomic writes; corrupt JSON quarantined, not deleted | Verified | `atomic_roundtrip_and_quarantine` |
+| Engine compiles for Windows x64 | Verified | Cross-compiled `x86_64-pc-windows-gnu` (release), clippy clean |
+| Exe embeds icon, version info, `requireAdministrator` manifest; imports only system DLLs | Verified | `strings` / `objdump -p` on the built exe |
+| Guided and Advanced layouts and first-run dialog render | Partially verified | Rendered on Linux/Mesa with `--demo` data; not yet on Windows, at 150–200% scaling, or with high contrast |
+| DISM API structure layouts | Partially verified | Checked against mingw-w64 `dismapi.h` (`pack(1)`); not yet exercised against a live `dismapi.dll` |
+| Inspect ISO, prepare, build, discard, leftover cleanup on real media | **Unverified** | Requires an elevated Windows run with a real ISO |
+| Resulting ISO boots (BIOS and UEFI) and installs | **Unverified** | Requires a VM install test per edition/build |
+| Each catalog option has the documented effect after installation | **Unverified** | Option texts are based on Microsoft documentation and well-known behavior; per-build effects (especially Copilot, Recall, BypassNRO, OneDrive) change over time |
+| Keyboard-only and screen-reader walkthrough | **Unverified** | AccessKit is enabled; needs a Narrator/NVDA pass on Windows |
+| Windows 10 host | **Unverified** | Supported by design; not run |
+
+## Destructive operations review
+
+| Operation | Safeguards |
+|---|---|
+| Opening the ISO | Attached read-only; detached afterwards only if WinISOPilot attached it |
+| Copying media | Into a new uniquely named workspace folder; never overwrites |
+| Mounting | Journal record written first (mount refused if the journal can't be written); failed reads unmount without saving |
+| Applying changes | Only to the private exported copy; cancel checked between operations; registry hives unloaded on any failure |
+| Commit / unmount | Never cancelled part-way; discard is always available |
+| Output ISO | Refuses an existing path; partial ISO deleted if `oscdimg` fails |
+| Leftover sessions | Shown on next launch: discard (unmount without saving) or forget the record; workspace files are never deleted by the app |
+
+## Security and privacy
+
+- No network access, telemetry, accounts or auto-update. Microsoft download pages open in the browser only when the user clicks a link.
+- Runs elevated because DISM and offline hive loading require it (see [docs/decisions.md](docs/decisions.md)).
+- External tools run from System32 or the chosen ADK folder by full path, without console windows. PowerShell strings use single-quoted literals with `'` doubled; package names passed to DISM come from DISM's own inventory.
+- `dismapi.dll` is loaded with `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS` (no current-directory search).
+- Recipes contain option IDs and output settings only; they can't carry commands, paths or credentials. Unknown IDs are dropped and reported.
+- Windows Update, Defender, firewall and recovery aren't disabled by any preset; Windows Security UI and app frameworks can't be removed.
+- `unsafe` is confined to `wip-engine/src/win/*` (FFI). Every block has a SAFETY comment.
+
+## Dependencies
+
+183 crates for the Windows target; all permissive (MIT, Apache-2.0, BSD, Zlib, ISC, Unicode-3.0, BSL-1.0, CC0-1.0). No copyleft code. Release task: ship a generated third-party notices file (e.g. `cargo about`).
+
+## Before a 1.0 release
+
+1. Elevated end-to-end runs on Windows 11 24H2/25H2 and Windows 10 22H2 ISOs (single and all editions, WIM and ESD sources), plus cancel and power-loss drills.
+2. VM install test of the output (BIOS and UEFI), with each preset.
+3. Real screenshots for the README (list in [docs/screenshots.md](docs/screenshots.md)).
+4. Accessibility pass (keyboard only, Narrator, 200% scaling, high contrast).
+5. Measure performance budgets (cold start, idle CPU/memory, build time) and record them.
+6. Third-party notices file, code signing, checksums.

@@ -1,9 +1,9 @@
-name: Windows build and self-tests
+name: Windows build and tests
 
 on:
   pull_request:
   push:
-    branches: [main, read-only-prototype]
+    branches: [main, rust-rewrite]
   workflow_dispatch:
 
 permissions:
@@ -14,21 +14,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  build:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Check out source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6, verified from official remote
-      - name: Set up .NET 10 SDK
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5, verified from official remote
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal -c clippy,rustfmt
+          rustup default stable
+          rustc --version
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test --workspace --locked
+      - name: Self-test (debug build has a console)
+        run: cargo run --locked -p winisopilot -- --self-test
+      - name: Release build
+        run: cargo build --release --locked -p winisopilot
+      - name: Upload exe
+        uses: actions/upload-artifact@v4
         with:
-          dotnet-version: 10.0.x
-      - name: Build Windows engine and bundled provider resources
-        run: dotnet build src/WinISOPilot/ImageGuide.csproj --configuration Release
-      - name: Run deterministic self-tests
-        run: dotnet run --project src/WinISOPilot/ImageGuide.csproj --configuration Release --no-build -- --self-test
-      - name: Build native WPF desktop
-        run: dotnet build src/WinISOPilot.Desktop/WinISOPilot.Desktop.csproj --configuration Release
-      - name: Run WPF state and measured layout tests
-        run: dotnet run --project src/WinISOPilot.Desktop/WinISOPilot.Desktop.csproj --configuration Release --no-build -- --self-test
+          name: WinISOPilot-${{ github.sha }}
+          path: |
+            target/release/WinISOPilot.exe
+            LICENSE
+            README.md
+          if-no-files-found: error
