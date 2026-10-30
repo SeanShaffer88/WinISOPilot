@@ -35,6 +35,8 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - The Settings window could be taller than the app window, pushing its title bar and close button off-screen so it couldn't be closed. Settings is now a two-column dialog with a **Done** button that also closes with Esc or a click outside.
 - **Load list** failed for both Windows 10 and 11 with WIP-E114 ("The catalog had no products.xml"). The catalog cab is now fully unpacked and any XML that is a product list is used (whatever its name, UTF-8 or UTF-16); a download that isn't a cab is checked and parsed directly or reported plainly. The Details log records the download size and what the cab contained.
 - Error messages now show the Details log right under them on every page.
+- Catalog product lists saved as UTF-16 without a byte-order mark are now recognized; each file in the catalog is logged with its size and first characters.
+- **Copy details** now copies the last 40 log lines along with the error.
 
 ## [0.3.0] - 2026-10-30
 

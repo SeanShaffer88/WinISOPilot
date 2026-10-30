@@ -113,13 +113,16 @@ pub fn fetch_catalog(win11: bool, job: &Job) -> Result<Vec<EsdFile>> {
                 .collect::<Vec<_>>()
                 .join(", ")
         ));
-        let mut xmls: Vec<String> = found
-            .iter()
-            .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("xml")))
-            .filter_map(|p| fs::read(p).ok())
-            .map(|b| download::decode_text(&b))
-            .filter(|t| download::looks_like_catalog(t))
-            .collect();
+        let mut xmls: Vec<String> = Vec::new();
+        for p in &found {
+            let Ok(b) = fs::read(p) else { continue };
+            let text = download::decode_text(&b);
+            let start: String = text.chars().take(160).map(|c| if c.is_control() { ' ' } else { c }).collect();
+            job.log(format!("{}: {} bytes: {start}", p.display(), b.len()));
+            if download::looks_like_catalog(&text) {
+                xmls.push(text);
+            }
+        }
         if xmls.is_empty() {
             return Err(EngineError::new(
                 "WIP-E114",

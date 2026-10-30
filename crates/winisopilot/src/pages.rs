@@ -140,8 +140,14 @@ fn show_error(app: &App, ui: &mut Ui) {
         } else {
             theme::error_box(ui, &format!("Something went wrong ({})", e.code), &e.message);
             ui.horizontal(|ui| {
-                if ui.button("Copy details").on_hover_text("Copy the error code and message").clicked() {
-                    ui.ctx().copy_text(format!("WinISOPilot {} {}: {}", wip_core::APP_VERSION, e.code, e.message));
+                if ui.button("Copy details").on_hover_text("Copy the error and the last 40 log lines").clicked() {
+                    let tail = app.log[app.log.len().saturating_sub(40)..].join("\n");
+                    ui.ctx().copy_text(format!(
+                        "WinISOPilot {} {}: {}\n\nLog:\n{tail}",
+                        wip_core::APP_VERSION,
+                        e.code,
+                        e.message
+                    ));
                 }
                 if ui.button("Open log folder").clicked() {
                     open_folder(wip_engine::app_data_dir().join("logs"));

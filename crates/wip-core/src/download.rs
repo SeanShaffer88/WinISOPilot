@@ -86,13 +86,16 @@ pub fn decode_text(bytes: &[u8]) -> String {
     match bytes {
         [0xFF, 0xFE, rest @ ..] => utf16(rest, true),
         [0xFE, 0xFF, rest @ ..] => utf16(rest, false),
+        // UTF-16 without a byte-order mark: "<\0" or "\0<" at the start.
+        [b'<', 0, ..] => utf16(bytes, true),
+        [0, b'<', ..] => utf16(bytes, false),
         _ => String::from_utf8_lossy(bytes).trim_start_matches('\u{feff}').to_string(),
     }
 }
 
 /// True when the text looks like a Media Creation Tool product list.
 pub fn looks_like_catalog(text: &str) -> bool {
-    text.contains("<MCT") && text.contains("<File")
+    text.contains("<File") && text.contains("<FilePath")
 }
 
 /// Parses products.xml. Entries without a name, URL or size are skipped;
@@ -245,6 +248,8 @@ mod tests {
         let text = decode_text(&utf16);
         assert!(looks_like_catalog(&text));
         assert_eq!(parse_products(&text).unwrap().len(), 2);
+        let no_bom: Vec<u8> = XML.trim_start_matches('\u{feff}').encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
+        assert!(looks_like_catalog(&decode_text(&no_bom)));
         let utf8 = decode_text(XML.as_bytes());
         assert!(looks_like_catalog(&utf8));
         assert!(!looks_like_catalog("<html><body>Access denied</body></html>"));
