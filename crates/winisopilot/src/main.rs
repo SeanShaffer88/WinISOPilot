@@ -8,6 +8,7 @@ mod download_ui;
 mod extras;
 mod help;
 mod jobs;
+mod pager;
 mod pages;
 mod theme;
 mod usb_page;
@@ -51,8 +52,9 @@ fn main() -> eframe::Result<()> {
     let help_open = args.iter().any(|a| a == "--help-panel");
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("WinISOPilot")
-        .with_inner_size([1200.0, 760.0])
-        .with_min_inner_size([960.0, 640.0]);
+        .with_inner_size([960.0, 456.0])
+        .with_resizable(false)
+        .with_maximize_button(false);
     if let Some(i) = icon() {
         viewport = viewport.with_icon(i);
     }
@@ -76,6 +78,31 @@ fn main() -> eframe::Result<()> {
             app.show_help = help_open;
             if done && demo {
                 dialogs::load_demo_done(&mut app);
+            }
+            if demo {
+                // Screenshot helpers: skip the first-run choice unless asked,
+                // and open a given step, layout or the Settings window.
+                let flag = |name: &str| args.iter().any(|a| a == name);
+                // --first-run: no layout chosen yet; --ask: the every-launch question.
+                if !flag("--first-run") {
+                    app.mode_prompt = flag("--ask");
+                    app.settings.mode = Some(if flag("--advanced") {
+                        wip_core::settings::Mode::Advanced
+                    } else {
+                        wip_core::settings::Mode::Guided
+                    });
+                }
+                app.show_settings = flag("--settings");
+                for (name, step) in [
+                    ("--welcome", app::Step::Welcome),
+                    ("--edition", app::Step::Edition),
+                    ("--customize", app::Step::Customize),
+                    ("--build", app::Step::Build),
+                ] {
+                    if flag(name) {
+                        app.step = step;
+                    }
+                }
             }
             Ok(Box::new(app))
         }),

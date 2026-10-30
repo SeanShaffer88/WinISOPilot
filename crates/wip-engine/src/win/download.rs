@@ -94,13 +94,96 @@ pub fn fetch_catalog(win11: bool, job: &Job) -> Result<Vec<EsdFile>> {
     let out_dir = dir.join(name);
     let _ = fs::remove_dir_all(&out_dir);
     fs::create_dir_all(&out_dir).map_err(|e| EngineError::new("WIP-E113", e.to_string()))?;
-    let expand = system32().map(|s| s.join("expand.exe")).unwrap_or_else(|| PathBuf::from("expand.exe"));
-    let args = vec![cab.display().to_string(), "-F:products.xml".into(), out_dir.display().to_string()];
-    expect_ok(run(&expand, &args, job)?, "Unpacking the catalog", "WIP-E114")?;
-    let bytes = fs::read(out_dir.join("products.xml"))
-        .map_err(|e| EngineError::new("WIP-E114", format!("The catalog had no products.xml: {e}")))?;
-    let xml = String::from_utf8_lossy(&bytes);
+    let raw = fs::read(&cab).map_err(|e| EngineError::new("WIP-E114", format!("Couldn't read the catalog: {e}")))?;
+    job.log(format!("Catalog download: {} bytes", raw.len()));
+    let xml = if download::is_cab(&raw) {
+        // Unpack everything: the XML inside isn't always named products.xml.
+        let expand = system32().map(|s| s.join("expand.exe")).unwrap_or_else(|| PathBuf::from("expand.exe"));
+        let args = vec![cab.display().to_string(), "-F:*".into(), out_dir.display().to_string()];
+        expect_ok(run(&expand, &args, job)?, "Unpacking the catalog", "WIP-E114")?;
+        let mut entries = Vec::new();
+        let _ = crate::win::workflow::walk(&out_dir, Path::new(""), &mut entries);
+        let found: Vec<PathBuf> = entries.into_iter().map(|(rel, _)| out_dir.join(rel)).collect();
+        job.log(format!(
+            "Catalog contains: {}",
+            found
+                .iter()
+                .filter_map(|p| p.file_name())
+                .map(|n| n.to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let mut xmls: Vec<String> = Vec::new();
+        for p in &found {
+            let Ok(b) = fs::read(p) else { continue };
+            let text = download::decode_text(&b);
+            let start: String = text.chars().take(160).map(|c| if c.is_control() { ' ' } else { c }).collect();
+            job.log(format!("{}: {} bytes: {start}", p.display(), b.len()));
+            if download::looks_like_catalog(&text) {
+                xmls.push(text);
+            }
+        }
+        if xmls.is_empty() {
+            return Err(EngineError::new(
+                "WIP-E114",
+                "Microsoft's catalog file didn't contain a product list. Try again later; the Details log lists what it contained.",
+            ));
+        }
+        xmls.swap_remove(0)
+    } else {
+        let text = download::decode_text(&raw);
+        if !download::looks_like_catalog(&text) {
+            let start: String = text.chars().take(120).filter(|c| !c.is_control()).collect();
+            job.log(format!("Unexpected catalog content: {start}"));
+            return Err(EngineError::new(
+                "WIP-E114",
+                "Microsoft's server didn't send a catalog (perhaps a network filter or proxy page). The Details log shows what arrived.",
+            ));
+        }
+        text
+    };
     download::parse_products(&xml).map_err(|e| EngineError::new("WIP-E115", e))
+}
+
+/// Downloads adksetup.exe from Microsoft, requires a valid Authenticode
+/// signature from Microsoft Corporation, and installs Deployment Tools.
+pub fn install_adk(job: &Job) -> Result<()> {
+    job.stage(1, 3, "Downloading Microsoft's installer");
+    let dir = crate::app_data_dir().join("adk");
+    fs::create_dir_all(&dir).map_err(|e| EngineError::new("WIP-E113", e.to_string()))?;
+    let exe = dir.join("adksetup.exe");
+    let _ = fs::remove_file(&exe);
+    curl_download(download::ADK_SETUP, &exe, job)?;
+    job.stage(2, 3, "Checking it's really from Microsoft");
+    let script = format!(
+        "$s = Get-AuthenticodeSignature -LiteralPath {}; \"$($s.Status)|$($s.SignerCertificate.Subject)\"",
+        wip_core::boottest::ps_lit(&exe.display().to_string())
+    );
+    let sig = ps(&script, job)?;
+    job.log(format!("Signature: {}", sig.trim()));
+    let (status, subject) = sig.trim().split_once('|').unwrap_or(("", ""));
+    if status != "Valid" || !subject.contains("O=Microsoft Corporation") {
+        let _ = fs::remove_file(&exe);
+        return Err(EngineError::new(
+            "WIP-E121",
+            "The downloaded installer isn't validly signed by Microsoft, so WinISOPilot deleted it without running it.",
+        ));
+    }
+    job.stage(3, 3, "Installing the Deployment Tools (several minutes)");
+    job.indeterminate();
+    let args: Vec<String> = download::ADK_SETUP_ARGS.iter().map(|s| s.to_string()).collect();
+    let out = run(&exe, &args, job)?;
+    // 3010 = success, restart required (not needed for oscdimg).
+    if out.code != 0 && out.code != 3010 {
+        return Err(EngineError::new(
+            "WIP-E122",
+            format!(
+                "Microsoft's installer stopped with code {}. Its logs are in %TEMP%\\adk. You can also install it by hand from the link.",
+                out.code
+            ),
+        ));
+    }
+    Ok(())
 }
 
 fn file_hash(path: &Path, algo: &str, job: &Job) -> Result<String> {

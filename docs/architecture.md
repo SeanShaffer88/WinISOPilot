@@ -60,4 +60,6 @@ winisopilot (egui app) ──► wip-engine (Windows work) ──► wip-core (p
 | WIP-E085–E093 | USB source not Windows media, read/plan/split failures, diskpart, bootsect, verification mismatch |
 | WIP-E100–E107 | Boot test: Hyper-V missing/not running, no oscdimg, ISO missing, test folder, answer disc, VM creation, unreadable results |
 | WIP-E110–E120 | Download: curl missing, host refused, download failed, catalog folder/unpack/parse, unsafe name, no hash, hash mismatch, export, unexpected ESD layout |
+| WIP-E121 | ADK installer not validly signed by Microsoft Corporation (deleted, never run) |
+| WIP-E122 | ADK installer (adksetup.exe) returned an error code |
 | WIP-E900/E901 | Background task crashed / no result |

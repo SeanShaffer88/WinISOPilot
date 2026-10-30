@@ -35,13 +35,13 @@ pub fn topic(app: &App) -> Topic {
             paragraphs: &[
                 "WinISOPilot makes a new Windows installer with your changes. Your original ISO is never modified.",
                 "The checks show whether this PC has what's needed. Missing items come with a link to fix them.",
-                "Prefer to just make a bootable USB from an existing ISO? Choose Write to USB at the top of the left panel.",
+                "Prefer to just make a bootable USB from an existing ISO? Choose USB at the top of the left panel.",
             ],
             next: "Next you choose or download a Windows ISO.",
         },
         Step::Source => Topic {
             title: "Choose a Windows ISO",
-            tip: "Tip: don't have an ISO? Use Download Windows from Microsoft below.",
+            tip: "Tip: don't have an ISO? Use Download Windows for me on the right.",
             paragraphs: &[
                 "Choose an official Windows 10 or 11 ISO, or download the current release from Microsoft inside the app.",
                 "The working folder holds a temporary copy of Windows while you customize it. Use a fast local drive with plenty of space; the needed amount is shown.",
@@ -69,11 +69,12 @@ pub fn topic(app: &App) -> Topic {
         },
         Step::Customize => Topic {
             title: "Customize",
-            tip: "Tip: select an option's name to read what it does and what could stop working. Ctrl+Z undoes.",
+            tip: "Tip: click an option's name to read what it does. Not sure? Leave it unticked.",
             paragraphs: &[
                 "Tick the changes you want. Anything left unticked stays as Microsoft ships it.",
                 "Each option has a risk badge. Safe options don't affect how Windows works for most people; higher risks list what could stop working.",
-                "The Level menu shows more options as you gain confidence. Presets add a common set in one click.",
+                "Riskier options are hidden. \"Show them\" (or Settings) reveals more. Quick picks tick a sensible set in one click.",
+                "Made a mistake? Ctrl+Z undoes it, or \"Untick all here\" clears the page.",
             ],
             next: "Use Next to move through the sections, then Review before building.",
         },
@@ -107,12 +108,14 @@ pub const SHORTCUTS: &[(&str, &str)] = &[
     ("Tab / Shift+Tab", "Move between controls"),
     ("Space / Enter", "Tick a box or press a button"),
     ("Ctrl + / Ctrl −", "Bigger / smaller text"),
+    ("PageUp / PageDown", "Previous / next page of a list"),
 ];
 
 /// One-line tip under the page heading.
 pub fn tip(app: &App, ui: &mut egui::Ui) {
-    if app.settings.show_tips {
-        ui.label(RichText::new(topic(app).tip).size(13.0).italics().color(theme::TEXT_DIM));
+    // Tips are for beginners; Advanced pages carry their own technical subtitle.
+    if app.settings.show_tips && (app.mode() == Mode::Guided || app.step == Step::Customize) {
+        ui.label(RichText::new(topic(app).tip).size(12.0).italics().color(theme::TEXT_DIM));
     }
 }
 
@@ -128,30 +131,32 @@ pub fn window(app: &mut App, ctx: &egui::Context) {
     egui::Window::new("Help")
         .open(&mut open)
         .collapsible(false)
-        .resizable(true)
-        .default_width(420.0)
-        .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-16.0, 16.0))
+        .resizable(false)
+        .default_width(620.0)
+        .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-8.0, 8.0))
         .show(ctx, |ui| {
-            egui::ScrollArea::vertical().max_height(560.0).show(ui, |ui| {
-                h2(ui, t.title);
-                for p in t.paragraphs {
-                    body(ui, p);
-                }
-                ui.add_space(6.0);
-                ui.label(RichText::new("What happens next").strong());
-                body(ui, t.next);
-                ui.add_space(8.0);
-                ui.separator();
-                ui.label(RichText::new("Keyboard shortcuts").strong());
-                egui::Grid::new("keys").num_columns(2).spacing([16.0, 4.0]).show(ui, |ui| {
-                    for (k, what) in SHORTCUTS {
-                        ui.label(RichText::new(*k).monospace());
-                        ui.label(*what);
-                        ui.end_row();
+            // Two columns so the panel fits the window without scrolling.
+            crate::pages::two_columns(ui, |col, ui| {
+                if col == 0 {
+                    h2(ui, t.title);
+                    for p in t.paragraphs {
+                        body(ui, p);
                     }
-                });
-                ui.add_space(8.0);
-                dim(ui, "More: the user guide (docs/user-guide.md) and the log folder in Settings.");
+                    ui.add_space(4.0);
+                    ui.label(RichText::new("What happens next").strong());
+                    body(ui, t.next);
+                } else {
+                    ui.label(RichText::new("Keyboard shortcuts").strong());
+                    egui::Grid::new("keys").num_columns(2).spacing([10.0, 1.0]).show(ui, |ui| {
+                        for (k, what) in SHORTCUTS {
+                            ui.label(RichText::new(*k).monospace().size(11.0));
+                            ui.label(RichText::new(*what).size(12.0));
+                            ui.end_row();
+                        }
+                    });
+                    ui.add_space(4.0);
+                    dim(ui, "More: the user guide (docs/user-guide.md) and the log folder in Settings.");
+                }
             });
         });
     if !open {

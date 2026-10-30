@@ -22,6 +22,11 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Keyboard-only and screen-reader walkthrough | **Unverified** | AccessKit is enabled; custom rail and table controls have accessible names; shortcuts for Next/Back/Undo/Redo/Search/Help. Needs a Narrator/NVDA pass on Windows |
 | Stronger contrast, reduce motion, tips, help panel, review summary | Partially verified | Rendered on Linux/Mesa with `--demo --review` / `--help-panel`; settings back-compat unit test |
 | Undo/redo history | Verified | `history` tests |
+| Guided and Advanced differ on every page (see user guide table) | Partially verified | Linux/Mesa `--demo` screenshots of every page in both layouts at 1200×760 and 1024×700; not yet tested with real beginners or on Windows |
+| ADK auto-install (download, Microsoft signature check, silent Deployment Tools install, re-probe) | **Unverified** | Link and arguments from learn.microsoft.com and published scripts; not run yet |
+| Backup-drive guard (> 300 GB) | Verified | `eligibility_rules` test |
+| Live Microsoft catalog parses (Windows 10 and 11) | Verified on Windows | Sean's run after the BOM-less UTF-16 fix listed language/architecture/package for both |
+| Fixed 960×456 window; only the Customize option list scrolls; pages fill the window; Settings closes with Done/Esc | Partially verified | Linux/Mesa `--demo` screenshots of every page in both layouts plus Help, Settings and the launch question. Text sizes above 100% can clip content (no page scrolling by design); not yet checked on Windows at 125–200% display scaling |
 | Windows 10 host | **Unverified** | Supported by design; not run |
 | USB eligibility rules, identity check, diskpart script, FAT32 file plan (split only install.wim, size checks) | Verified | `wip-core::usb` tests |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
@@ -30,7 +35,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Boot test answer file, check generation, in-guest script, scoring, encoded loader size | Verified | `boottest` tests |
 | Boot test end to end on Hyper-V; footprint numbers from a real build | **Unverified** | Run docs/verification-checklist.md |
 | Catalog parsing, host allow-list, file-name safety, ESD image classification | Verified | `download` tests (fixture shaped after the documented `MCT/Catalogs/Catalog/PublishedMedia/Files/File` layout) |
-| Live catalog download, ESD download/resume/hash check, ESD→ISO conversion, booting the result | **Unverified** | Needs a real run; the real products.xml has not been inspected in this environment |
+| Live catalog download, ESD download/resume/hash check, ESD→ISO conversion, booting the result | **Unverified** | Needs a real run; the real products.xml has not been inspected in this environment. A first real run failed with WIP-E114 (products.xml not found after `expand -F:products.xml`); unpacking now takes every file and picks the product list by content. Re-test pending |
 
 ## Destructive operations review
 

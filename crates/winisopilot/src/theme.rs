@@ -49,7 +49,8 @@ pub fn apply(ctx: &egui::Context, settings: &wip_core::settings::Settings) {
     v.hyperlink_color = if hc { FOCUS_HC } else { ACCENT };
     v.selection.bg_fill = PRIMARY;
     v.override_text_color = Some(if hc { Color32::WHITE } else { TEXT });
-    let r = CornerRadius::same(6);
+    // 3 px: checkboxes stay visibly square (6 px made them look like radio buttons).
+    let r = CornerRadius::same(3);
     for w in [&mut v.widgets.inactive, &mut v.widgets.hovered, &mut v.widgets.active, &mut v.widgets.open] {
         w.corner_radius = r;
     }
@@ -71,32 +72,43 @@ pub fn apply(ctx: &egui::Context, settings: &wip_core::settings::Settings) {
     v.selection.stroke = Stroke::new(if hc { 3.0_f32 } else { 2.0 }, if hc { FOCUS_HC } else { ACCENT });
     ctx.set_visuals(v);
     ctx.style_mut(|s| {
-        s.spacing.item_spacing = Vec2::new(8.0, 8.0);
-        s.spacing.button_padding = Vec2::new(14.0, 7.0);
-        s.spacing.interact_size.y = 30.0;
+        // Data-dense: 13 px text, tight 6/4 px gaps, 22 px controls.
+        s.spacing.item_spacing = Vec2::new(6.0, 4.0);
+        s.spacing.button_padding = Vec2::new(8.0, 3.0);
+        s.spacing.interact_size.y = 22.0;
+        s.spacing.indent = 12.0;
+        use egui::{FontFamily, TextStyle};
+        s.text_styles = [
+            (TextStyle::Heading, FontId::new(18.0, FontFamily::Proportional)),
+            (TextStyle::Body, FontId::new(13.0, FontFamily::Proportional)),
+            (TextStyle::Button, FontId::new(13.0, FontFamily::Proportional)),
+            (TextStyle::Small, FontId::new(11.0, FontFamily::Proportional)),
+            (TextStyle::Monospace, FontId::new(12.0, FontFamily::Monospace)),
+        ]
+        .into();
         s.animation_time = if settings.reduce_motion { 0.0 } else { 1.0 / 12.0 };
     });
     ctx.set_zoom_factor(settings.text_scale.clamp(0.75, 2.0));
 }
 
 pub fn eyebrow(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text.to_uppercase()).font(FontId::monospace(12.0)).color(TEXT_DIM));
+    ui.label(RichText::new(text.to_uppercase()).font(FontId::monospace(10.5)).color(TEXT_DIM));
 }
 
 pub fn h1(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).size(26.0).strong().color(TEXT));
+    ui.label(RichText::new(text).size(18.0).strong().color(TEXT));
 }
 
 pub fn h2(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).size(19.0).strong().color(TEXT));
+    ui.label(RichText::new(text).size(14.0).strong().color(TEXT));
 }
 
 pub fn body(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).size(14.5).color(TEXT_BODY));
+    ui.label(RichText::new(text).size(13.0).color(TEXT_BODY));
 }
 
 pub fn dim(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).size(13.5).color(TEXT_DIM));
+    ui.label(RichText::new(text).size(12.0).color(TEXT_DIM));
 }
 
 pub fn badge(ui: &mut Ui, risk: Option<Risk>) -> Response {
@@ -110,30 +122,30 @@ pub fn badge(ui: &mut Ui, risk: Option<Risk>) -> Response {
     Frame::new()
         .fill(bg)
         .corner_radius(CornerRadius::same(10))
-        .inner_margin(Margin::symmetric(8, 2))
-        .show(ui, |ui| ui.label(RichText::new(label).font(FontId::monospace(11.0)).color(fg)))
+        .inner_margin(Margin::symmetric(6, 1))
+        .show(ui, |ui| ui.label(RichText::new(label).font(FontId::monospace(10.0)).color(fg)))
         .response
 }
 
 pub fn primary(ui: &mut Ui, text: &str, enabled: bool) -> Response {
-    let b = egui::Button::new(RichText::new(text).size(15.0).strong().color(TEXT))
+    let b = egui::Button::new(RichText::new(text).size(13.0).strong().color(TEXT))
         .fill(if enabled { PRIMARY } else { Color32::from_rgb(0x55, 0x2A, 0x34) })
         .stroke(Stroke::NONE)
-        .min_size(Vec2::new(110.0, 40.0));
+        .min_size(Vec2::new(72.0, 26.0));
     ui.add_enabled(enabled, b)
 }
 
 pub fn secondary(ui: &mut Ui, text: &str, enabled: bool) -> Response {
-    let b = egui::Button::new(RichText::new(text).size(15.0).color(TEXT))
+    let b = egui::Button::new(RichText::new(text).size(13.0).color(TEXT))
         .fill(Color32::TRANSPARENT)
         .stroke(Stroke::new(1.0_f32, BOUNDARY))
-        .min_size(Vec2::new(90.0, 40.0));
+        .min_size(Vec2::new(60.0, 26.0));
     ui.add_enabled(enabled, b)
 }
 
 pub fn quiet(ui: &mut Ui, text: &str) -> Response {
     ui.add(
-        egui::Button::new(RichText::new(text).size(15.0).color(TEXT_DIM)).frame(false).min_size(Vec2::new(60.0, 40.0)),
+        egui::Button::new(RichText::new(text).size(13.0).color(TEXT_DIM)).frame(false).min_size(Vec2::new(48.0, 26.0)),
     )
 }
 
@@ -141,16 +153,36 @@ pub fn card() -> Frame {
     Frame::new()
         .fill(CARD)
         .stroke(Stroke::new(1.0_f32, DIVIDER))
-        .corner_radius(CornerRadius::same(10))
-        .inner_margin(Margin::same(16))
+        .corner_radius(CornerRadius::same(4))
+        .inner_margin(Margin::same(8))
+}
+
+/// Asks the next card to stretch down to `reserve` pixels above the bottom
+/// of the space left in `ui`, so pages have no empty band at the bottom.
+pub fn fill_next(ui: &Ui, reserve: f32) {
+    let h = (ui.available_height() - reserve - 2.0 * 8.0 - 2.0).max(0.0);
+    let pass = ui.ctx().cumulative_pass_nr();
+    ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new("card-fill-next"), (pass, h)));
+}
+
+/// First call inside every card: full width, plus any pending stretch.
+pub fn card_body(ui: &mut Ui) {
+    ui.set_width(ui.available_width());
+    let id = egui::Id::new("card-fill-next");
+    // Only a request made earlier in this same frame counts.
+    if let Some((pass, h)) = ui.ctx().data_mut(|d| d.remove_temp::<(u64, f32)>(id)) {
+        if pass == ui.ctx().cumulative_pass_nr() {
+            ui.set_min_height(h);
+        }
+    }
 }
 
 pub fn warn_box(ui: &mut Ui, title: &str, lines: &[String]) {
     Frame::new()
         .fill(WARN_BG)
         .stroke(Stroke::new(1.0_f32, WARN_BORDER))
-        .corner_radius(CornerRadius::same(8))
-        .inner_margin(Margin::same(12))
+        .corner_radius(CornerRadius::same(4))
+        .inner_margin(Margin::same(8))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             ui.label(RichText::new(title).strong().color(WARN_TEXT));
@@ -164,8 +196,8 @@ pub fn error_box(ui: &mut Ui, title: &str, text: &str) {
     Frame::new()
         .fill(Color32::from_rgb(0x3A, 0x15, 0x20))
         .stroke(Stroke::new(1.0_f32, PRIMARY))
-        .corner_radius(CornerRadius::same(8))
-        .inner_margin(Margin::same(12))
+        .corner_radius(CornerRadius::same(4))
+        .inner_margin(Margin::same(8))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             ui.label(RichText::new(title).strong().color(ERR_TEXT));

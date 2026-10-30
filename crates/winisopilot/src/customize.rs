@@ -5,7 +5,7 @@
 use crate::app::{App, Step, View};
 use crate::pages::{footer, Nav};
 use crate::theme::{self, body, dim, eyebrow, h1, h2};
-use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, RichText, ScrollArea, Sense, Stroke, Ui, Vec2};
+use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, RichText, Sense, Stroke, Ui, Vec2};
 use wip_core::plan::{availability, Availability};
 use wip_core::settings::Mode;
 use wip_core::{Category, Level, Risk};
@@ -131,26 +131,35 @@ fn explainer(app: &App, ui: &mut Ui, compact: bool) {
             ui.label(RichText::new(r).color(theme::WARN_TEXT));
         }
     }
+    // At most 3 actions are listed; the rest are in the tooltip (no scrolling).
     let show_tech = |ui: &mut Ui| {
-        for a in &o.actions {
-            ui.label(RichText::new(a.technical()).monospace().size(12.0).color(theme::TEXT_DIM));
+        for a in o.actions.iter().take(3) {
+            ui.add(
+                egui::Label::new(RichText::new(a.technical()).monospace().size(11.0).color(theme::TEXT_DIM)).truncate(),
+            )
+            .on_hover_text(a.technical());
+        }
+        if o.actions.len() > 3 {
+            let all: Vec<String> = o.actions.iter().map(|a| a.technical()).collect();
+            ui.label(RichText::new(format!("+{} more", o.actions.len() - 3)).size(11.0).color(theme::TEXT_DIM))
+                .on_hover_text(all.join("\n"));
         }
     };
+    // Guided never shows package names or registry paths; Advanced always does.
     if compact {
         ui.separator();
         show_tech(ui);
-    } else {
-        egui::CollapsingHeader::new("Technical details").default_open(false).show(ui, show_tech);
     }
 }
 
 fn presets_menu(app: &mut App, ui: &mut Ui) {
     let presets = app.catalog.presets.clone();
-    ui.menu_button(RichText::new("Presets…").size(14.0), |ui| {
+    let label = if app.mode() == Mode::Guided { "Quick picks…" } else { "Presets…" };
+    ui.menu_button(RichText::new(label).size(12.5), |ui| {
         for p in presets {
             let r = ui.add(egui::Button::new(RichText::new(&p.title).strong()).frame(false));
             let r = r.on_hover_text(&p.summary);
-            ui.label(RichText::new(&p.summary).size(12.5).color(theme::TEXT_DIM));
+            ui.label(RichText::new(&p.summary).size(11.5).color(theme::TEXT_DIM));
             ui.separator();
             if r.clicked() {
                 apply_preset(app, &p.id);
@@ -230,17 +239,17 @@ fn guided(app: &mut App, ctx: &egui::Context) {
     }
 
     egui::SidePanel::right("explainer")
-        .exact_width(340.0)
+        .exact_width(250.0)
         .resizable(false)
         .frame(
-            Frame::new().fill(theme::CARD).inner_margin(Margin::same(26)).stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
+            Frame::new().fill(theme::CARD).inner_margin(Margin::same(8)).stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
         )
         .show(ctx, |ui| {
-            ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| explainer(app, ui, false));
+            explainer(app, ui, false);
         });
 
     egui::CentralPanel::default()
-        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 36, right: 28, top: 28, bottom: 8 }))
+        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 10, right: 8, top: 8, bottom: 6 }))
         .show(ctx, |ui| {
             eyebrow(ui, "Step 4 of 6 · Customize");
             h1(ui, cat.label());
@@ -248,25 +257,12 @@ fn guided(app: &mut App, ctx: &egui::Context) {
             crate::help::tip(app, ui);
             ui.add_space(4.0);
             ui.horizontal_wrapped(|ui| {
-                search_box(app, ui, 220.0);
-                let mut level = app.settings.level;
-                egui::ComboBox::from_id_salt("level").selected_text(format!("Level: {}", level.label())).show_ui(
-                    ui,
-                    |ui| {
-                        for l in Level::ALL {
-                            ui.selectable_value(&mut level, l, l.label());
-                        }
-                    },
-                );
-                if level != app.settings.level {
-                    app.settings.level = level;
-                    app.save_settings();
-                }
                 presets_menu(app, ui);
+                search_box(app, ui, 200.0);
                 let n = app.selected_in(cat);
                 if ui
-                    .add_enabled(n > 0, egui::Button::new("Clear section"))
-                    .on_hover_text("Untick every option in this section (Ctrl+Z undoes)")
+                    .add_enabled(n > 0, egui::Button::new("Untick all here"))
+                    .on_hover_text("Untick every option on this page (Ctrl+Z undoes)")
                     .clicked()
                 {
                     let keep: wip_core::plan::Selection = app
@@ -279,39 +275,44 @@ fn guided(app: &mut App, ctx: &egui::Context) {
                     app.notify(format!("Cleared {n} changes in {}. Ctrl+Z undoes.", cat.label()));
                 }
             });
-            ui.add_space(6.0);
+            ui.add_space(3.0);
             let (list, hidden) = rows(app, View::Cat(cat), true);
-            ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                if list.is_empty() {
-                    dim(ui, "Nothing here matches this image or your search.");
-                }
-                Frame::new().stroke(Stroke::new(1.0_f32, theme::DIVIDER)).corner_radius(CornerRadius::same(10)).show(
+            if list.is_empty() {
+                dim(ui, "Nothing here matches this image or your search.");
+            }
+            let reserve = if hidden > 0 { 36.0 } else { 0.0 };
+            // The option list is the one place that scrolls.
+            let h = (ui.available_height() - reserve).max(GUIDED_ROW);
+            let shown = &list[..];
+            egui::ScrollArea::vertical().max_height(h).auto_shrink([false, true]).show(ui, |ui| {
+                Frame::new().stroke(Stroke::new(1.0_f32, theme::DIVIDER)).corner_radius(CornerRadius::same(4)).show(
                     ui,
                     |ui| {
-                        for (i, r) in list.iter().enumerate() {
-                            guided_row(app, ui, r, i + 1 == list.len());
+                        ui.spacing_mut().item_spacing.y = 0.0;
+                        for (i, r) in shown.iter().enumerate() {
+                            guided_row(app, ui, r, i + 1 == shown.len());
                         }
                     },
                 );
-                if hidden > 0 {
-                    ui.add_space(6.0);
-                    ui.horizontal(|ui| {
-                        dim(
-                            ui,
-                            &format!("{hidden} more options are hidden at the {} level.", app.settings.level.label()),
-                        );
-                        if ui.link("Show more").clicked() {
-                            app.settings.level = match app.settings.level {
-                                Level::Beginner => Level::Intermediate,
-                                _ => Level::Expert,
-                            };
-                            app.save_settings();
-                        }
-                    });
-                }
             });
+
+            if hidden > 0 {
+                ui.horizontal(|ui| {
+                    dim(ui, &format!("{hidden} riskier options are hidden to keep things safe."));
+                    if ui.link("Show them").on_hover_text("Also changeable in Settings").clicked() {
+                        app.settings.level = match app.settings.level {
+                            Level::Beginner => Level::Intermediate,
+                            _ => Level::Expert,
+                        };
+                        app.save_settings();
+                    }
+                });
+            }
         });
 }
+
+/// Height of one Guided option row (frame margins included).
+const GUIDED_ROW: f32 = 24.0;
 
 fn guided_row(app: &mut App, ui: &mut Ui, r: &Row, last: bool) {
     let focused = app.focused.as_deref() == Some(r.id.as_str());
@@ -319,10 +320,11 @@ fn guided_row(app: &mut App, ui: &mut Ui, r: &Row, last: bool) {
     let fill = if focused { theme::ROW_SELECTED } else { theme::CARD };
     let resp = Frame::new()
         .fill(fill)
-        .inner_margin(Margin::symmetric(14, 10))
+        .inner_margin(Margin::symmetric(8, 1))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.horizontal(|ui| {
+            ui.set_height(GUIDED_ROW - 2.0);
+            ui.horizontal_centered(|ui| {
                 let mut on = r.checked;
                 let cb = ui.add_enabled(enabled, egui::Checkbox::without_text(&mut on));
                 let cb = cb.on_hover_text(&r.title);
@@ -331,7 +333,7 @@ fn guided_row(app: &mut App, ui: &mut Ui, r: &Row, last: bool) {
                     app.focused = Some(r.id.clone());
                 }
                 let title =
-                    RichText::new(&r.title).size(15.0).color(if enabled { theme::TEXT } else { theme::TEXT_DIM });
+                    RichText::new(&r.title).size(13.0).color(if enabled { theme::TEXT } else { theme::TEXT_DIM });
                 let t = ui.add(egui::Label::new(if focused { title.strong() } else { title }).sense(Sense::click()));
                 if t.clicked() {
                     app.focused = Some(r.id.clone());
@@ -371,7 +373,7 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
     }
 
     egui::SidePanel::left("categories")
-        .exact_width(210.0)
+        .exact_width(150.0)
         .resizable(false)
         .frame(
             Frame::new()
@@ -395,7 +397,7 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
             views.push((View::Raw, "Unrated items".into(), app.raw_items.len()));
             for (v, label, n) in views {
                 let sel = app.view == v;
-                let b = egui::Button::new(RichText::new(label).size(13.5).color(if sel {
+                let b = egui::Button::new(RichText::new(label).size(12.0).color(if sel {
                     theme::TEXT
                 } else {
                     theme::TEXT_BODY
@@ -403,7 +405,7 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                 .fill(if sel { theme::ROW_SELECTED } else { Color32::TRANSPARENT })
                 .stroke(Stroke::NONE)
                 .right_text(RichText::new(n.to_string()).color(theme::TEXT_DIM))
-                .min_size(Vec2::new(ui.available_width(), 32.0));
+                .min_size(Vec2::new(ui.available_width(), 22.0));
                 if ui.add(b).clicked() {
                     app.view = v;
                     app.focused = None;
@@ -412,13 +414,13 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
         });
 
     egui::SidePanel::right("inspector")
-        .exact_width(290.0)
+        .exact_width(220.0)
         .resizable(false)
         .frame(
             Frame::new().fill(theme::CARD).inner_margin(Margin::same(18)).stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
         )
         .show(ctx, |ui| {
-            ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| explainer(app, ui, true));
+            explainer(app, ui, true);
         });
 
     egui::CentralPanel::default()
@@ -428,7 +430,7 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                 ui.horizontal_wrapped(|ui| {
                     search_box(app, ui, 240.0);
                     let label = app.risk_filter.map_or("Risk: all".to_string(), |r| format!("Risk: {}", r.label()));
-                    egui::ComboBox::from_id_salt("risk").selected_text(label).show_ui(ui, |ui| {
+                    egui::ComboBox::from_id_salt("risk").selected_text(label).height(400.0).show_ui(ui, |ui| {
                         ui.selectable_value(&mut app.risk_filter, None, "All");
                         for r in [Risk::Safe, Risk::Low, Risk::Moderate, Risk::High] {
                             ui.selectable_value(&mut app.risk_filter, Some(r), r.label());
@@ -462,8 +464,9 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                     }
                 });
             });
-            ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                Frame::new().inner_margin(Margin::symmetric(14, 0)).show(ui, |ui| {
+            Frame::new().inner_margin(Margin { left: 14, right: 14, top: 0, bottom: 8 }).show(ui, |ui| {
+                egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+                    ui.spacing_mut().item_spacing.y = 0.0;
                     for (i, r) in list.iter().enumerate() {
                         table_row(app, ui, r, &widths, i % 2 == 1);
                     }
@@ -475,9 +478,12 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
         });
 }
 
+/// Height of one Advanced table row.
+const TABLE_ROW: f32 = 20.0;
+
 /// A fixed-width, left-aligned table cell.
 fn cell<R>(ui: &mut Ui, w: f32, add: impl FnOnce(&mut Ui) -> R) -> R {
-    ui.allocate_ui_with_layout(Vec2::new(w, 32.0), egui::Layout::left_to_right(egui::Align::Center), |ui| {
+    ui.allocate_ui_with_layout(Vec2::new(w, TABLE_ROW), egui::Layout::left_to_right(egui::Align::Center), |ui| {
         ui.set_width(w);
         add(ui)
     })
@@ -522,7 +528,7 @@ fn table_row(app: &mut App, ui: &mut Ui, r: &Row, w: &Columns, stripe: bool) {
                 app.set_selected(&r.id, on);
                 app.focused = Some(r.id.clone());
             }
-            let name = RichText::new(&r.title).size(13.5).color(if enabled { theme::TEXT } else { theme::TEXT_DIM });
+            let name = RichText::new(&r.title).size(12.0).color(if enabled { theme::TEXT } else { theme::TEXT_DIM });
             let name = if focused { name.strong() } else { name };
             let l = cell(ui, w.name, |ui| ui.add(egui::Label::new(name).sense(Sense::click()).truncate()));
             if l.on_hover_text(&r.title).clicked() {
@@ -537,7 +543,7 @@ fn table_row(app: &mut App, ui: &mut Ui, r: &Row, w: &Columns, stripe: bool) {
             let text = r.risk.map_or("Unrated", |x| x.label());
             cell(ui, w.risk, |ui| ui.label(RichText::new(text).strong().color(theme::risk_colors(r.risk).1)));
             cell(ui, w.status, |ui| {
-                ui.label(RichText::new(status_note(&r.status).unwrap_or("")).size(12.5).color(theme::TEXT_DIM))
+                ui.label(RichText::new(status_note(&r.status).unwrap_or("")).size(11.5).color(theme::TEXT_DIM))
             });
         });
     });

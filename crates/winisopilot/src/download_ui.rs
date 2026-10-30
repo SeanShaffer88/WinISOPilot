@@ -53,7 +53,17 @@ impl DownloadState {
             |e| e.edition.clone(),
         );
         if !self.edition.as_ref().is_some_and(|x| eds.contains(x)) {
-            self.edition = eds.first().cloned();
+            // Prefer the consumer package (Home, Pro, Education…) over Enterprise.
+            let preferred = self
+                .entries
+                .iter()
+                .find(|e| {
+                    Some(&e.language) == lang.as_ref()
+                        && Some(&e.architecture) == arch.as_ref()
+                        && e.is_default_package()
+                })
+                .map(|e| e.edition.clone());
+            self.edition = preferred.or_else(|| eds.first().cloned());
         }
     }
 
@@ -66,12 +76,34 @@ impl DownloadState {
     }
 }
 
-fn combo(ui: &mut egui::Ui, id: &str, label: &str, value: &mut Option<String>, options: &[String]) -> bool {
+fn combo(
+    ui: &mut egui::Ui,
+    id: &str,
+    label: &str,
+    value: &mut Option<String>,
+    options: &[String],
+    shown: impl Fn(&str) -> String,
+) -> bool {
     let before = value.clone();
     ui.label(label);
-    egui::ComboBox::from_id_salt(id).selected_text(value.clone().unwrap_or_default()).width(220.0).show_ui(ui, |ui| {
-        for o in options {
-            ui.selectable_value(value, Some(o.clone()), o);
+    let text = value.as_deref().map(&shown).unwrap_or_default();
+    // Long lists (languages) are shown in columns so the popup never scrolls.
+    const ROWS: usize = 14;
+    egui::ComboBox::from_id_salt(id).selected_text(text).width(240.0).height(2000.0).show_ui(ui, |ui| {
+        if options.len() <= ROWS {
+            for o in options {
+                ui.selectable_value(value, Some(o.clone()), shown(o));
+            }
+        } else {
+            ui.horizontal_top(|ui| {
+                for col in options.chunks(ROWS) {
+                    ui.vertical(|ui| {
+                        for o in col {
+                            ui.selectable_value(value, Some(o.clone()), shown(o));
+                        }
+                    });
+                }
+            });
         }
     });
     *value != before
@@ -90,14 +122,25 @@ fn unique_iso(dir: &std::path::Path, base: &str) -> PathBuf {
 }
 
 pub fn card(app: &mut App, ui: &mut egui::Ui, locked: bool) {
+    let guided = app.mode() == wip_core::settings::Mode::Guided;
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
-        h2(ui, "Download Windows from Microsoft");
-        body(ui, "Gets the current official release straight from Microsoft's servers, checks it against Microsoft's published hash, and makes an ISO.");
+        theme::card_body(ui);
+        if guided {
+            h2(ui, "Download Windows for me");
+            body(ui, "Don't have an ISO? WinISOPilot gets the latest Windows straight from Microsoft and checks that it arrived intact.");
+        } else {
+            h2(ui, "Download from Microsoft (MCT catalog)");
+            dim(ui, "ESD from products.cab, verified against the catalog hash, converted to a bootable ISO with DISM + oscdimg.");
+        }
         ui.horizontal(|ui| {
             ui.radio_value(&mut app.dl.win10, false, "Windows 11");
             ui.radio_value(&mut app.dl.win10, true, "Windows 10");
-            let label = if app.dl.entries.is_empty() || app.dl.listed_win10 != app.dl.win10 { "Load list" } else { "Reload list" };
+            let loaded = !app.dl.entries.is_empty() && app.dl.listed_win10 == app.dl.win10;
+            let label = match (loaded, guided) {
+                (false, true) => "Show choices",
+                (false, false) => "Load list",
+                (true, _) => "Reload list",
+            };
             if theme::secondary(ui, label, !locked).clicked() {
                 let win11 = !app.dl.win10;
                 if app.demo {
@@ -110,7 +153,14 @@ pub fn card(app: &mut App, ui: &mut egui::Ui, locked: bool) {
             }
         });
         if app.dl.entries.is_empty() || app.dl.listed_win10 != app.dl.win10 {
-            dim(ui, "Nothing is downloaded until you choose Load list.");
+            dim(
+                ui,
+                if guided {
+                    "Pick Windows 11 (or 10), then select Show choices. Nothing is downloaded yet."
+                } else {
+                    "Nothing is downloaded until you choose Load list."
+                },
+            );
             return;
         }
         let langs = app.dl.values(|_| true, |e| e.language.clone());
@@ -121,25 +171,50 @@ pub fn card(app: &mut App, ui: &mut egui::Ui, locked: bool) {
             |e| Some(&e.language) == lang.as_ref() && Some(&e.architecture) == arch.as_ref(),
             |e| e.edition.clone(),
         );
+        let entries = app.dl.entries.clone();
+        let package = |ed: &str| {
+            entries
+                .iter()
+                .find(|e| e.edition == ed && Some(&e.language) == lang.as_ref() && Some(&e.architecture) == arch.as_ref())
+                .map_or(ed.to_string(), |e| e.package_label())
+        };
         let mut changed = false;
         egui::Grid::new("dl").num_columns(2).spacing([12.0, 8.0]).show(ui, |ui| {
-            changed |= combo(ui, "dl-lang", "Language", &mut app.dl.language, &langs);
+            changed |= combo(ui, "dl-lang", "Language", &mut app.dl.language, &langs, |s| s.to_string());
             ui.end_row();
-            changed |= combo(ui, "dl-arch", "Architecture", &mut app.dl.arch, &arches);
-            ui.end_row();
-            changed |= combo(ui, "dl-ed", "Package", &mut app.dl.edition, &eds);
-            ui.end_row();
+            if !guided {
+                changed |= combo(ui, "dl-arch", "Architecture", &mut app.dl.arch, &arches, |s| s.to_string());
+                ui.end_row();
+                changed |= combo(ui, "dl-ed", "Package", &mut app.dl.edition, &eds, |s| package(s));
+                ui.end_row();
+            }
         });
         if changed {
             app.dl.fix();
         }
         let Some(f) = app.dl.chosen().cloned() else { return };
-        dim(ui, &format!("{} · build {}", f.label(), f.build().map_or("?".into(), |b| b.to_string())));
+        if guided {
+            dim(ui, &format!("Includes Windows {} · {} download", f.package_label(), wip_core::human_bytes(f.size)));
+        } else {
+            dim(ui, &format!("{} · build {}", f.label(), f.build().map_or("?".into(), |b| b.to_string())));
+            let hash = f.expected_hash().map_or("none".to_string(), |(a, h)| format!("{a} {h}"));
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new(format!("{}\n{hash}", f.file_name)).monospace().size(11.5).color(theme::TEXT_DIM),
+                )
+                .truncate(),
+            )
+            .on_hover_text(format!("{}\n{}\n{hash}", f.file_name, f.url));
+        }
         let parent = app.workspace_parent.clone();
         let blocked = if app.host.oscdimg.is_none() {
-            Some("Making an ISO needs oscdimg.exe from the Windows ADK Deployment Tools.")
+            Some(if guided {
+                "One free Microsoft tool is needed first (Windows ADK \"Deployment Tools\")."
+            } else {
+                "oscdimg.exe not found (Windows ADK Deployment Tools)."
+            })
         } else if parent.is_none() {
-            Some("Choose a working folder below first; the download and ISO are saved there.")
+            Some("Choose a working folder first (left); the download and ISO are saved there.")
         } else if f.expected_hash().is_none() {
             Some("Microsoft's catalog has no usable hash for this file, so WinISOPilot won't download it.")
         } else {
@@ -148,7 +223,11 @@ pub fn card(app: &mut App, ui: &mut egui::Ui, locked: bool) {
         if let Some(why) = blocked {
             dim(ui, why);
         }
-        if theme::primary(ui, "Download and make ISO", blocked.is_none() && !locked).clicked() {
+        if app.host.oscdimg.is_none() {
+            crate::pages::adk_offer(app, ui);
+        }
+        let button = if guided { "Download Windows" } else { "Download and make ISO" };
+        if theme::primary(ui, button, blocked.is_none() && !locked).clicked() {
             let Some(dir) = parent else { return };
             let base = format!(
                 "Windows{}_{}_{}",
@@ -163,6 +242,8 @@ pub fn card(app: &mut App, ui: &mut egui::Ui, locked: bool) {
                 wip_engine::download_iso(&f, &dl_dir, &iso, &host, job).map(Outcome::Downloaded)
             });
         }
-        dim(ui, "The downloaded file is kept in WinISOPilot-downloads so an interrupted download can resume; delete it when you're done.");
+        if !guided {
+            dim(ui, "Partial downloads resume from WinISOPilot-downloads; delete that folder when done.");
+        }
     });
 }

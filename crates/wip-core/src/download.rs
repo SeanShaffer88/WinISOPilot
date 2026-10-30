@@ -9,6 +9,13 @@ use serde::{Deserialize, Serialize};
 pub const CATALOG_WIN11: &str = "https://go.microsoft.com/fwlink/?LinkId=2156292";
 pub const CATALOG_WIN10: &str = "https://go.microsoft.com/fwlink/?LinkId=841361";
 
+/// Windows ADK online installer (adksetup.exe), as linked from
+/// learn.microsoft.com/windows-hardware/get-started/adk-install.
+pub const ADK_SETUP: &str = "https://go.microsoft.com/fwlink/?linkid=2289980";
+
+/// adksetup.exe arguments: Deployment Tools only (oscdimg, DISM), silent.
+pub const ADK_SETUP_ARGS: &[&str] = &["/features", "OptionId.DeploymentTools", "/quiet", "/norestart", "/ceip", "off"];
+
 /// Hosts WinISOPilot will download from.
 const ALLOWED_HOSTS: &[&str] = &["dl.delivery.mp.microsoft.com", "download.microsoft.com", "go.microsoft.com"];
 
@@ -41,6 +48,31 @@ impl EsdFile {
         )
     }
 
+    /// Plain name of the package: which editions the download contains.
+    /// Microsoft ships a consumer ESD (Home, Pro, Education…) and a
+    /// business ESD (Pro, Enterprise, Education…); "N" variants lack media apps.
+    pub fn package_label(&self) -> String {
+        let f = self.file_name.to_ascii_uppercase();
+        let n = self.edition.ends_with('N') && self.edition.len() > 1;
+        let base = if f.contains("CLIENTCONSUMER") {
+            "Home / Pro / Education".to_string()
+        } else if f.contains("CLIENTBUSINESS") {
+            "Pro / Enterprise / Education".to_string()
+        } else {
+            self.edition.clone()
+        };
+        if n {
+            format!("{base} N (no media apps)")
+        } else {
+            base
+        }
+    }
+
+    /// True for the package most people want: the consumer ESD, not "N".
+    pub fn is_default_package(&self) -> bool {
+        self.file_name.to_ascii_uppercase().contains("CLIENTCONSUMER") && !self.edition.ends_with('N')
+    }
+
     /// The hash to verify against: SHA-256 when published, else SHA-1.
     pub fn expected_hash(&self) -> Option<(&'static str, String)> {
         match (&self.sha256, &self.sha1) {
@@ -67,6 +99,35 @@ fn tag(block: &str, name: &str) -> Option<String> {
     let end = block[start..].find(&close)? + start;
     let v = unescape(block[start..end].trim());
     (!v.is_empty()).then_some(v)
+}
+
+/// True when `bytes` start with the Microsoft Cabinet signature.
+pub fn is_cab(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"MSCF")
+}
+
+/// Decodes catalog text: UTF-8 (with or without BOM) or UTF-16 with a BOM.
+pub fn decode_text(bytes: &[u8]) -> String {
+    let utf16 = |b: &[u8], le: bool| {
+        let units: Vec<u16> = b
+            .chunks_exact(2)
+            .map(|c| if le { u16::from_le_bytes([c[0], c[1]]) } else { u16::from_be_bytes([c[0], c[1]]) })
+            .collect();
+        String::from_utf16_lossy(&units)
+    };
+    match bytes {
+        [0xFF, 0xFE, rest @ ..] => utf16(rest, true),
+        [0xFE, 0xFF, rest @ ..] => utf16(rest, false),
+        // UTF-16 without a byte-order mark: "<\0" or "\0<" at the start.
+        [b'<', 0, ..] => utf16(bytes, true),
+        [0, b'<', ..] => utf16(bytes, false),
+        _ => String::from_utf8_lossy(bytes).trim_start_matches('\u{feff}').to_string(),
+    }
+}
+
+/// True when the text looks like a Media Creation Tool product list.
+pub fn looks_like_catalog(text: &str) -> bool {
+    text.contains("<File") && text.contains("<FilePath")
 }
 
 /// Parses products.xml. Entries without a name, URL or size are skipped;
@@ -205,7 +266,27 @@ mod tests {
         assert_eq!(en.expected_hash().unwrap().0, "SHA1");
         let de = f.iter().find(|e| e.language_code == "de-de").unwrap();
         assert!(de.expected_hash().is_none(), "malformed hash is rejected");
+        assert!(en.package_label().starts_with("Home / Pro"));
+        assert!(en.is_default_package());
         assert!(parse_products("<MCT/>").is_err());
+    }
+
+    #[test]
+    fn decodes_and_detects_catalogs() {
+        assert!(is_cab(b"MSCF\0\0\0\0"));
+        assert!(!is_cab(b"<html>"));
+        let utf16: Vec<u8> = [0xFF, 0xFE]
+            .into_iter()
+            .chain(XML.trim_start_matches('\u{feff}').encode_utf16().flat_map(|u| u.to_le_bytes()))
+            .collect();
+        let text = decode_text(&utf16);
+        assert!(looks_like_catalog(&text));
+        assert_eq!(parse_products(&text).unwrap().len(), 2);
+        let no_bom: Vec<u8> = XML.trim_start_matches('\u{feff}').encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
+        assert!(looks_like_catalog(&decode_text(&no_bom)));
+        let utf8 = decode_text(XML.as_bytes());
+        assert!(looks_like_catalog(&utf8));
+        assert!(!looks_like_catalog("<html><body>Access denied</body></html>"));
     }
 
     #[test]

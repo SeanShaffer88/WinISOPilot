@@ -23,6 +23,33 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Settings files from older versions load with new options at their defaults instead of being reset.
 - Free disk space is checked at most every 5 seconds instead of every frame.
 - Guided toolbar wraps on narrow windows; Help and Settings share one row in the rail.
+- **Every page fits the window without scrollbars** (default 1200×760, minimum now 1024×700): Welcome, Choose ISO, Review, results and Write to USB use two columns; editions, options, the Advanced table and the Review list are split into pages (Previous/Next, PageUp/PageDown or the mouse wheel over the list).
+- **Guided and Advanced are now distinct on every page.** Guided is for complete beginners: plain wording, numbered questions, safe automatic defaults (temporary-files folder, single edition, standard compression, output path, MBR USB), "Download Windows for me" asks only the language, no package names or technical details. Advanced is for experts: host diagnostics table, editable ISO/workspace paths, image index metadata, compiled operation plan with Copy, all output/USB/boot-test options, recipes, and the Details log open by default.
+- **Compact fixed window: 960×456**, not resizable. Only the Customize option list/table scrolls; page bodies, the explainer/inspector and Help never do. Long drop-down lists (languages) open in columns; the recipe-check dialog caps long lists with "…and N more"; the inspector lists at most 3 technical actions (all on hover).
+- **Data-dense styling** (after uistyleguide.com "data-dense dashboard"): 13 px body text, 4–8 px gaps and padding, 22 px controls, 4 px corners, 24/20 px list rows; the last card in each column stretches to the bottom. Guided Welcome cards list the steps; Edition gets a second column (Guided: Home/Pro/Education explained; Advanced: full index metadata); Help uses two columns.
+- **One slim left panel in both layouts** (72 px): ISO / USB and **Guided / Advanced** switches, numbered steps (names on hover), Help and Settings. The layout choice moved there from Settings. "DEMO" moved to the window title.
+- **Layout question at every launch** (Guided or Advanced, last choice pre-selected; the cards themselves are the buttons, Enter picks the highlighted one) with a **Don't ask again** box; turn it back on in Settings ("Ask Guided or Advanced at every launch"). Demo flag `--ask`.
+- Picking Advanced no longer raises the Guided option level to Expert, so beginners switching back still see only safe options.
+- Advanced Welcome footer no longer points to a Guided-only section.
+- Guided Welcome: the footer "Get started" button is gone (the page's Start button does the same).
+- Checkboxes are visibly square again (control corner radius 6 → 3 px); they looked like radio buttons.
+- **"Install it for me"** for the Windows ADK Deployment Tools (needed for ISO files and downloads): downloads Microsoft's official `adksetup.exe` (go.microsoft.com/fwlink/?linkid=2289980), refuses to run it unless it carries a valid Microsoft Corporation signature, installs only the Deployment Tools silently, then re-checks the PC. Also "check again" after a manual install, no restart needed. Offered on Welcome, the download card and Review.
+- **Backup-drive guard**: USB disks over 300 GB are treated as external/backup drives. Guided refuses them (with the reason); Advanced allows them with a warning on the page and in the erase confirmation.
+- Guided Welcome no longer shows a green tick beside a missing tool, and the footer no longer says "ready" while something is missing.
+- Download packages have plain names (Home / Pro / Education vs Pro / Enterprise / Education) and the consumer package is the default instead of Enterprise.
+- Switching layout (Guided ↔ Advanced) in Settings returns to step 1 of Customize ISO and keeps everything entered: ISO, working folder, opened edition, ticked changes, search text and output settings. While a task runs, the page stays where it is.
+- Review: risky changes are confirmed with a **Confirm** tick on their own row; output settings are a compact form.
+- Results: "What changed" opens as a pop-up list.
+- The Details log shows the last 6 lines and links to the log folder instead of scrolling.
+- Long file paths are shortened with "…" (full path on hover).
+- Demo flags `--welcome`, `--edition`, `--customize`, `--build`, `--advanced`, `--settings`, `--first-run` for screenshots.
+
+### Fixed
+- The Settings window could be taller than the app window, pushing its title bar and close button off-screen so it couldn't be closed. Settings is now a two-column dialog with a **Done** button that also closes with Esc or a click outside.
+- **Load list** failed for both Windows 10 and 11 with WIP-E114 ("The catalog had no products.xml"). The catalog cab is now fully unpacked and any XML that is a product list is used (whatever its name, UTF-8 or UTF-16); a download that isn't a cab is checked and parsed directly or reported plainly. The Details log records the download size and what the cab contained.
+- Error messages now show the Details log right under them on every page.
+- Catalog product lists saved as UTF-16 without a byte-order mark are now recognized; each file in the catalog is logged with its size and first characters.
+- **Copy details** now copies the last 40 log lines along with the error.
 
 ## [0.3.0] - 2026-10-30
 

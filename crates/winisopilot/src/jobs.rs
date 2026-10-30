@@ -20,6 +20,7 @@ pub enum Outcome {
     /// Catalog entries; `true` when they are for Windows 10.
     Catalog(Vec<wip_core::download::EsdFile>, bool),
     Downloaded(std::path::PathBuf),
+    AdkInstalled,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +35,7 @@ pub enum Kind {
     BootTest,
     Catalog,
     DownloadIso,
+    InstallAdk,
 }
 
 impl Kind {
@@ -49,6 +51,7 @@ impl Kind {
             Kind::BootTest => "Testing in a virtual machine",
             Kind::Catalog => "Getting Microsoft's download list",
             Kind::DownloadIso => "Downloading Windows",
+            Kind::InstallAdk => "Installing Microsoft's Deployment Tools",
         }
     }
 
