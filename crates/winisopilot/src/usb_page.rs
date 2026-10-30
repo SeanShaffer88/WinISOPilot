@@ -127,7 +127,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
         h1(ui, "Make a bootable USB drive");
         body(ui, "Puts Windows installation media on a USB stick that boots on BIOS and UEFI PCs. Everything on the stick is erased.");
         crate::help::tip(app, ui);
-        ui.add_space(8.0);
+        ui.add_space(4.0);
 
         if let Some(r) = app.usb.report.clone() {
             done_view(app, ui, &r);
@@ -147,7 +147,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                 theme::fill_next(ui, reserve);
                 source_card(app, ui);
                 if let Some(d) = app.usb.chosen_disk().filter(|_| disk_ok) {
-                    ui.add_space(8.0);
+                    ui.add_space(4.0);
                     let mut lines = vec![d.label()];
                     if likely_backup_drive(d) {
                         lines.push(format!(
@@ -161,7 +161,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                 log_tail(app, ui, 6);
             } else {
                 drive_card(app, ui, &prot_letters);
-                ui.add_space(8.0);
+                ui.add_space(4.0);
                 theme::fill_next(ui, 0.0);
                 options_card(app, ui);
             }
@@ -174,7 +174,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
 
 fn show_error(app: &App, ui: &mut egui::Ui) {
     if let Some(e) = &app.last_error {
-        ui.add_space(8.0);
+        ui.add_space(4.0);
         if e.is_cancelled() {
             theme::warn_box(ui, "Stopped", std::slice::from_ref(&e.message));
         } else {
@@ -241,7 +241,7 @@ fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
         }
         let mut pick = app.usb.chosen;
         for d in &ok {
-            ui.radio_value(&mut pick, Some(d.number), RichText::new(d.label()).size(14.5));
+            ui.radio_value(&mut pick, Some(d.number), RichText::new(d.label()).size(13.0));
         }
         app.usb.chosen = pick;
         if !bad.is_empty() {
@@ -304,14 +304,14 @@ fn confirm(app: &mut App, ctx: &egui::Context, protected: Vec<PathBuf>) {
                 .color(theme::ERR_TEXT),
             );
         }
-        ui.add_space(6.0);
+        ui.add_space(3.0);
         ui.label(format!("Type {CONFIRM_WORD} to confirm:"));
         let r = ui.add(egui::TextEdit::singleline(&mut app.usb.confirm_text).desired_width(200.0));
         if ui.ctx().memory(|m| m.focused().is_none()) {
             r.request_focus();
         }
         let ready = app.usb.confirm_text.trim() == CONFIRM_WORD;
-        ui.add_space(6.0);
+        ui.add_space(3.0);
         ui.horizontal(|ui| {
             if theme::secondary(ui, "Cancel", true).clicked() {
                 app.usb.confirm = false;
@@ -354,7 +354,7 @@ fn done_view(app: &mut App, ui: &mut egui::Ui, r: &UsbReport) {
         body(ui, "Eject the drive from the taskbar before unplugging it.");
     });
     if !r.warnings.is_empty() {
-        ui.add_space(8.0);
+        ui.add_space(4.0);
         theme::warn_box(ui, "Notes", &r.warnings);
     }
     log_tail(app, ui, 6);

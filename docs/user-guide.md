@@ -29,7 +29,7 @@ Each time WinISOPilot starts it asks which layout to use (your last choice is pr
 
 ## Customize an ISO
 
-The left panel shows the six steps. Finished steps have a check mark and can be revisited by selecting them.
+The slim left panel has the **ISO / USB** and **Guided / Advanced** switches and the six numbered steps (hover a number to see its name). Finished steps have a check mark and can be revisited by selecting them.
 
 ### 1. Welcome
 Shows whether this PC has what's needed. Anything missing has a link that explains how to get it. If WinISOPilot was closed while working on an image, this page offers to clean it up.

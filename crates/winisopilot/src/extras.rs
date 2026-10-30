@@ -84,7 +84,7 @@ pub fn check_pending_recipe(app: &mut App) {
 
 pub fn footprint_card(ui: &mut egui::Ui, r: &BuildReport) {
     let Some(f) = &r.footprint else { return };
-    ui.add_space(8.0);
+    ui.add_space(4.0);
     theme::card().show(ui, |ui| {
         theme::card_body(ui);
         h2(ui, "Measured result");
@@ -111,7 +111,7 @@ pub fn footprint_card(ui: &mut egui::Ui, r: &BuildReport) {
             });
             if let Some(root) = r.media_folder.parent() {
                 let p = root.join("footprint.md").display().to_string();
-                ui.add(egui::Label::new(RichText::new("Full report: footprint.md").size(13.5).color(theme::TEXT_DIM)))
+                ui.add(egui::Label::new(RichText::new("Full report: footprint.md").size(12.0).color(theme::TEXT_DIM)))
                     .on_hover_text(p);
             }
         });
@@ -183,7 +183,7 @@ pub fn boot_test_card(app: &mut App, ui: &mut egui::Ui, r: &BuildReport) {
             app.start(Kind::BootTest, move |job| wip_engine::boot_test(&req, &host, job).map(Outcome::BootTested));
         }
         if let Some(b) = app.extras.boot_report.clone() {
-            ui.add_space(6.0);
+            ui.add_space(3.0);
             boot_result(ui, &b);
         }
     });
@@ -253,7 +253,7 @@ pub fn port_dialog(app: &mut App, ctx: &egui::Context) {
                 dim(ui, &format!("{unverified} options apply, but this recipe is from an older version and can't be compared in detail."));
             }
             if !changed.is_empty() {
-                ui.add_space(6.0);
+                ui.add_space(3.0);
                 ui.label(RichText::new(format!("{} options now affect different items", changed.len())).strong().color(theme::WARN_TEXT));
                 let n_changed = changed.len();
                 for i in changed.into_iter().take(CAP) {
@@ -269,7 +269,7 @@ pub fn port_dialog(app: &mut App, ctx: &egui::Context) {
                 }
             }
             if !missing.is_empty() {
-                ui.add_space(6.0);
+                ui.add_space(3.0);
                 ui.label(RichText::new(format!("{} options don't apply to this image", missing.len())).strong().color(theme::WARN_TEXT));
                 for i in missing.iter().take(CAP) {
                     if let PortStatus::Missing(why) = &i.status {
@@ -281,7 +281,7 @@ pub fn port_dialog(app: &mut App, ctx: &egui::Context) {
                 }
             }
             if !rep.new_options.is_empty() {
-                ui.add_space(6.0);
+                ui.add_space(3.0);
                 ui.label(RichText::new(format!("{} new options since this recipe was saved", rep.new_options.len())).strong());
                 for id in rep.new_options.iter().take(CAP) {
                     let Some(o) = app.catalog.get(id) else { continue };
@@ -302,11 +302,11 @@ pub fn port_dialog(app: &mut App, ctx: &egui::Context) {
                 }
             }
             if !rep.unknown.is_empty() {
-                ui.add_space(6.0);
+                ui.add_space(3.0);
                 dim(ui, &format!("{} entries come from a newer WinISOPilot and were ignored.", rep.unknown.len()));
             }
         }
-        ui.add_space(8.0);
+        ui.add_space(4.0);
         ui.horizontal(|ui| {
             if !missing.is_empty() && theme::secondary(ui, "Remove options that don't apply", true).clicked() {
                 drop_missing = true;

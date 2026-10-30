@@ -28,8 +28,8 @@ pub fn footer(ctx: &egui::Context, status: &str, back: bool, next: Option<(&str,
         nav = Nav::Back;
     }
     egui::TopBottomPanel::bottom("footer")
-        .exact_height(54.0)
-        .frame(Frame::new().fill(theme::CHROME).inner_margin(Margin::symmetric(20, 8)))
+        .exact_height(38.0)
+        .frame(Frame::new().fill(theme::CHROME).inner_margin(Margin::symmetric(10, 5)))
         .show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.label(RichText::new(status).color(theme::TEXT_DIM));
@@ -52,7 +52,7 @@ pub fn footer(ctx: &egui::Context, status: &str, back: bool, next: Option<(&str,
 /// it, so there is no scrolling anywhere.
 pub fn central(ctx: &egui::Context, add: impl FnOnce(&mut Ui)) {
     egui::CentralPanel::default()
-        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 20, right: 20, top: 14, bottom: 12 }))
+        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 10, right: 10, top: 8, bottom: 8 }))
         .show(ctx, |ui| {
             add(ui);
         });
@@ -61,15 +61,15 @@ pub fn central(ctx: &egui::Context, add: impl FnOnce(&mut Ui)) {
 /// Two equal columns with a 16 px gap.
 /// `add` is called with 0 for the left column and 1 for the right.
 pub fn two_columns(ui: &mut Ui, mut add: impl FnMut(usize, &mut Ui)) {
-    ui.spacing_mut().item_spacing.x = 12.0;
+    ui.spacing_mut().item_spacing.x = 8.0;
     ui.columns(2, |c| {
         for (i, col) in c.iter_mut().enumerate() {
-            col.spacing_mut().item_spacing.x = 8.0;
+            col.spacing_mut().item_spacing.x = 6.0;
             // Plain left-aligned text (columns default to justified).
             col.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| add(i, ui));
         }
     });
-    ui.spacing_mut().item_spacing.x = 8.0;
+    ui.spacing_mut().item_spacing.x = 6.0;
 }
 
 fn header(app: &App, ui: &mut Ui, step: Step, title: &str, blurb: &str) {
@@ -155,7 +155,7 @@ fn show_error(app: &App, ui: &mut Ui) {
                 log_tail(app, ui, 6);
             }
         }
-        ui.add_space(8.0);
+        ui.add_space(4.0);
     }
 }
 
@@ -171,7 +171,7 @@ fn workspace_banner(app: &mut App, ui: &mut Ui) -> bool {
     if theme::secondary(ui, "Discard open edition", !app.busy()).clicked() {
         app.discard_workspace();
     }
-    ui.add_space(8.0);
+    ui.add_space(4.0);
     true
 }
 
@@ -250,14 +250,15 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
                 };
                 theme::card().show(ui, |ui| {
                     theme::card_body(ui);
-                    ui.set_min_height(250.0);
+                    ui.set_min_height(150.0);
                     h2(ui, title);
                     body(ui, text);
-                    ui.add_space(4.0);
+                    ui.spacing_mut().item_spacing.y = 0.0;
                     for (n, st) in steps.iter().enumerate() {
-                        ui.label(RichText::new(format!("{}.  {st}", n + 1)).size(13.5).color(theme::TEXT_DIM));
+                        ui.label(RichText::new(format!("{}.  {st}", n + 1)).size(12.0).color(theme::TEXT_DIM));
                     }
-                    ui.add_space(6.0);
+                    ui.spacing_mut().item_spacing.y = 4.0;
+                    ui.add_space(3.0);
                     let clicked = if i == 0 {
                         theme::primary(ui, button, !app.busy()).clicked()
                     } else {
@@ -270,7 +271,7 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
                     }
                 });
             });
-            ui.add_space(8.0);
+            ui.add_space(4.0);
             theme::fill_next(ui, tail_reserve(app));
             simple_ready(app, ui);
         } else {
@@ -291,10 +292,10 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
             });
         }
         if !app.leftovers.is_empty() {
-            ui.add_space(8.0);
+            ui.add_space(4.0);
             leftovers(app, ui);
         }
-        ui.add_space(8.0);
+        ui.add_space(4.0);
         job_panel(app, ui);
         show_error(app, ui);
     });
@@ -379,15 +380,15 @@ fn diagnostics(app: &mut App, ui: &mut Ui) {
             ),
             ("App data", wip_engine::app_data_dir().display().to_string()),
         ];
-        egui::Grid::new("diag").num_columns(2).spacing([12.0, 4.0]).striped(true).show(ui, |ui| {
+        egui::Grid::new("diag").num_columns(2).spacing([12.0, 1.0]).striped(true).show(ui, |ui| {
             for (k, v) in rows {
-                ui.label(RichText::new(k).size(13.0).color(theme::TEXT_DIM));
-                ui.add(egui::Label::new(RichText::new(&v).monospace().size(12.5)).truncate()).on_hover_text(&v);
+                ui.label(RichText::new(k).size(12.0).color(theme::TEXT_DIM));
+                ui.add(egui::Label::new(RichText::new(&v).monospace().size(11.5)).truncate()).on_hover_text(&v);
                 ui.end_row();
             }
         });
         for n in &h.notes {
-            ui.label(RichText::new(n).size(12.5).color(theme::WARN_TEXT));
+            ui.label(RichText::new(n).size(11.5).color(theme::WARN_TEXT));
         }
         if h.dism_api.is_none() || h.oscdimg.is_none() {
             ui.hyperlink_to(
@@ -402,10 +403,10 @@ fn shortcuts_card(ui: &mut Ui) {
     theme::card().show(ui, |ui| {
         theme::card_body(ui);
         h2(ui, "Keyboard");
-        egui::Grid::new("keys-welcome").num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
+        egui::Grid::new("keys-welcome").num_columns(2).spacing([12.0, 1.0]).show(ui, |ui| {
             for (k, what) in crate::help::SHORTCUTS {
-                ui.label(RichText::new(*k).monospace().size(12.5));
-                ui.label(RichText::new(*what).size(13.0).color(theme::TEXT_BODY));
+                ui.label(RichText::new(*k).monospace().size(11.5));
+                ui.label(RichText::new(*what).size(12.0).color(theme::TEXT_BODY));
                 ui.end_row();
             }
         });
@@ -422,7 +423,7 @@ fn leftovers(app: &mut App, ui: &mut Ui) {
     let recs = app.leftovers.clone();
     for rec in recs {
         ui.horizontal(|ui| {
-            ui.label(RichText::new(&rec.mount_dir).monospace().size(12.5));
+            ui.label(RichText::new(&rec.mount_dir).monospace().size(11.5));
             if theme::secondary(ui, "Discard", !app.busy()).clicked() {
                 let host = app.host.clone();
                 let r = rec.clone();
@@ -486,10 +487,10 @@ pub fn source(app: &mut App, ctx: &egui::Context) {
         two_columns(ui, |i, ui| {
             if i == 0 {
                 iso_card(app, ui, locked);
-                ui.add_space(8.0);
+                ui.add_space(4.0);
                 theme::fill_next(ui, tail_reserve(app));
                 working_folder_card(app, ui, locked);
-                ui.add_space(8.0);
+                ui.add_space(4.0);
                 job_panel(app, ui);
                 show_error(app, ui);
             } else {
@@ -620,7 +621,7 @@ fn working_folder_card(app: &mut App, ui: &mut Ui, locked: bool) {
 
 /// A file path on one line, shortened with "…" when it doesn't fit (full path on hover).
 pub fn path_label(ui: &mut Ui, text: &str) {
-    ui.add(egui::Label::new(RichText::new(text).monospace().size(13.0)).truncate()).on_hover_text(text);
+    ui.add(egui::Label::new(RichText::new(text).monospace().size(12.0)).truncate()).on_hover_text(text);
 }
 
 fn space_line(app: &mut App, ui: &mut Ui) {
@@ -698,24 +699,24 @@ pub fn edition(app: &mut App, ctx: &egui::Context) {
 
 /// One compact row per edition; paged if an ISO holds more than fit.
 fn edition_list(app: &mut App, ui: &mut Ui, src: &wip_engine::SourceInfo, locked: bool, g: bool) {
-    const ROW: f32 = 42.0;
+    const ROW: f32 = 30.0;
     let page = crate::pager::layout(ui, "editions", src.images.len(), ROW, tail_reserve(app));
     let list = ui.scope(|ui| {
         ui.spacing_mut().item_spacing.y = 4.0;
         for img in &src.images[page.range.clone()] {
             let support = img.support();
             let selected = app.chosen_index == Some(img.index);
-            let frame = theme::card().inner_margin(Margin::symmetric(12, 4)).stroke(egui::Stroke::new(
+            let frame = theme::card().inner_margin(Margin::symmetric(8, 2)).stroke(egui::Stroke::new(
                 if selected { 2.0_f32 } else { 1.0 },
                 if selected { theme::ACCENT } else { theme::DIVIDER },
             ));
             let enabled = support.is_ok() && !locked;
             let r = frame.show(ui, |ui| {
                 ui.set_width(ui.available_width());
-                ui.set_height(ROW - 14.0);
+                ui.set_height(ROW - 8.0);
                 ui.horizontal_centered(|ui| {
                     let rb = ui.add_enabled(enabled, egui::RadioButton::new(selected, ""));
-                    let name = RichText::new(&img.name).size(15.0).strong();
+                    let name = RichText::new(&img.name).size(13.0).strong();
                     let l = ui.add(egui::Label::new(name).sense(egui::Sense::click()));
                     let facts = match (&support, g) {
                         (Ok(_), true) if img.edition_id.eq_ignore_ascii_case("Professional") => {
@@ -726,7 +727,7 @@ fn edition_list(app: &mut App, ui: &mut Ui, src: &wip_engine::SourceInfo, locked
                         (Err(why), _) => why.to_string(),
                     };
                     let color = if support.is_ok() { theme::TEXT_DIM } else { theme::ERR_TEXT };
-                    ui.add(egui::Label::new(RichText::new(&facts).size(13.0).color(color)).truncate())
+                    ui.add(egui::Label::new(RichText::new(&facts).size(12.0).color(color)).truncate())
                         .on_hover_text(&facts);
                     rb.clicked() || (enabled && l.clicked())
                 })
@@ -759,7 +760,7 @@ fn edition_side(app: &mut App, ui: &mut Ui, src: &wip_engine::SourceInfo, locked
                 ui.label(RichText::new(name).strong().color(theme::TEXT));
                 dim(ui, text);
             }
-            ui.add_space(6.0);
+            ui.add_space(3.0);
             body(ui, "Windows will only activate with the edition your key or PC is licensed for. If unsure, pick Pro: Setup activates Home or Pro automatically on most PCs that came with Windows.");
         } else {
             h2(ui, "Selected index");
@@ -779,23 +780,23 @@ fn edition_side(app: &mut App, ui: &mut Ui, src: &wip_engine::SourceInfo, locked
                         ("Languages", img.languages.join(", ")),
                         ("Image file", src.image_rel.clone()),
                     ];
-                    egui::Grid::new("index-meta").num_columns(2).spacing([12.0, 4.0]).striped(true).show(ui, |ui| {
+                    egui::Grid::new("index-meta").num_columns(2).spacing([12.0, 1.0]).striped(true).show(ui, |ui| {
                         for (k, v) in rows {
-                            ui.label(RichText::new(k).size(13.0).color(theme::TEXT_DIM));
-                            ui.add(egui::Label::new(RichText::new(&v).monospace().size(12.5)).truncate()).on_hover_text(&v);
+                            ui.label(RichText::new(k).size(12.0).color(theme::TEXT_DIM));
+                            ui.add(egui::Label::new(RichText::new(&v).monospace().size(11.5)).truncate()).on_hover_text(&v);
                             ui.end_row();
                         }
                     });
                 }
                 None => dim(ui, "Select an index."),
             }
-            ui.add_space(6.0);
+            ui.add_space(3.0);
             ui.add_enabled_ui(!locked, |ui| {
                 ui.checkbox(&mut app.single_edition, "Export only this index (single-edition install image)");
             });
             dim(ui, "Untick to keep every index in the output; only the selected one is serviced.");
         }
-        ui.add_space(6.0);
+        ui.add_space(3.0);
         space_line(app, ui);
     });
 }
@@ -885,7 +886,7 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
                         "No edition is open",
                         &["Open one on the Edition step before building.".into()],
                     );
-                    ui.add_space(8.0);
+                    ui.add_space(4.0);
                 }
                 theme::fill_next(ui, 0.0);
                 theme::card().show(ui, |ui| {
@@ -901,11 +902,11 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
                     .collect();
                 for e in errors {
                     theme::error_box(ui, "Needs fixing", &e.message);
-                    ui.add_space(8.0);
+                    ui.add_space(4.0);
                 }
                 if !skipped.is_empty() {
                     theme::warn_box(ui, "These will be skipped", &skipped);
-                    ui.add_space(8.0);
+                    ui.add_space(4.0);
                 }
                 if g {
                     what_happens(app, ui);
@@ -937,7 +938,7 @@ fn changes_list(app: &mut App, ui: &mut Ui, ack_ids: &std::collections::BTreeSet
             }
         }
     });
-    ui.add_space(6.0);
+    ui.add_space(3.0);
     if app.selection.is_empty() {
         body(ui, "You haven't chosen any changes. The new ISO will match the original edition.");
         return;
@@ -962,7 +963,7 @@ fn changes_list(app: &mut App, ui: &mut Ui, ack_ids: &std::collections::BTreeSet
         };
         ui.label(RichText::new(text).color(if left == 0 { theme::OK_TEXT } else { theme::WARN_TEXT }));
     }
-    const ROW: f32 = 34.0;
+    const ROW: f32 = 24.0;
     let page = crate::pager::layout(ui, "review", items.len(), ROW, 0.0);
     let mut remove: Option<String> = None;
     let list = ui.scope(|ui| {
@@ -986,7 +987,7 @@ fn changes_list(app: &mut App, ui: &mut Ui, ack_ids: &std::collections::BTreeSet
                 }
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                     theme::badge(ui, *risk);
-                    ui.add(egui::Label::new(RichText::new(title).size(14.5)).truncate())
+                    ui.add(egui::Label::new(RichText::new(title).size(13.0)).truncate())
                         .on_hover_text(format!("{section}: {title}"));
                 });
             });
@@ -1075,14 +1076,14 @@ fn operation_plan(app: &mut App, ui: &mut Ui) {
             h2(ui, "Operation plan");
             dim(ui, "Open an index to compile the plan.");
         });
-        ui.add_space(8.0);
+        ui.add_space(4.0);
         return;
     };
     let p = match plan::compile(&app.selection, &ctx) {
         Ok(p) => p,
         Err(e) => {
             theme::error_box(ui, "Plan doesn't compile", &e);
-            ui.add_space(8.0);
+            ui.add_space(4.0);
             return;
         }
     };
@@ -1108,7 +1109,7 @@ fn operation_plan(app: &mut App, ui: &mut Ui) {
                 }
             });
         });
-        const ROW: f32 = 18.0;
+        const ROW: f32 = 16.0;
         let page = crate::pager::layout(ui, "plan", lines.len(), ROW, 190.0);
         let area = ui
             .scope(|ui| {
@@ -1131,7 +1132,7 @@ fn operation_plan(app: &mut App, ui: &mut Ui) {
             dim(ui, &format!("{} selected options compile to nothing on this image (see Copy).", p.skipped.len()));
         }
     });
-    ui.add_space(8.0);
+    ui.add_space(4.0);
 }
 
 fn choose_output(app: &mut App) {
@@ -1263,7 +1264,7 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
                 if i == 0 {
                     result_card(ui, &r);
                     if !r.warnings.is_empty() {
-                        ui.add_space(8.0);
+                        ui.add_space(4.0);
                         theme::warn_box(ui, "Notes", &r.warnings);
                     }
                     theme::fill_next(ui, 0.0);
@@ -1271,7 +1272,7 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
                 } else {
                     theme::fill_next(ui, 80.0);
                     crate::extras::boot_test_card(app, ui, &r);
-                    ui.add_space(8.0);
+                    ui.add_space(4.0);
                     ui.horizontal_wrapped(|ui| {
                         if theme::primary(ui, "Write it to a USB drive", true).clicked() {
                             app.usb.source = None;
@@ -1329,7 +1330,7 @@ fn result_card(ui: &mut Ui, r: &wip_engine::BuildReport) {
         }
         if let Some(root) = r.media_folder.parent() {
             let text = format!("You can delete the working folder when you're done: {}", root.display());
-            ui.add(egui::Label::new(RichText::new(&text).size(13.5).color(theme::TEXT_DIM)).truncate())
+            ui.add(egui::Label::new(RichText::new(&text).size(12.0).color(theme::TEXT_DIM)).truncate())
                 .on_hover_text(&text);
         }
     });
@@ -1392,5 +1393,5 @@ fn what_happens(app: &App, ui: &mut Ui) {
             dim(ui, &format!("{} chosen options have nothing to do in this image and are skipped.", p.skipped.len()));
         }
     });
-    ui.add_space(8.0);
+    ui.add_space(4.0);
 }

@@ -128,7 +128,7 @@ fn segmented(ui: &mut egui::Ui, compact: bool, opts: &[(&str, &str)], current: u
                 let (label, hint) = opts[i];
                 let on = i == current;
                 let text =
-                    RichText::new(label).size(12.5).strong().color(if on { theme::TEXT } else { theme::RAIL_MUTED });
+                    RichText::new(label).size(11.5).strong().color(if on { theme::TEXT } else { theme::RAIL_MUTED });
                 let b = egui::Button::new(text)
                     .fill(if on { theme::PRIMARY } else { Color32::TRANSPARENT })
                     .stroke(Stroke::NONE)
@@ -471,16 +471,16 @@ impl App {
     }
 
     fn rail(&mut self, ctx: &egui::Context) {
-        let advanced = self.mode() == Mode::Advanced;
-        let width = if advanced { 80.0 } else { 220.0 };
+        let advanced = true; // one slim rail in both layouts
+        let width = 72.0;
         egui::SidePanel::left("rail")
             .exact_width(width)
             .resizable(false)
-            .frame(Frame::new().fill(theme::RAIL).inner_margin(Margin::symmetric(if advanced { 6 } else { 14 }, 14)))
+            .frame(Frame::new().fill(theme::RAIL).inner_margin(Margin::symmetric(if advanced { 6 } else { 14 }, 8)))
             .show(ctx, |ui| {
                 if !advanced {
                     ui.horizontal(|ui| {
-                        ui.label(RichText::new("WinISOPilot").size(21.0).strong().color(theme::TEXT));
+                        ui.label(RichText::new("WinISOPilot").size(16.0).strong().color(theme::TEXT));
                         if self.demo {
                             ui.label(RichText::new("DEMO").strong().color(theme::WARN_TEXT));
                         }
@@ -503,7 +503,7 @@ impl App {
                     let mut settings = false;
                     let mut help = false;
                     let button = |ui: &mut egui::Ui, text: &str, name: &str, hint: &str, w: f32| {
-                        let b = egui::Button::new(RichText::new(text).size(15.0).color(theme::TEXT)).frame(false);
+                        let b = egui::Button::new(RichText::new(text).size(13.0).color(theme::TEXT)).frame(false);
                         let r = ui.add_sized(Vec2::new(w, 36.0), b).on_hover_text(hint);
                         r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
                         r.clicked()
@@ -524,9 +524,6 @@ impl App {
                     }
                     if help {
                         self.show_help = !self.show_help;
-                    }
-                    if self.demo && advanced {
-                        ui.label(RichText::new("DEMO").strong().color(theme::WARN_TEXT));
                     }
                 });
             });
@@ -611,7 +608,7 @@ impl App {
             (Color32::TRANSPARENT, theme::RAIL_MUTED, theme::RAIL_MUTED)
         };
         let glyph = if done { "✔".to_string() } else { s.number().to_string() };
-        let size = Vec2::new(ui.available_width(), if compact { 44.0 } else { 36.0 });
+        let size = Vec2::new(ui.available_width(), if compact { 32.0 } else { 36.0 });
         let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click());
         let resp = resp.on_hover_text(format!("Step {}: {}", s.number(), s.label()));
         resp.widget_info(|| {
@@ -632,7 +629,7 @@ impl App {
             );
         }
         let center = if compact { rect.center() } else { egui::pos2(rect.left() + 14.0, rect.center().y) };
-        let r = 13.0;
+        let r = 11.0;
         p.circle(
             center,
             r,
@@ -669,7 +666,7 @@ impl App {
                 let selected = self.view == View::Cat(c);
                 let n = self.selected_in(c);
                 let text = if n > 0 { format!("{}  · {n}", c.label()) } else { c.label().to_string() };
-                let b = egui::Button::new(RichText::new(text).size(14.0).color(if selected {
+                let b = egui::Button::new(RichText::new(text).size(12.5).color(if selected {
                     theme::TEXT
                 } else {
                     theme::RAIL_MUTED
@@ -737,10 +734,13 @@ impl eframe::App for App {
                 self.undo();
             }
         }
-        let title = match (self.tool, self.step) {
+        let mut title = match (self.tool, self.step) {
             (Tool::Usb, _) => "WinISOPilot — Write to USB".to_string(),
             (_, s) => format!("WinISOPilot — {} (step {} of 6)", s.label(), s.number()),
         };
+        if self.demo {
+            title.push_str(" [DEMO]");
+        }
         if self.window_title != title {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
             self.window_title = title;

@@ -79,7 +79,7 @@ impl Page {
                 self.range.end,
                 self.total
             );
-            ui.label(RichText::new(shown).size(13.0).color(crate::theme::TEXT_DIM));
+            ui.label(RichText::new(shown).size(12.0).color(crate::theme::TEXT_DIM));
             if ui
                 .add_enabled(page + 1 < self.pages, egui::Button::new("Next page"))
                 .on_hover_text("PageDown, or scroll over the list")

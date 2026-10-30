@@ -35,9 +35,9 @@ fn mode_card(ui: &mut egui::Ui, title: &str, text: &str, selected: bool) -> bool
         .stroke(stroke)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.set_min_height(140.0);
+            ui.set_min_height(96.0);
             ui.vertical(|ui| {
-                ui.label(RichText::new(title).size(18.0).strong());
+                ui.label(RichText::new(title).size(15.0).strong());
                 body(ui, text);
                 ui.add_space(6.0);
                 ui.label(
@@ -62,7 +62,7 @@ fn first_run(app: &mut App, ctx: &egui::Context) {
     let current = app.settings.mode.unwrap_or(Mode::Guided);
     let mut pick: Option<Mode> = None;
     egui::Modal::new(egui::Id::new("first-run")).show(ctx, |ui| {
-        ui.set_width(660.0);
+        ui.set_width(560.0);
         h1(ui, "How would you like to work?");
         body(ui, "Pick the layout for this session. Switch any time with Guided / Advanced in the left panel; your work is kept.");
         ui.add_space(10.0);
@@ -114,7 +114,7 @@ fn settings(app: &mut App, ctx: &egui::Context) {
     // A modal keeps the whole window in view (title, Done button) and closes
     // with Done, Esc or a click outside.
     let resp = egui::Modal::new(egui::Id::new("settings")).show(ctx, |ui| {
-        ui.set_width(760.0_f32.min(ctx.content_rect().width() - 60.0));
+        ui.set_width(640.0_f32.min(ctx.content_rect().width() - 40.0));
         ui.horizontal(|ui| {
             h1(ui, "Settings");
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
