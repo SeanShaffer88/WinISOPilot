@@ -4,6 +4,9 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## [Unreleased]
 
+### Added
+- docs/references.md: curated primary sources (Windows deployment, disc formats, boot, security, testing).
+
 ### Changed
 - Roadmap: USB layout modes and write-through progress (from windows2usb), reusable projects / cached source media (from JLIVECD). Credited in CREDITS.md as ideas only.
 
