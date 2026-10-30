@@ -125,6 +125,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
         eyebrow(ui, "Write to USB");
         h1(ui, "Make a bootable USB drive");
         body(ui, "Puts Windows installation media on a USB stick that boots on BIOS and UEFI PCs. Everything on the stick is erased.");
+        crate::help::tip(app, ui);
         ui.add_space(10.0);
 
         if let Some(r) = app.usb.report.clone() {

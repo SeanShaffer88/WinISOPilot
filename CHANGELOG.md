@@ -9,6 +9,20 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Downloads are only from Microsoft hosts (`dl.delivery.mp.microsoft.com`, `download.microsoft.com`, `go.microsoft.com`); HTTPS first, HTTP only as a fallback that is still hash-verified.
 - Tag- or `release/v*`-branch-triggered release workflow that builds, tests and publishes the exe with checksums.
 - `--source` demo flag.
+- **Help everywhere**: F1 or the Help button opens help for the current page (what it does, what happens next, keyboard shortcuts); each page shows a one-line tip (can be turned off).
+- **Redo** (Ctrl+Y / Ctrl+Shift+Z) alongside Undo; Undo/Redo history kept for 200 changes.
+- **Keyboard**: Alt+Right / Alt+Left for Next / Back, Ctrl+F to search options, clear-search button.
+- **Clear section** button in Guided mode (undoable).
+- Review page explains **what happens when you select Build**, step by step, from the actual plan.
+- Error messages offer **Copy details** and **Open log folder**.
+- Settings: **Stronger contrast** (white text, thick yellow focus outline), **Reduce motion**, **Show tips**.
+- Window title shows the current step.
+- docs/user-guide.md and docs/quality-traits.md.
+
+### Changed
+- Settings files from older versions load with new options at their defaults instead of being reset.
+- Free disk space is checked at most every 5 seconds instead of every frame.
+- Guided toolbar wraps on narrow windows; Help and Settings share one row in the rail.
 
 ## [0.3.0] - 2026-10-30
 

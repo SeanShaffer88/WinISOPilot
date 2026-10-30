@@ -19,7 +19,9 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Inspect ISO, prepare, build, discard, leftover cleanup on real media | **Unverified** | Requires an elevated Windows run with a real ISO |
 | Resulting ISO boots (BIOS and UEFI) and installs | **Unverified** | Requires a VM install test per edition/build |
 | Each catalog option has the documented effect after installation | **Unverified** | Option texts are based on Microsoft documentation and well-known behavior; per-build effects (especially Copilot, Recall, BypassNRO, OneDrive) change over time |
-| Keyboard-only and screen-reader walkthrough | **Unverified** | AccessKit is enabled; needs a Narrator/NVDA pass on Windows |
+| Keyboard-only and screen-reader walkthrough | **Unverified** | AccessKit is enabled; custom rail and table controls have accessible names; shortcuts for Next/Back/Undo/Redo/Search/Help. Needs a Narrator/NVDA pass on Windows |
+| Stronger contrast, reduce motion, tips, help panel, review summary | Partially verified | Rendered on Linux/Mesa with `--demo --review` / `--help-panel`; settings back-compat unit test |
+| Undo/redo history | Verified | `history` tests |
 | Windows 10 host | **Unverified** | Supported by design; not run |
 | USB eligibility rules, identity check, diskpart script, FAT32 file plan (split only install.wim, size checks) | Verified | `wip-core::usb` tests |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |

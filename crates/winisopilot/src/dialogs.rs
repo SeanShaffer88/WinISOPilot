@@ -122,9 +122,19 @@ fn settings(app: &mut App, ctx: &egui::Context) {
             let mut pct = (app.settings.text_scale * 100.0).round() as i32;
             if ui.add(egui::Slider::new(&mut pct, 75..=200).suffix("%")).changed() {
                 app.settings.text_scale = pct as f32 / 100.0;
-                ctx.set_zoom_factor(app.settings.text_scale);
                 changed = true;
             }
+            dim(ui, "Ctrl + and Ctrl − also change the size.");
+            ui.add_space(8.0);
+            h2(ui, "Accessibility and comfort");
+            changed |= ui
+                .checkbox(
+                    &mut app.settings.high_contrast,
+                    "Stronger contrast (white text, thicker yellow focus outline)",
+                )
+                .changed();
+            changed |= ui.checkbox(&mut app.settings.reduce_motion, "Reduce motion (no animations)").changed();
+            changed |= ui.checkbox(&mut app.settings.show_tips, "Show a tip at the top of each page").changed();
             ui.add_space(8.0);
             h2(ui, "Windows ADK DISM folder");
             dim(
@@ -179,6 +189,7 @@ fn settings(app: &mut App, ctx: &egui::Context) {
             );
         });
     if changed {
+        crate::theme::apply(ctx, &app.settings);
         app.save_settings();
     }
     if !open {
