@@ -121,13 +121,22 @@ pub fn footprint_card(ui: &mut egui::Ui, r: &BuildReport) {
 // ------------------------------------------------------------- Boot test
 
 pub fn boot_test_card(app: &mut App, ui: &mut egui::Ui, r: &BuildReport) {
+    let guided = app.mode() == wip_core::settings::Mode::Guided;
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
-        h2(ui, "Test it in a virtual machine");
-        body(
-            ui,
-            "Installs your ISO in a temporary Hyper-V VM and checks from inside Windows that every change took effect. Your PC and disks aren't touched.",
-        );
+        if guided {
+            h2(ui, "Try it safely first (optional)");
+            body(
+                ui,
+                "WinISOPilot can install your new Windows inside a pretend PC on this computer and check every change worked. Nothing on your real PC is touched.",
+            );
+        } else {
+            h2(ui, "Boot test (Hyper-V)");
+            body(
+                ui,
+                "Gen 2 VM, Secure Boot, vTPM, no network. Unattended install, autologon, in-guest verification of every compiled check.",
+            );
+        }
         let Some(iso) = r.iso.clone() else {
             dim(ui, "Needs an ISO file. Install the Windows ADK Deployment Tools to create one.");
             return;
@@ -139,14 +148,19 @@ pub fn boot_test_card(app: &mut App, ui: &mut egui::Ui, r: &BuildReport) {
                 &["Microsoft doesn't publish a setup key for this edition. If the test times out, open the VM in Hyper-V Manager and choose \"I don't have a product key\".".into()],
             );
         }
-        dim(ui, "Needs Hyper-V (Pro, Enterprise or Education), about 70 GB free and 4 GB spare memory. Takes 15–40 minutes.");
-        ui.checkbox(&mut app.extras.keep_vm, "Keep the VM afterwards (always kept if a check fails)");
         let mut run = false;
-        ui.horizontal(|ui| {
-            run = theme::primary(ui, "Run boot test", !app.busy()).clicked();
-            ui.label("Give up after");
-            ui.add(egui::DragValue::new(&mut app.extras.timeout_minutes).range(20..=240).suffix(" min"));
-        });
+        if guided {
+            dim(ui, "Works on Windows Pro with Hyper-V turned on. Takes 15–40 minutes.");
+            run = theme::secondary(ui, "Test it", !app.busy()).clicked();
+        } else {
+            dim(ui, "Requires Hyper-V, ~70 GB free in the workspace and 4 GB RAM.");
+            ui.checkbox(&mut app.extras.keep_vm, "Keep VM (always kept on failure)");
+            ui.horizontal(|ui| {
+                run = theme::primary(ui, "Run boot test", !app.busy()).clicked();
+                ui.label("Timeout");
+                ui.add(egui::DragValue::new(&mut app.extras.timeout_minutes).range(20..=240).suffix(" min"));
+            });
+        }
         if run {
             let Some(snap) = app.extras.snapshot.clone() else { return };
             let Some(parent) = app

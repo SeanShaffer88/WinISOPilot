@@ -41,7 +41,7 @@ pub fn topic(app: &App) -> Topic {
         },
         Step::Source => Topic {
             title: "Choose a Windows ISO",
-            tip: "Tip: don't have an ISO? Use Download Windows from Microsoft below.",
+            tip: "Tip: don't have an ISO? Use Download Windows for me on the right.",
             paragraphs: &[
                 "Choose an official Windows 10 or 11 ISO, or download the current release from Microsoft inside the app.",
                 "The working folder holds a temporary copy of Windows while you customize it. Use a fast local drive with plenty of space; the needed amount is shown.",
@@ -69,11 +69,12 @@ pub fn topic(app: &App) -> Topic {
         },
         Step::Customize => Topic {
             title: "Customize",
-            tip: "Tip: select an option's name to read what it does and what could stop working. Ctrl+Z undoes.",
+            tip: "Tip: click an option's name to read what it does. Not sure? Leave it unticked.",
             paragraphs: &[
                 "Tick the changes you want. Anything left unticked stays as Microsoft ships it.",
                 "Each option has a risk badge. Safe options don't affect how Windows works for most people; higher risks list what could stop working.",
-                "The Level menu shows more options as you gain confidence. Presets add a common set in one click.",
+                "Riskier options are hidden. \"Show them\" (or Settings) reveals more. Quick picks tick a sensible set in one click.",
+                "Made a mistake? Ctrl+Z undoes it, or \"Untick all here\" clears the page.",
             ],
             next: "Use Next to move through the sections, then Review before building.",
         },
@@ -112,7 +113,8 @@ pub const SHORTCUTS: &[(&str, &str)] = &[
 
 /// One-line tip under the page heading.
 pub fn tip(app: &App, ui: &mut egui::Ui) {
-    if app.settings.show_tips {
+    // Tips are for beginners; Advanced pages carry their own technical subtitle.
+    if app.settings.show_tips && (app.mode() == Mode::Guided || app.step == Step::Customize) {
         ui.label(RichText::new(topic(app).tip).size(13.0).italics().color(theme::TEXT_DIM));
     }
 }

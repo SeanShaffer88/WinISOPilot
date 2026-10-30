@@ -56,7 +56,7 @@ fn first_run(app: &mut App, ctx: &egui::Context) {
             if mode_card(
                 ui,
                 "Guided (recommended)",
-                "One section at a time, with a plain-language explanation of every option and what it could break. Riskier options stay hidden until you ask for them.",
+                "For everyone. Simple questions, plain words, safe choices made for you. Riskier options stay hidden until you ask for them.",
                 true,
             ) {
                 pick = Some(Mode::Guided);
@@ -65,7 +65,7 @@ fn first_run(app: &mut App, ctx: &egui::Context) {
             if mode_card(
                 ui,
                 "Advanced",
-                "A dense table of everything in the image, with package names, risk filters and technical details. For people who know Windows internals.",
+                "For experts. Every package, capability and setting in one table, editable paths, the exact DISM/registry operation plan, all output and USB options.",
                 false,
             ) {
                 pick = Some(Mode::Advanced);

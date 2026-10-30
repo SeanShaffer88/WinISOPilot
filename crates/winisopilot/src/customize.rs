@@ -136,17 +136,17 @@ fn explainer(app: &App, ui: &mut Ui, compact: bool) {
             ui.label(RichText::new(a.technical()).monospace().size(12.0).color(theme::TEXT_DIM));
         }
     };
+    // Guided never shows package names or registry paths; Advanced always does.
     if compact {
         ui.separator();
         show_tech(ui);
-    } else {
-        egui::CollapsingHeader::new("Technical details").default_open(false).show(ui, show_tech);
     }
 }
 
 fn presets_menu(app: &mut App, ui: &mut Ui) {
     let presets = app.catalog.presets.clone();
-    ui.menu_button(RichText::new("Presets…").size(14.0), |ui| {
+    let label = if app.mode() == Mode::Guided { "Quick picks…" } else { "Presets…" };
+    ui.menu_button(RichText::new(label).size(14.0), |ui| {
         for p in presets {
             let r = ui.add(egui::Button::new(RichText::new(&p.title).strong()).frame(false));
             let r = r.on_hover_text(&p.summary);
@@ -248,25 +248,12 @@ fn guided(app: &mut App, ctx: &egui::Context) {
             crate::help::tip(app, ui);
             ui.add_space(4.0);
             ui.horizontal_wrapped(|ui| {
-                search_box(app, ui, 220.0);
-                let mut level = app.settings.level;
-                egui::ComboBox::from_id_salt("level").selected_text(format!("Level: {}", level.label())).show_ui(
-                    ui,
-                    |ui| {
-                        for l in Level::ALL {
-                            ui.selectable_value(&mut level, l, l.label());
-                        }
-                    },
-                );
-                if level != app.settings.level {
-                    app.settings.level = level;
-                    app.save_settings();
-                }
                 presets_menu(app, ui);
+                search_box(app, ui, 200.0);
                 let n = app.selected_in(cat);
                 if ui
-                    .add_enabled(n > 0, egui::Button::new("Clear section"))
-                    .on_hover_text("Untick every option in this section (Ctrl+Z undoes)")
+                    .add_enabled(n > 0, egui::Button::new("Untick all here"))
+                    .on_hover_text("Untick every option on this page (Ctrl+Z undoes)")
                     .clicked()
                 {
                     let keep: wip_core::plan::Selection = app
@@ -302,8 +289,8 @@ fn guided(app: &mut App, ctx: &egui::Context) {
             page.controls(ui, area);
             if hidden > 0 {
                 ui.horizontal(|ui| {
-                    dim(ui, &format!("{hidden} more options are hidden at the {} level.", app.settings.level.label()));
-                    if ui.link("Show more").clicked() {
+                    dim(ui, &format!("{hidden} riskier options are hidden to keep things safe."));
+                    if ui.link("Show them").on_hover_text("Also changeable in Settings").clicked() {
                         app.settings.level = match app.settings.level {
                             Level::Beginner => Level::Intermediate,
                             _ => Level::Expert,

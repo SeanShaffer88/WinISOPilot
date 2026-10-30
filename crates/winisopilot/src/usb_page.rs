@@ -170,10 +170,15 @@ fn show_error(app: &App, ui: &mut egui::Ui) {
     }
 }
 
+fn guided(app: &App) -> bool {
+    crate::pages::guided(app)
+}
+
 fn source_card(app: &mut App, ui: &mut egui::Ui) {
+    let g = guided(app);
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
-        h2(ui, "What to write");
+        h2(ui, if g { "1. Which Windows file?" } else { "Source" });
         let shown = match &app.usb.source {
             Some(UsbSource::Iso(p)) => format!("ISO: {}", p.display()),
             Some(UsbSource::Folder(p)) => format!("Folder: {}", p.display()),
@@ -186,21 +191,29 @@ fn source_card(app: &mut App, ui: &mut egui::Ui) {
                     app.usb.source = Some(UsbSource::Iso(p));
                 }
             }
-            if theme::secondary(ui, "Choose folder…", true).clicked() {
+            if !g && theme::secondary(ui, "Choose folder…", true).clicked() {
                 if let Some(p) = rfd::FileDialog::new().set_title("Choose a Windows media folder").pick_folder() {
                     app.usb.source = Some(UsbSource::Folder(p));
                 }
             }
         });
-        dim(ui, "Use an ISO you built with WinISOPilot, or any official Windows 10/11 ISO.");
+        dim(
+            ui,
+            if g {
+                "The .iso file you made with WinISOPilot, or one from Microsoft."
+            } else {
+                "ISO (mounted read-only) or an extracted media folder containing sources\\install.wim/.esd."
+            },
+        );
     });
 }
 
 fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
+        let g = guided(app);
         ui.horizontal(|ui| {
-            h2(ui, "USB drive");
+            h2(ui, if g { "2. Which USB stick?" } else { "Target disk" });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if theme::secondary(ui, "Refresh", !app.busy()).clicked() {
                     app.refresh_disks();
@@ -228,22 +241,30 @@ fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
 }
 
 fn options_card(app: &mut App, ui: &mut egui::Ui) {
+    let g = guided(app);
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
+        if g {
+            // Safe defaults for beginners: MBR boots on old and new PCs.
+            h2(ui, "3. Check the copy?");
+            ui.checkbox(&mut app.usb.verify, "Yes, check every file after copying (recommended)");
+            dim(ui, "Takes a few extra minutes but catches faulty USB sticks.");
+            return;
+        }
         h2(ui, "Options");
         ui.radio_value(&mut app.usb.scheme, Scheme::Mbr, Scheme::Mbr.label())
-            .on_hover_text("Not sure? Keep MBR. It works on both older and newer PCs.");
+            .on_hover_text("Active FAT32 partition + bootsect; boots BIOS and UEFI (CSM or not).");
         ui.radio_value(&mut app.usb.scheme, Scheme::Gpt, Scheme::Gpt.label())
-            .on_hover_text("Only for PCs that boot in UEFI mode without legacy support");
+            .on_hover_text("GPT with a FAT32 data partition; UEFI only.");
         ui.horizontal(|ui| {
-            ui.label("Drive name:");
+            ui.label("Volume label:");
             let r = ui.add(egui::TextEdit::singleline(&mut app.usb.label).char_limit(11).desired_width(160.0));
             if r.lost_focus() {
                 app.usb.label = sanitize_fat_label(&app.usb.label);
             }
         });
-        ui.checkbox(&mut app.usb.verify, "Check every file after copying (slower, recommended)");
-        dim(ui, "Formatted FAT32; images over 4 GB are split automatically.");
+        ui.checkbox(&mut app.usb.verify, "Verify (hash every copied file)");
+        dim(ui, "FAT32; install.wim over 4 GB is split into .swm with DISM.");
     });
 }
 
@@ -278,11 +299,12 @@ fn confirm(app: &mut App, ctx: &egui::Context, protected: Vec<PathBuf>) {
     if go {
         app.usb.confirm = false;
         let Some(source) = app.usb.source.clone() else { return };
+        let g = guided(app);
         let req = UsbRequest {
             source,
             disk,
-            scheme: app.usb.scheme,
-            label: sanitize_fat_label(&app.usb.label),
+            scheme: if g { Scheme::Mbr } else { app.usb.scheme },
+            label: if g { "WINSETUP".to_string() } else { sanitize_fat_label(&app.usb.label) },
             verify: app.usb.verify,
             protected_paths: protected,
         };

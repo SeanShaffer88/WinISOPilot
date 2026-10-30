@@ -14,8 +14,18 @@ Press **F1** on any page for help about that page.
 
 You choose a layout. You can switch later in **Settings**.
 
-- **Guided**: one section at a time, with an explanation panel. Recommended for most people.
-- **Advanced**: one dense table of everything in the image, with package names and technical details.
+- **Guided** (for everyone): plain words and as few choices as possible. WinISOPilot picks safe defaults for you: where temporary files go (your Downloads folder, or the ISO's folder), one edition per ISO, standard compression, where the new ISO is saved, MBR for USB sticks. Riskier options stay hidden until you select **Show them**.
+- **Advanced** (for experts): everything is visible and editable: host diagnostics (DISM/oscdimg paths and versions), typed or pasted ISO and workspace paths, image index metadata, the full catalog at Expert level plus unrated items, every option's DISM/registry actions, the compiled **operation plan** (copyable), compression, volume label, recipes, GPT/MBR, USB volume label, boot-test timeout, and the log open by default.
+
+| | Guided | Advanced |
+|---|---|---|
+| Welcome | Two big choices: make a cleaner Windows, or just make a USB stick; plain "before you start" fixes | Host diagnostics table and keyboard reference |
+| Choose ISO | "Choose the ISO file…" and "Download Windows for me" (language only) | Editable paths, architecture and package, file name and hash |
+| Edition | Names only, Pro marked as the safe pick | Index, EditionID, type, build, architecture, size, languages; single-index toggle |
+| Customize | Quick picks, search, plain explanations; riskier options hidden | Dense table, risk filter, unrated items, technical actions in the inspector |
+| Review | Changes, "what happens", where the ISO is saved | Operation plan, compression, volume label, save/load recipe |
+| Results | Plain summary; optional "Test it" | Boot-test options (keep VM, timeout); log open |
+| USB | Three numbered questions | Folder source, GPT/MBR, volume label |
 
 ## Customize an ISO
 
@@ -40,7 +50,7 @@ Pick the edition you'll install (Home, Pro…). Keeping only that edition makes 
 - Select an option's name to read what it does, **what could stop working**, and **how to undo it later**.
 - Risk badges: **Safe**, **Low**, **Moderate**, **High**. Beginner level shows only Safe and Low; use the **Level** menu to see more.
 - **Presets** add a common set (Light cleanup, Privacy, Gaming).
-- **Clear section** unticks everything in the current section.
+- **Untick all here** unticks everything on the current page.
 - Mistakes are easy to fix: **Ctrl+Z** undoes, **Ctrl+Y** redoes.
 
 Only options that apply to the opened edition are shown. Options the image already has are marked "Already set".

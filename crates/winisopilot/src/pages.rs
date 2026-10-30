@@ -121,7 +121,8 @@ pub fn log_tail(app: &App, ui: &mut Ui, lines: usize) {
     if app.log.is_empty() {
         return;
     }
-    egui::CollapsingHeader::new("Details").default_open(false).show(ui, |ui| {
+    // Advanced users see the log straight away; Guided keeps it folded.
+    egui::CollapsingHeader::new("Details").default_open(!guided(app)).show(ui, |ui| {
         let start = app.log.len().saturating_sub(lines);
         for l in &app.log[start..] {
             ui.add(egui::Label::new(RichText::new(l).monospace().size(12.0).color(theme::TEXT_DIM)).truncate())
@@ -179,22 +180,74 @@ fn workspace_banner(app: &mut App, ui: &mut Ui) -> bool {
 
 // ---------------------------------------------------------------- Welcome
 
+/// Guided = plain language, fewest choices. Advanced = every detail.
+pub fn guided(app: &App) -> bool {
+    app.mode() == wip_core::settings::Mode::Guided
+}
+
 pub fn welcome(app: &mut App, ctx: &egui::Context) {
     let ready = app.host.is_admin && app.host.dism_api.is_some();
     let status = if ready { "This PC is ready." } else { "Some checks need attention." };
     if let Nav::Next = footer(ctx, status, false, Some(("Get started", !app.busy()))) {
         app.goto(Step::Source);
     }
+    let g = guided(app);
     central(ctx, |ui| {
-        header(app, ui,
-            Step::Welcome,
-            "Make your own Windows installer",
-            "WinISOPilot walks you through removing apps, turning features on or off, and changing settings in a Windows 10 or 11 installation ISO. Your original ISO is never changed.",
-        );
-        two_columns(ui, |i, ui| match i {
-            0 => how_it_works(ui),
-            _ => this_pc(app, ui),
-        });
+        if g {
+            header(
+                app,
+                ui,
+                Step::Welcome,
+                "Let's make your own Windows installer",
+                "Answer a few simple questions. Nothing on this PC, and none of your files, is changed.",
+            );
+            two_columns(ui, |i, ui| {
+                let (title, text, button) = if i == 0 {
+                    (
+                        "Make a cleaner Windows",
+                        "Remove apps, ads and extras you don't want, then put the result on a USB stick to install.",
+                        "Start",
+                    )
+                } else {
+                    (
+                        "Just make a USB stick",
+                        "Put Windows on a USB stick exactly as Microsoft ships it, so you can install it on a PC.",
+                        "Make a USB stick",
+                    )
+                };
+                theme::card().show(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    ui.set_min_height(150.0);
+                    h2(ui, title);
+                    body(ui, text);
+                    ui.add_space(6.0);
+                    let clicked = if i == 0 {
+                        theme::primary(ui, button, !app.busy()).clicked()
+                    } else {
+                        theme::secondary(ui, button, !app.busy()).clicked()
+                    };
+                    if clicked && i == 0 {
+                        app.goto(Step::Source);
+                    } else if clicked {
+                        app.switch_tool(crate::app::Tool::Usb);
+                    }
+                });
+            });
+            ui.add_space(10.0);
+            simple_ready(app, ui);
+        } else {
+            header(
+                app,
+                ui,
+                Step::Welcome,
+                "Host diagnostics",
+                "Offline servicing of install.wim / install.esd via the DISM API, reg.exe hive edits and oscdimg. The source ISO is mounted read-only.",
+            );
+            two_columns(ui, |i, ui| match i {
+                0 => diagnostics(app, ui),
+                _ => shortcuts_card(ui),
+            });
+        }
         if !app.leftovers.is_empty() {
             ui.add_space(10.0);
             leftovers(app, ui);
@@ -205,60 +258,87 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
     });
 }
 
-fn how_it_works(ui: &mut Ui) {
+/// Guided: one plain line when everything is fine, otherwise what to do.
+fn simple_ready(app: &App, ui: &mut Ui) {
+    let h = &app.host;
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
-        h2(ui, "How it works");
-        for (n, t) in [
-            "Choose an official Windows 10 or 11 ISO.",
-            "Pick the edition, for example Windows 11 Pro.",
-            "Choose what to remove or change. Each option explains what it does and what could stop working.",
-            "Review everything in one list. Nothing has changed yet.",
-            "Build. You get a new ISO to put on a USB stick or use in a virtual machine.",
-        ]
-        .iter()
-        .enumerate()
-        {
-            body(ui, &format!("{}.  {t}", n + 1));
+        if h.is_admin && h.dism_api.is_some() && h.oscdimg.is_some() {
+            check_line(ui, true, "This PC has everything needed.");
+            return;
+        }
+        h2(ui, "Before you start");
+        if !h.is_admin {
+            check_line(
+                ui,
+                false,
+                "WinISOPilot needs permission to change Windows files. Close it, right-click it and choose \"Run as administrator\".",
+            );
+        }
+        if h.dism_api.is_none() || h.oscdimg.is_none() {
+            check_line(
+                ui,
+                h.dism_api.is_some(),
+                "Install one free Microsoft tool, the Windows ADK \"Deployment Tools\", then restart WinISOPilot. Without it you get a folder of files instead of a single ISO file.",
+            );
+            ui.hyperlink_to(
+                "Get the Windows ADK from Microsoft (choose only \"Deployment Tools\" when installing)",
+                "https://learn.microsoft.com/windows-hardware/get-started/adk-install",
+            );
         }
     });
 }
 
-fn this_pc(app: &App, ui: &mut Ui) {
+/// Advanced: everything WinISOPilot detected about the host.
+fn diagnostics(app: &App, ui: &mut Ui) {
+    let h = &app.host;
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
-        h2(ui, "This PC");
-        let h = &app.host;
-        check_line(
-            ui,
-            h.is_admin,
-            if h.is_admin {
-                "Running as administrator"
-            } else {
-                "Not running as administrator (needed to open images)"
-            },
-        );
-        match &h.dism_api {
-            Some(p) => check_line(ui, true, &format!("DISM {} — {}", h.dism_version, p.display())),
-            None => check_line(ui, false, "DISM not found"),
-        }
-        match &h.oscdimg {
-            Some(p) => check_line(ui, true, &format!("ISO tool found — {}", p.display())),
-            None => check_line(
-                ui,
-                false,
-                "ISO tool (oscdimg.exe from the Windows ADK) not found: you'll get a folder instead of an ISO",
+        h2(ui, "Host");
+        let opt = |p: &Option<PathBuf>| p.as_ref().map_or("not found".to_string(), |p| p.display().to_string());
+        let rows = [
+            ("Elevated", if h.is_admin { "yes".to_string() } else { "NO — restart as administrator".into() }),
+            ("OS build", if h.os_build > 0 { h.os_build.to_string() } else { "unknown".into() }),
+            ("dismapi.dll", opt(&h.dism_api)),
+            ("DISM version", if h.dism_version.is_empty() { "—".into() } else { h.dism_version.clone() }),
+            ("dism.exe", opt(&h.dism_exe)),
+            ("oscdimg.exe", opt(&h.oscdimg)),
+            (
+                "ADK DISM override",
+                if app.settings.dism_folder.is_empty() { "none".into() } else { app.settings.dism_folder.clone() },
             ),
-        }
-        if h.os_build > 0 {
-            dim(ui, &format!("Windows build {}", h.os_build));
+            ("App data", wip_engine::app_data_dir().display().to_string()),
+        ];
+        egui::Grid::new("diag").num_columns(2).spacing([12.0, 4.0]).striped(true).show(ui, |ui| {
+            for (k, v) in rows {
+                ui.label(RichText::new(k).size(13.0).color(theme::TEXT_DIM));
+                ui.add(egui::Label::new(RichText::new(&v).monospace().size(12.5)).truncate()).on_hover_text(&v);
+                ui.end_row();
+            }
+        });
+        for n in &h.notes {
+            ui.label(RichText::new(n).size(12.5).color(theme::WARN_TEXT));
         }
         if h.dism_api.is_none() || h.oscdimg.is_none() {
             ui.hyperlink_to(
-                "Get the Windows ADK (Deployment Tools) from Microsoft",
+                "Windows ADK Deployment Tools",
                 "https://learn.microsoft.com/windows-hardware/get-started/adk-install",
             );
         }
+    });
+}
+
+fn shortcuts_card(ui: &mut Ui) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, "Keyboard");
+        egui::Grid::new("keys-welcome").num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
+            for (k, what) in crate::help::SHORTCUTS {
+                ui.label(RichText::new(*k).monospace().size(12.5));
+                ui.label(RichText::new(*what).size(13.0).color(theme::TEXT_BODY));
+                ui.end_row();
+            }
+        });
     });
 }
 
@@ -304,14 +384,34 @@ pub fn source(app: &mut App, ctx: &egui::Context) {
         }
         Nav::None => {}
     }
+    let g = guided(app);
+    if g && app.workspace_parent.is_none() {
+        // Beginners get a sensible place for temporary files without asking.
+        if let Some(home) = std::env::var_os("USERPROFILE") {
+            let d = PathBuf::from(home).join("Downloads");
+            if d.is_dir() {
+                app.workspace_parent = Some(d);
+            }
+        }
+    }
     central(ctx, |ui| {
-        header(
-            app,
-            ui,
-            Step::Source,
-            "Choose a Windows ISO",
-            "Use an official Windows 10 or 11 ISO from Microsoft. WinISOPilot only reads it.",
-        );
+        if g {
+            header(
+                app,
+                ui,
+                Step::Source,
+                "Where is Windows coming from?",
+                "You need a Windows installation file (an \"ISO\"). Use one you already have, or let WinISOPilot download it for you.",
+            );
+        } else {
+            header(
+                app,
+                ui,
+                Step::Source,
+                "Source ISO and workspace",
+                "Retail/MCT Windows 10 or 11 media with sources\\install.wim or install.esd. Mounted read-only.",
+            );
+        }
         let locked = workspace_banner(app, ui) || app.busy();
         two_columns(ui, |i, ui| {
             if i == 0 {
@@ -328,51 +428,121 @@ pub fn source(app: &mut App, ctx: &egui::Context) {
     });
 }
 
+fn set_iso(app: &mut App, p: PathBuf) {
+    if app.workspace_parent.is_none() || guided(app) {
+        if let Some(d) = p.parent().filter(|d| !d.as_os_str().is_empty()) {
+            app.workspace_parent = Some(d.to_path_buf());
+        }
+    }
+    app.iso_path = Some(p);
+    app.source = None;
+    app.chosen_index = None;
+}
+
+fn pick_iso(app: &mut App) {
+    if let Some(p) =
+        rfd::FileDialog::new().add_filter("Disc image", &["iso"]).set_title("Choose a Windows ISO").pick_file()
+    {
+        set_iso(app, p);
+    }
+}
+
 fn iso_card(app: &mut App, ui: &mut Ui, locked: bool) {
+    let g = guided(app);
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
-        h2(ui, "Windows ISO");
-        let shown = app.iso_path.as_ref().map_or("No ISO chosen".to_string(), |p| p.display().to_string());
-        path_label(ui, &shown);
+        if g {
+            h2(ui, "I already have a Windows ISO file");
+            match app.iso_path.as_ref().and_then(|p| p.file_name()) {
+                Some(n) => check_line(ui, true, &format!("Chosen: {}", n.to_string_lossy())),
+                None => dim(ui, "It's a file whose name ends in .iso, often in your Downloads folder."),
+            }
+            let label = if app.iso_path.is_some() { "Choose a different file…" } else { "Choose the ISO file…" };
+            if theme::primary(ui, label, !locked).clicked() {
+                pick_iso(app);
+            }
+            return;
+        }
+        h2(ui, "ISO");
+        let mut text = app.iso_path.as_ref().map(|p| p.display().to_string()).unwrap_or_default();
         ui.horizontal(|ui| {
-            if theme::secondary(ui, "Browse…", !locked).clicked() {
-                if let Some(p) = rfd::FileDialog::new()
-                    .add_filter("Disc image", &["iso"])
-                    .set_title("Choose a Windows ISO")
-                    .pick_file()
-                {
-                    if app.workspace_parent.is_none() {
-                        app.workspace_parent = p.parent().map(|d| d.to_path_buf());
-                    }
-                    app.iso_path = Some(p);
-                    app.source = None;
-                    app.chosen_index = None;
+            let r = ui.add_enabled(
+                !locked,
+                egui::TextEdit::singleline(&mut text)
+                    .hint_text("Path to .iso (paste or type)")
+                    .desired_width(ui.available_width() - 112.0)
+                    .font(egui::TextStyle::Monospace),
+            );
+            if r.lost_focus() {
+                let t = text.trim().trim_matches('"');
+                if t.is_empty() {
+                    app.iso_path = None;
+                } else if Some(PathBuf::from(t)) != app.iso_path {
+                    set_iso(app, PathBuf::from(t));
                 }
             }
+            if theme::secondary(ui, "Browse…", !locked).clicked() {
+                pick_iso(app);
+            }
         });
-        dim(ui, "Or get it from Microsoft's website, then choose it here:");
+        if let Some(p) = &app.iso_path {
+            match std::fs::metadata(p) {
+                Ok(m) => dim(ui, &format!("{} bytes ({})", m.len(), human_bytes(m.len()))),
+                Err(e) => {
+                    ui.label(RichText::new(format!("Not readable: {e}")).color(theme::ERR_TEXT));
+                }
+            }
+        }
         ui.horizontal_wrapped(|ui| {
-            ui.hyperlink_to("Windows 11 download page", "https://www.microsoft.com/software-download/windows11");
-            ui.hyperlink_to("Windows 10 download page", "https://www.microsoft.com/software-download/windows10ISO");
+            ui.hyperlink_to("Windows 11 ISO page", "https://www.microsoft.com/software-download/windows11");
+            ui.hyperlink_to("Windows 10 ISO page", "https://www.microsoft.com/software-download/windows10ISO");
         });
     });
 }
 
 fn working_folder_card(app: &mut App, ui: &mut Ui, locked: bool) {
+    let g = guided(app);
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
-        h2(ui, "Working folder");
-        dim(ui, "Space to unpack Windows while you customize it. Pick a fast local NTFS drive.");
-        let shown = app.workspace_parent.as_ref().map_or("No folder chosen".to_string(), |p| p.display().to_string());
-        path_label(ui, &shown);
+        if g {
+            h2(ui, "Where to keep temporary files");
+            let shown = app.workspace_parent.as_ref().map_or("Not chosen yet".to_string(), |p| p.display().to_string());
+            path_label(ui, &shown);
+            ui.horizontal(|ui| {
+                if theme::secondary(ui, "Change…", !locked).clicked() {
+                    if let Some(p) = rfd::FileDialog::new().set_title("Where to keep temporary files").pick_folder() {
+                        app.workspace_parent = Some(p);
+                    }
+                }
+                space_line(app, ui);
+            });
+            return;
+        }
+        h2(ui, "Workspace parent");
+        dim(
+            ui,
+            "Holds the extracted media, mount directory and output. Local NTFS, not a network or FAT32/exFAT drive.",
+        );
+        let mut text = app.workspace_parent.as_ref().map(|p| p.display().to_string()).unwrap_or_default();
         ui.horizontal(|ui| {
+            let r = ui.add_enabled(
+                !locked,
+                egui::TextEdit::singleline(&mut text)
+                    .hint_text("Folder path")
+                    .desired_width(ui.available_width() - 112.0)
+                    .font(egui::TextStyle::Monospace),
+            );
+            if r.lost_focus() {
+                let t = text.trim().trim_matches('"');
+                app.workspace_parent = (!t.is_empty()).then(|| PathBuf::from(t));
+            }
             if theme::secondary(ui, "Browse…", !locked).clicked() {
-                if let Some(p) = rfd::FileDialog::new().set_title("Choose a working folder").pick_folder() {
+                if let Some(p) = rfd::FileDialog::new().set_title("Workspace parent").pick_folder() {
                     app.workspace_parent = Some(p);
                 }
             }
-            space_line(app, ui);
         });
+        space_line(app, ui);
     });
 }
 
@@ -405,21 +575,37 @@ fn space_line(app: &mut App, ui: &mut Ui) {
 pub fn edition(app: &mut App, ctx: &egui::Context) {
     let ready = app.workspace.as_ref().is_some_and(|w| Some(w.edition.index) == app.chosen_index);
     let supported = app.edition().is_some_and(|e| e.support().is_ok());
-    let label = if ready { "Next" } else { "Open edition" };
-    match footer(ctx, "", true, Some((label, supported && !app.busy()))) {
+    let g = guided(app);
+    let label = match (ready, g) {
+        (true, _) => "Next",
+        (false, true) => "Continue",
+        (false, false) => "Open edition",
+    };
+    let status = if g && !ready { "The next step takes a few minutes." } else { "" };
+    match footer(ctx, status, true, Some((label, supported && !app.busy()))) {
         Nav::Back => app.goto(Step::Source),
         Nav::Next if ready => app.goto(Step::Customize),
         Nav::Next => start_prepare(app),
         Nav::None => {}
     }
     central(ctx, |ui| {
-        header(
-            app,
-            ui,
-            Step::Edition,
-            "Pick the edition to customize",
-            "An ISO usually holds several editions. Choose the one you'll install. Opening it takes a few minutes.",
-        );
+        if g {
+            header(
+                app,
+                ui,
+                Step::Edition,
+                "Which Windows do you want?",
+                "Pick the one you're allowed to install: it's shown in Settings > System > About on your current PC, or on its sticker. Most people have Home or Pro.",
+            );
+        } else {
+            header(
+                app,
+                ui,
+                Step::Edition,
+                "Image index",
+                "Select the index to service. Open edition exports it, mounts it read-write and inventories packages, capabilities and features.",
+            );
+        }
         let locked = workspace_banner(app, ui) || app.busy();
         let Some(src) = app.source.clone() else {
             body(ui, "Read an ISO first.");
@@ -446,15 +632,22 @@ pub fn edition(app: &mut App, ctx: &egui::Context) {
                         let name = RichText::new(&img.name).size(15.5).strong();
                         let l = ui.add(egui::Label::new(name).sense(egui::Sense::click()));
                         let fam = img.family().map_or("Unsupported", |f| f.label());
-                        let facts = match &support {
-                            Ok(_) => format!(
-                                "{fam} · {} · {} · {} · {}",
+                        let facts = match (&support, g) {
+                            (Ok(_), true) if img.edition_id.eq_ignore_ascii_case("Professional") => {
+                                "Recommended if you're not sure".to_string()
+                            }
+                            (Ok(_), true) => String::new(),
+                            (Ok(_), false) => format!(
+                                "#{} · {fam} · {} · {} · {} · {} · {} · {}",
+                                img.index,
+                                img.edition_id,
+                                img.installation_type,
                                 img.version_string(),
                                 img.architecture,
                                 human_bytes(img.size_bytes),
                                 img.languages.join(", ")
                             ),
-                            Err(why) => why.to_string(),
+                            (Err(why), _) => why.to_string(),
                         };
                         let color = if support.is_ok() { theme::TEXT_DIM } else { theme::ERR_TEXT };
                         ui.add(egui::Label::new(RichText::new(&facts).size(13.0).color(color)).truncate())
@@ -471,11 +664,16 @@ pub fn edition(app: &mut App, ctx: &egui::Context) {
         });
         page.controls(ui, list.response.rect);
         ui.add_space(8.0);
-        ui.add_enabled_ui(!locked, |ui| {
-            ui.checkbox(&mut app.single_edition, "Keep only this edition in the new ISO");
-        });
-        dim(ui, "Recommended. The ISO gets smaller and Setup won't ask which edition to install. Untick to keep every edition (only the chosen one is customized).");
-        ui.add_space(6.0);
+        if g {
+            // Beginners always get a single-edition ISO: smaller, and Setup asks one question less.
+            app.single_edition = true;
+        } else {
+            ui.add_enabled_ui(!locked, |ui| {
+                ui.checkbox(&mut app.single_edition, "Export only this index (single-edition install image)");
+            });
+            dim(ui, "Untick to keep every index in the output; only the selected one is serviced.");
+            ui.add_space(6.0);
+        }
         space_line(app, ui);
         ui.add_space(10.0);
         job_panel(app, ui);
@@ -528,22 +726,37 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
     let acks_needed = plan::needs_ack(&app.selection, &app.catalog);
     let all_acked = acks_needed.iter().all(|(id, _)| app.acks.contains(id));
     let has_ws = app.workspace.is_some();
+    let g = guided(app);
+    if g && app.iso_out.is_none() && app.host.oscdimg.is_some() {
+        app.iso_out = default_output(app);
+    }
     let out_ok = app.iso_out.is_some() || app.host.oscdimg.is_none();
     let can_build = has_ws && !plan::has_errors(&issues) && all_acked && out_ok && !app.busy();
     let status = format!("{} changes", app.selection.len());
-    match footer(ctx, &status, true, Some(("Build", can_build))) {
+    let build_label = if g { "Make my Windows" } else { "Build" };
+    match footer(ctx, &status, true, Some((build_label, can_build))) {
         Nav::Back => app.goto(Step::Customize),
         Nav::Next => start_build(app),
         Nav::None => {}
     }
     central(ctx, |ui| {
-        header(
-            app,
-            ui,
-            Step::Review,
-            "Review your changes",
-            "Nothing has been changed yet. Remove anything you're unsure about, then build.",
-        );
+        if g {
+            header(
+                app,
+                ui,
+                Step::Review,
+                "Check your changes",
+                "Nothing has been changed yet. Remove anything you're unsure about with ✖, then select Make my Windows.",
+            );
+        } else {
+            header(
+                app,
+                ui,
+                Step::Review,
+                "Review and plan",
+                "Selection, validation, compiled operation plan and output settings. Nothing is applied until Build.",
+            );
+        }
         let ack_ids: std::collections::BTreeSet<String> = acks_needed.iter().map(|(id, _)| id.clone()).collect();
         two_columns(ui, |i, ui| {
             if i == 0 {
@@ -571,7 +784,11 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
                     theme::warn_box(ui, "These will be skipped", &skipped);
                     ui.add_space(8.0);
                 }
-                what_happens(app, ui);
+                if g {
+                    what_happens(app, ui);
+                } else {
+                    operation_plan(app, ui);
+                }
                 output_card(app, ui);
                 show_error(app, ui);
             }
@@ -582,15 +799,18 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
 /// Every chosen change, one row each: risk, name, a confirmation tick for
 /// risky ones, and ✖ to remove. Paged so it never needs a scrollbar.
 fn changes_list(app: &mut App, ui: &mut Ui, ack_ids: &std::collections::BTreeSet<String>) {
+    let g = guided(app);
     ui.horizontal(|ui| {
         if theme::secondary(ui, "Undo", app.history.can_undo()).on_hover_text("Ctrl+Z").clicked() {
             app.undo();
         }
-        if theme::secondary(ui, "Save choices…", !app.selection.is_empty()).clicked() {
-            save_recipe(app);
-        }
-        if theme::secondary(ui, "Load choices…", !app.busy()).clicked() {
-            load_recipe(app);
+        if !g {
+            if theme::secondary(ui, "Save recipe…", !app.selection.is_empty()).clicked() {
+                save_recipe(app);
+            }
+            if theme::secondary(ui, "Load recipe…", !app.busy()).clicked() {
+                load_recipe(app);
+            }
         }
     });
     ui.add_space(6.0);
@@ -655,18 +875,32 @@ fn changes_list(app: &mut App, ui: &mut Ui, ack_ids: &std::collections::BTreeSet
 }
 
 fn output_card(app: &mut App, ui: &mut Ui) {
+    let g = guided(app);
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
+        if g {
+            h2(ui, "Where your new Windows is saved");
+            if app.host.oscdimg.is_some() {
+                let shown = app.iso_out.as_ref().map_or("Not chosen".to_string(), |p| p.display().to_string());
+                path_label(ui, &shown);
+                if theme::secondary(ui, "Change…", !app.busy()).clicked() {
+                    choose_output(app);
+                }
+            } else {
+                dim(ui, "You'll get a folder of setup files (install the Windows ADK Deployment Tools to get a single ISO file).");
+            }
+            return;
+        }
         h2(ui, "Output");
         let single = app.workspace.as_ref().map_or(app.single_edition, |_| app.output.single_edition);
         egui::Grid::new("output").num_columns(2).spacing([12.0, 8.0]).show(ui, |ui| {
-            ui.label("Editions");
-            dim(ui, if single { "Only the customized edition" } else { "All editions (only one customized)" });
+            ui.label("Indexes");
+            dim(ui, if single { "Serviced index only" } else { "All indexes (one serviced)" });
             ui.end_row();
             ui.label("Compression");
             let text = |c: Compression| match c {
-                Compression::Recovery => "Smallest (install.esd, slower)",
-                _ => "Standard (install.wim)",
+                Compression::Recovery => "Recovery: install.esd (smallest, slow)",
+                _ => "Maximum: install.wim",
             };
             egui::ComboBox::from_id_salt("compression").selected_text(text(app.output.compression)).show_ui(ui, |ui| {
                 for c in [Compression::Maximum, Compression::Recovery] {
@@ -674,15 +908,14 @@ fn output_card(app: &mut App, ui: &mut Ui) {
                 }
             });
             ui.end_row();
-            ui.label("Disc label");
-            let r =
-                ui.add(egui::TextEdit::singleline(&mut app.output.volume_label).desired_width(200.0).char_limit(32));
+            ui.label("Volume label");
+            let r = ui.add(egui::TextEdit::singleline(&mut app.output.volume_label).desired_width(200.0).char_limit(32));
             if r.lost_focus() {
                 app.output.volume_label = sanitize_label(&app.output.volume_label);
             }
             ui.end_row();
             if app.host.oscdimg.is_some() {
-                ui.label("Save ISO as");
+                ui.label("ISO path");
                 ui.horizontal(|ui| {
                     if theme::secondary(ui, "Choose…", !app.busy()).clicked() {
                         choose_output(app);
@@ -694,9 +927,85 @@ fn output_card(app: &mut App, ui: &mut Ui) {
             }
         });
         if app.host.oscdimg.is_none() {
-            dim(ui, "No ISO tool found: the finished files stay in the working folder.");
+            dim(ui, "oscdimg not found: output is the media folder in the workspace.");
         }
     });
+}
+
+/// A new, unused ISO path next to the working folder, for Guided mode.
+fn default_output(app: &App) -> Option<PathBuf> {
+    let dir = app.workspace_parent.clone()?;
+    let base = app.edition().map_or("Windows-custom".to_string(), |e| format!("{}-custom", e.name.replace(' ', "-")));
+    (0..100)
+        .map(|n| dir.join(if n == 0 { format!("{base}.iso") } else { format!("{base}-{n}.iso") }))
+        .find(|p| !p.exists())
+}
+
+/// Advanced: the exact compiled operations, in execution order.
+fn operation_plan(app: &mut App, ui: &mut Ui) {
+    let Some(ctx) = app.plan_ctx().filter(|c| c.inventory.is_some()) else {
+        theme::card().show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            h2(ui, "Operation plan");
+            dim(ui, "Open an index to compile the plan.");
+        });
+        ui.add_space(10.0);
+        return;
+    };
+    let p = match plan::compile(&app.selection, &ctx) {
+        Ok(p) => p,
+        Err(e) => {
+            theme::error_box(ui, "Plan doesn't compile", &e);
+            ui.add_space(10.0);
+            return;
+        }
+    };
+    let lines: Vec<String> = p
+        .install
+        .iter()
+        .map(|o| ("install", o))
+        .chain(p.boot.iter().map(|o| ("boot.wim#2", o)))
+        .enumerate()
+        .map(|(n, (target, o))| format!("{:>3} [{target}] {}  ← {}", n + 1, o.op.describe(), o.origin))
+        .collect();
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.horizontal(|ui| {
+            h2(ui, &format!("Operation plan ({})", lines.len()));
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button("Copy").on_hover_text("Copy the whole plan as text").clicked() {
+                    let mut text = lines.join("\n");
+                    for (id, why) in &p.skipped {
+                        text.push_str(&format!("\nskipped {id}: {why}"));
+                    }
+                    ui.ctx().copy_text(text);
+                }
+            });
+        });
+        const ROW: f32 = 18.0;
+        let page = crate::pager::layout(ui, "plan", lines.len(), ROW, 190.0);
+        let area = ui
+            .scope(|ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
+                for l in &lines[page.range.clone()] {
+                    let size = egui::vec2(ui.available_width(), ROW);
+                    ui.allocate_ui_with_layout(size, egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        ui.add(
+                            egui::Label::new(RichText::new(l).monospace().size(11.5).color(theme::TEXT_BODY))
+                                .truncate(),
+                        )
+                        .on_hover_text(l);
+                    });
+                }
+            })
+            .response
+            .rect;
+        page.controls(ui, area);
+        if !p.skipped.is_empty() {
+            dim(ui, &format!("{} selected options compile to nothing on this image (see Copy).", p.skipped.len()));
+        }
+    });
+    ui.add_space(10.0);
 }
 
 fn choose_output(app: &mut App) {

@@ -41,6 +41,31 @@ impl EsdFile {
         )
     }
 
+    /// Plain name of the package: which editions the download contains.
+    /// Microsoft ships a consumer ESD (Home, Pro, Education…) and a
+    /// business ESD (Pro, Enterprise, Education…); "N" variants lack media apps.
+    pub fn package_label(&self) -> String {
+        let f = self.file_name.to_ascii_uppercase();
+        let n = self.edition.ends_with('N') && self.edition.len() > 1;
+        let base = if f.contains("CLIENTCONSUMER") {
+            "Home / Pro / Education".to_string()
+        } else if f.contains("CLIENTBUSINESS") {
+            "Pro / Enterprise / Education".to_string()
+        } else {
+            self.edition.clone()
+        };
+        if n {
+            format!("{base} N (no media apps)")
+        } else {
+            base
+        }
+    }
+
+    /// True for the package most people want: the consumer ESD, not "N".
+    pub fn is_default_package(&self) -> bool {
+        self.file_name.to_ascii_uppercase().contains("CLIENTCONSUMER") && !self.edition.ends_with('N')
+    }
+
     /// The hash to verify against: SHA-256 when published, else SHA-1.
     pub fn expected_hash(&self) -> Option<(&'static str, String)> {
         match (&self.sha256, &self.sha1) {
@@ -234,6 +259,8 @@ mod tests {
         assert_eq!(en.expected_hash().unwrap().0, "SHA1");
         let de = f.iter().find(|e| e.language_code == "de-de").unwrap();
         assert!(de.expected_hash().is_none(), "malformed hash is rejected");
+        assert!(en.package_label().starts_with("Home / Pro"));
+        assert!(en.is_default_package());
         assert!(parse_products("<MCT/>").is_err());
     }
 
