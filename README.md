@@ -17,6 +17,14 @@ A guided Windows 10/11 installation-media customizer. Pick an official ISO, choo
 - **Measured results.** The result screen shows the installed size, image size and component counts read before and after your changes. Nothing is estimated.
 - **Choices that survive new Windows releases.** Saved choices remember what each option did. Load them on a newer build and WinISOPilot shows what still matches, what changed, what no longer applies, and what's new.
 
+## Easy to use
+
+- Step-by-step wizard with a checklist rail; every finished step can be revisited.
+- Every option explains what it does, what could stop working, and how to undo it.
+- F1 help on every page, one-line tips, and a [user guide](docs/user-guide.md).
+- Undo and redo for every change; nothing touches your ISO until you build, and you can cancel between steps.
+- Keyboard shortcuts, screen-reader labels, text size 75–200%, stronger-contrast and reduced-motion settings.
+
 ## Two layouts
 
 On first launch WinISOPilot asks how you want to work. You can switch any time in **Settings**.
@@ -83,7 +91,7 @@ Run the tests with `cargo test --workspace`. `WinISOPilot.exe --demo` opens the 
 
 ## Documentation
 
-[CHANGELOG](CHANGELOG.md) · [AUDIT](AUDIT.md) · [CREDITS](CREDITS.md) · [Architecture](docs/architecture.md) · [Decisions](docs/decisions.md) · [Limitations](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Design tokens](docs/design-tokens.md)
+[User guide](docs/user-guide.md) · [Quality traits](docs/quality-traits.md) · [CHANGELOG](CHANGELOG.md) · [AUDIT](AUDIT.md) · [CREDITS](CREDITS.md) · [Architecture](docs/architecture.md) · [Decisions](docs/decisions.md) · [Limitations](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Design tokens](docs/design-tokens.md)
 
 ## License
 

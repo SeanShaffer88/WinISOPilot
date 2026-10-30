@@ -9,6 +9,7 @@ pub mod catalog;
 pub mod download;
 pub mod footprint;
 pub mod fsutil;
+pub mod history;
 pub mod inventory;
 pub mod journal;
 pub mod plan;

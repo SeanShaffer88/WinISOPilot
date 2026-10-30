@@ -182,12 +182,18 @@ fn apply_preset(app: &mut App, id: &str) {
 }
 
 fn search_box(app: &mut App, ui: &mut Ui, width: f32) {
-    ui.add(
+    let r = ui.add(
         egui::TextEdit::singleline(&mut app.search)
-            .hint_text("Search")
+            .hint_text("Search (Ctrl+F)")
             .desired_width(width)
             .margin(Margin::symmetric(8, 6)),
     );
+    if ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::F)) {
+        r.request_focus();
+    }
+    if !app.search.is_empty() && ui.small_button("✖").on_hover_text("Clear search").clicked() {
+        app.search.clear();
+    }
 }
 
 // ------------------------------------------------------------------ Guided
@@ -239,9 +245,10 @@ fn guided(app: &mut App, ctx: &egui::Context) {
             eyebrow(ui, "Step 4 of 6 · Customize");
             h1(ui, cat.label());
             body(ui, cat.blurb());
+            crate::help::tip(app, ui);
             ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                search_box(app, ui, 260.0);
+            ui.horizontal_wrapped(|ui| {
+                search_box(app, ui, 220.0);
                 let mut level = app.settings.level;
                 egui::ComboBox::from_id_salt("level").selected_text(format!("Level: {}", level.label())).show_ui(
                     ui,
@@ -256,6 +263,21 @@ fn guided(app: &mut App, ctx: &egui::Context) {
                     app.save_settings();
                 }
                 presets_menu(app, ui);
+                let n = app.selected_in(cat);
+                if ui
+                    .add_enabled(n > 0, egui::Button::new("Clear section"))
+                    .on_hover_text("Untick every option in this section (Ctrl+Z undoes)")
+                    .clicked()
+                {
+                    let keep: wip_core::plan::Selection = app
+                        .selection
+                        .iter()
+                        .filter(|id| app.catalog.get(id).is_none_or(|o| o.category != cat))
+                        .cloned()
+                        .collect();
+                    app.replace_selection(keep);
+                    app.notify(format!("Cleared {n} changes in {}. Ctrl+Z undoes.", cat.label()));
+                }
             });
             ui.add_space(6.0);
             let (list, hidden) = rows(app, View::Cat(cat), true);
@@ -417,12 +439,15 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                     if ui.button("Load…").clicked() {
                         crate::pages::load_recipe(app);
                     }
-                    if ui.add_enabled(!app.undo_stack.is_empty(), egui::Button::new("Undo")).clicked() {
+                    if ui.add_enabled(app.history.can_undo(), egui::Button::new("Undo")).on_hover_text("Ctrl+Z").clicked() {
                         app.undo();
                     }
                 });
             });
             ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), Stroke::new(1.0_f32, theme::DIVIDER));
+            if app.settings.show_tips {
+                Frame::new().inner_margin(Margin::symmetric(14, 0)).show(ui, |ui| crate::help::tip(app, ui));
+            }
             if app.view == View::Raw {
                 Frame::new().inner_margin(Margin::symmetric(14, 6)).show(ui, |ui| {
                     theme::warn_box(ui, "Unrated items", &["These come straight from the image and have no description or safety rating. Each one needs confirmation on Review.".into()]);

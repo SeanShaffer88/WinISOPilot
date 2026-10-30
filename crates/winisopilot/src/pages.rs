@@ -19,6 +19,14 @@ pub enum Nav {
 /// Bottom bar: quiet link on the left, Back / primary on the right.
 pub fn footer(ctx: &egui::Context, status: &str, back: bool, next: Option<(&str, bool)>) -> Nav {
     let mut nav = Nav::None;
+    // Keyboard: Alt+Right = Next, Alt+Left = Back (only when the button is enabled).
+    if next.is_some_and(|(_, enabled)| enabled)
+        && ctx.input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowRight))
+    {
+        nav = Nav::Next;
+    } else if back && ctx.input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowLeft)) {
+        nav = Nav::Back;
+    }
     egui::TopBottomPanel::bottom("footer")
         .exact_height(68.0)
         .frame(Frame::new().fill(theme::CHROME).inner_margin(Margin::symmetric(32, 12)))
@@ -27,11 +35,11 @@ pub fn footer(ctx: &egui::Context, status: &str, back: bool, next: Option<(&str,
                 ui.label(RichText::new(status).color(theme::TEXT_DIM));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if let Some((label, enabled)) = next {
-                        if theme::primary(ui, label, enabled).clicked() {
+                        if theme::primary(ui, label, enabled).on_hover_text("Alt+Right").clicked() {
                             nav = Nav::Next;
                         }
                     }
-                    if back && theme::secondary(ui, "Back", true).clicked() {
+                    if back && theme::secondary(ui, "Back", true).on_hover_text("Alt+Left").clicked() {
                         nav = Nav::Back;
                     }
                 });
@@ -51,15 +59,19 @@ pub fn central(ctx: &egui::Context, add: impl FnOnce(&mut Ui)) {
         });
 }
 
-fn header(ui: &mut Ui, step: Step, title: &str, blurb: &str) {
+fn header(app: &App, ui: &mut Ui, step: Step, title: &str, blurb: &str) {
     eyebrow(ui, &format!("Step {} of 6", step.number()));
     h1(ui, title);
-    body(ui, blurb);
+    if !blurb.is_empty() {
+        body(ui, blurb);
+    }
+    crate::help::tip(app, ui);
     ui.add_space(10.0);
 }
 
 /// Progress, log tail and Cancel for the running job.
 pub fn job_panel(app: &mut App, ui: &mut Ui) {
+    let reduce_motion = app.settings.reduce_motion;
     let Some(job) = app.job.as_mut() else { return };
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
@@ -71,6 +83,7 @@ pub fn job_panel(app: &mut App, ui: &mut Ui) {
         body(ui, &label);
         let bar = match job.progress {
             Some(p) => egui::ProgressBar::new(p).show_percentage(),
+            None if reduce_motion => egui::ProgressBar::new(0.0).text("Working…"),
             None => egui::ProgressBar::new(0.0).animate(true),
         };
         ui.add(bar.desired_height(14.0));
@@ -104,6 +117,17 @@ fn show_error(app: &App, ui: &mut Ui) {
             theme::warn_box(ui, "Stopped", std::slice::from_ref(&e.message));
         } else {
             theme::error_box(ui, &format!("Something went wrong ({})", e.code), &e.message);
+            ui.horizontal(|ui| {
+                if ui.button("Copy details").on_hover_text("Copy the error code and message").clicked() {
+                    ui.ctx().copy_text(format!("WinISOPilot {} {}: {}", wip_core::APP_VERSION, e.code, e.message));
+                }
+                if ui.button("Open log folder").clicked() {
+                    open_folder(wip_engine::app_data_dir().join("logs"));
+                }
+                ui.label(
+                    RichText::new("The Details section below shows what happened step by step.").color(theme::TEXT_DIM),
+                );
+            });
         }
         ui.add_space(8.0);
     }
@@ -134,8 +158,7 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
         app.goto(Step::Source);
     }
     central(ctx, |ui| {
-        header(
-            ui,
+        header(app, ui,
             Step::Welcome,
             "Make your own Windows installer",
             "WinISOPilot walks you through removing apps, turning features on or off, and changing settings in a Windows 10 or 11 installation ISO. Your original ISO is never changed.",
@@ -246,6 +269,7 @@ pub fn source(app: &mut App, ctx: &egui::Context) {
     }
     central(ctx, |ui| {
         header(
+            app,
             ui,
             Step::Source,
             "Choose a Windows ISO",
@@ -309,9 +333,9 @@ pub fn source(app: &mut App, ctx: &egui::Context) {
     });
 }
 
-fn space_line(app: &App, ui: &mut Ui) {
-    let Some(dir) = &app.workspace_parent else { return };
-    let free = wip_engine::free_space(dir);
+fn space_line(app: &mut App, ui: &mut Ui) {
+    let Some(dir) = app.workspace_parent.clone() else { return };
+    let free = app.free_space_cached(&dir);
     let iso = app.iso_path.as_ref().and_then(|p| std::fs::metadata(p).ok()).map(|m| m.len());
     let edition = app.edition().map(|e| e.size_bytes).unwrap_or(0);
     match (free, iso) {
@@ -342,6 +366,7 @@ pub fn edition(app: &mut App, ctx: &egui::Context) {
     }
     central(ctx, |ui| {
         header(
+            app,
             ui,
             Step::Edition,
             "Pick the edition to customize",
@@ -434,6 +459,7 @@ pub fn need_prepare(app: &mut App, ctx: &egui::Context) {
     }
     central(ctx, |ui| {
         header(
+            app,
             ui,
             Step::Customize,
             "Open an edition first",
@@ -462,6 +488,7 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
     }
     central(ctx, |ui| {
         header(
+            app,
             ui,
             Step::Review,
             "Review your changes",
@@ -471,7 +498,7 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
             theme::warn_box(ui, "No edition is open", &["Open an edition on the Edition step before building.".into()]);
         }
         ui.horizontal(|ui| {
-            if theme::secondary(ui, "Undo", !app.undo_stack.is_empty()).clicked() {
+            if theme::secondary(ui, "Undo", app.history.can_undo()).on_hover_text("Ctrl+Z").clicked() {
                 app.undo();
             }
             if theme::secondary(ui, "Save choices…", !app.selection.is_empty()).clicked() {
@@ -559,6 +586,7 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
             }
         }
 
+        what_happens(app, ui);
         ui.add_space(12.0);
         theme::card().show(ui, |ui| {
             ui.set_width(ui.available_width());
@@ -721,12 +749,12 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
             } else {
                 ("Building your Windows", "This can take 10–40 minutes. You can keep using your PC.")
             };
-            header(ui, Step::Build, title, blurb);
+            header(app, ui, Step::Build, title, blurb);
             job_panel(app, ui);
             return;
         }
         if let Some(r) = app.report.clone() {
-            header(ui, Step::Build, "Your Windows is ready", "The original ISO was not changed.");
+            header(app, ui, Step::Build, "Your Windows is ready", "The original ISO was not changed.");
             theme::card().show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 match &r.iso {
@@ -769,7 +797,7 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
             log_tail(app, ui, 200);
             return;
         }
-        header(ui, Step::Build, "The build stopped", "");
+        header(app, ui, Step::Build, "The build stopped", "");
         show_error(app, ui);
         if app.workspace.is_some() {
             body(ui, "The edition is still open. Discard it to start again from a clean copy; your choices are kept.");
@@ -790,4 +818,54 @@ fn open_folder(p: PathBuf) {
     {
         let _ = p;
     }
+}
+
+/// Plain-language summary of what Build will do, from the compiled plan.
+fn what_happens(app: &App, ui: &mut Ui) {
+    let Some(ctx) = app.plan_ctx().filter(|c| c.inventory.is_some()) else { return };
+    let Ok(p) = plan::compile(&app.selection, &ctx) else { return };
+    use wip_core::plan::Op;
+    let count = |f: &dyn Fn(&Op) -> bool| p.install.iter().chain(p.boot.iter()).filter(|o| f(&o.op)).count();
+    let apps = count(&|o| matches!(o, Op::RemoveAppx { .. }));
+    let caps = count(&|o| matches!(o, Op::RemoveCapability { .. }));
+    let feats = count(&|o| matches!(o, Op::DisableFeature { .. } | Op::EnableFeature { .. }));
+    let regs = count(&|o| matches!(o, Op::RegSet { .. } | Op::RegDelete { .. }));
+    let files = count(&|o| matches!(o, Op::DeleteFile { .. }));
+    let cleanup = count(&|o| matches!(o, Op::ComponentCleanup { .. }));
+    ui.add_space(12.0);
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, "What happens when you select Build");
+        let mut lines = Vec::new();
+        if apps + caps + feats > 0 {
+            lines.push(format!("1. Remove {apps} app packages and {caps} capabilities, and switch {feats} features"));
+        } else {
+            lines.push("1. No apps, capabilities or features change".to_string());
+        }
+        lines.push(format!(
+            "2. Write {regs} registry and service settings{}",
+            if files > 0 { " and delete WinRE" } else { "" }
+        ));
+        if cleanup > 0 {
+            lines.push("3. Clean up the component store (the slowest step)".into());
+        }
+        lines.push(format!(
+            "{}. Save the edition and rebuild the installation image{}",
+            lines.len() + 1,
+            if p.boot.is_empty() { "" } else { ", then change Windows Setup" }
+        ));
+        let out = match (&app.iso_out, &app.host.oscdimg) {
+            (Some(o), Some(_)) => format!("write the ISO to {}", o.display()),
+            (None, Some(_)) => "write the ISO (choose where below)".into(),
+            _ => "leave the finished files in the working folder".into(),
+        };
+        lines.push(format!("{}. Then {out}", lines.len() + 1));
+        for l in lines {
+            body(ui, &l);
+        }
+        if !p.skipped.is_empty() {
+            dim(ui, &format!("{} chosen options have nothing to do in this image and are skipped.", p.skipped.len()));
+        }
+        dim(ui, "Your original ISO is never changed. Cancel stops after the current step without saving.");
+    });
 }

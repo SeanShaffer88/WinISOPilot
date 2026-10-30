@@ -82,7 +82,7 @@ pub struct App {
     pub raw_items: Vec<RawItem>,
 
     pub selection: Selection,
-    pub undo_stack: Vec<Selection>,
+    pub history: wip_core::history::History<Selection>,
     pub view: View,
     pub focused: Option<String>,
     pub search: String,
@@ -99,6 +99,9 @@ pub struct App {
     pub report: Option<BuildReport>,
 
     pub show_settings: bool,
+    pub show_help: bool,
+    window_title: String,
+    free_cache: Option<(PathBuf, Instant, Option<u64>)>,
     pub confirm_cancel: bool,
     pub confirm_close: bool,
     allow_close: bool,
@@ -111,7 +114,7 @@ impl App {
         let settings_path = data.join("settings.json");
         let settings: Settings = read_json_or_quarantine(&settings_path).ok().flatten().unwrap_or_default();
         let settings = settings.sanitized();
-        theme::apply(&cc.egui_ctx, settings.text_scale);
+        theme::apply(&cc.egui_ctx, &settings);
         let catalog = Catalog::builtin().expect("the built-in catalog is validated by tests");
         let dism_folder = (!settings.dism_folder.is_empty()).then(|| PathBuf::from(&settings.dism_folder));
         let host = wip_engine::probe_host(dism_folder.as_deref());
@@ -147,7 +150,7 @@ impl App {
             inventory: None,
             raw_items: Vec::new(),
             selection: Selection::new(),
-            undo_stack: Vec::new(),
+            history: wip_core::history::History::new(200),
             view: View::Cat(Category::Apps),
             focused: None,
             search: String::new(),
@@ -162,6 +165,9 @@ impl App {
             last_error: None,
             report: None,
             show_settings: false,
+            show_help: false,
+            window_title: String::new(),
+            free_cache: None,
             confirm_cancel: false,
             confirm_close: false,
             allow_close: false,
@@ -233,10 +239,19 @@ impl App {
     // ---- selection editing with undo ----
 
     fn push_undo(&mut self) {
-        self.undo_stack.push(self.selection.clone());
-        if self.undo_stack.len() > 200 {
-            self.undo_stack.remove(0);
+        self.history.record(&self.selection);
+    }
+
+    /// Free space at `dir`, refreshed at most every 5 seconds.
+    pub fn free_space_cached(&mut self, dir: &std::path::Path) -> Option<u64> {
+        if let Some((p, at, v)) = &self.free_cache {
+            if p == dir && at.elapsed().as_secs() < 5 {
+                return *v;
+            }
         }
+        let v = wip_engine::free_space(dir);
+        self.free_cache = Some((dir.to_path_buf(), Instant::now(), v));
+        v
     }
 
     pub fn set_selected(&mut self, id: &str, on: bool) {
@@ -259,10 +274,18 @@ impl App {
     }
 
     pub fn undo(&mut self) {
-        if let Some(prev) = self.undo_stack.pop() {
+        if let Some(prev) = self.history.undo(&self.selection) {
             self.acks.retain(|a| prev.contains(a));
             self.selection = prev;
-            self.notify("Undid the last change.");
+            self.notify("Undid the last change. Ctrl+Y redoes it.");
+        }
+    }
+
+    pub fn redo(&mut self) {
+        if let Some(next) = self.history.redo(&self.selection) {
+            self.acks.retain(|a| next.contains(a));
+            self.selection = next;
+            self.notify("Redid the change.");
         }
     }
 
@@ -412,11 +435,30 @@ impl App {
                     }
                 }
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                    let label = if advanced { "⚙" } else { "⚙  Settings" };
-                    let b = egui::Button::new(RichText::new(label).size(15.0).color(theme::TEXT)).frame(false);
-                    let r = ui.add_sized(Vec2::new(ui.available_width(), 36.0), b).on_hover_text("Settings");
-                    if r.clicked() {
+                    let mut settings = false;
+                    let mut help = false;
+                    let button = |ui: &mut egui::Ui, text: &str, name: &str, hint: &str, w: f32| {
+                        let b = egui::Button::new(RichText::new(text).size(15.0).color(theme::TEXT)).frame(false);
+                        let r = ui.add_sized(Vec2::new(w, 36.0), b).on_hover_text(hint);
+                        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+                        r.clicked()
+                    };
+                    if advanced {
+                        let w = ui.available_width();
+                        settings = button(ui, "⚙", "Settings", "Settings", w);
+                        help = button(ui, "?", "Help", "Help for this page (F1)", w);
+                    } else {
+                        ui.horizontal(|ui| {
+                            let w = (ui.available_width() - 8.0) / 2.0;
+                            help = button(ui, "?  Help", "Help", "Help for this page (F1)", w);
+                            settings = button(ui, "⚙  Settings", "Settings", "Settings", w);
+                        });
+                    }
+                    if settings {
                         self.show_settings = true;
+                    }
+                    if help {
+                        self.show_help = !self.show_help;
                     }
                     if self.demo && advanced {
                         ui.label(RichText::new("DEMO").strong().color(theme::WARN_TEXT));
@@ -620,13 +662,30 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.pump_job(ctx);
         self.handle_close(ctx);
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z)) && !self.busy() {
-            self.undo();
+        if !self.busy() {
+            let redo = ctx.input_mut(|i| {
+                i.consume_key(egui::Modifiers::COMMAND, egui::Key::Y)
+                    || i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, egui::Key::Z)
+            });
+            if redo {
+                self.redo();
+            } else if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z)) {
+                self.undo();
+            }
+        }
+        let title = match (self.tool, self.step) {
+            (Tool::Usb, _) => "WinISOPilot — Write to USB".to_string(),
+            (_, s) => format!("WinISOPilot — {} (step {} of 6)", s.label(), s.number()),
+        };
+        if self.window_title != title {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
+            self.window_title = title;
         }
         self.rail(ctx);
         if self.tool == Tool::Usb {
             crate::usb_page::show(self, ctx);
             crate::dialogs::show(self, ctx);
+            crate::help::window(self, ctx);
             self.toast(ctx);
             return;
         }
@@ -641,6 +700,7 @@ impl eframe::App for App {
         }
         crate::dialogs::show(self, ctx);
         crate::extras::port_dialog(self, ctx);
+        crate::help::window(self, ctx);
         self.toast(ctx);
     }
 }

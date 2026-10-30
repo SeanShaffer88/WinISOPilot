@@ -6,6 +6,7 @@ mod customize;
 mod dialogs;
 mod download_ui;
 mod extras;
+mod help;
 mod jobs;
 mod pages;
 mod theme;
@@ -46,6 +47,8 @@ fn main() -> eframe::Result<()> {
     let usb = args.iter().any(|a| a == "--usb");
     let done = args.iter().any(|a| a == "--done");
     let source = args.iter().any(|a| a == "--source");
+    let review = args.iter().any(|a| a == "--review");
+    let help_open = args.iter().any(|a| a == "--help-panel");
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("WinISOPilot")
         .with_inner_size([1200.0, 760.0])
@@ -67,6 +70,10 @@ fn main() -> eframe::Result<()> {
                 app.workspace_parent = Some(std::path::PathBuf::from(r"D:\ISO"));
                 app.step = app::Step::Source;
             }
+            if review && demo {
+                app.step = app::Step::Review;
+            }
+            app.show_help = help_open;
             if done && demo {
                 dialogs::load_demo_done(&mut app);
             }

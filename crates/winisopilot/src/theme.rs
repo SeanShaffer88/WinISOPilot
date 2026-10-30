@@ -36,42 +36,47 @@ pub fn risk_colors(r: Option<Risk>) -> (Color32, Color32) {
     }
 }
 
-pub fn apply(ctx: &egui::Context, text_scale: f32) {
+pub const FOCUS_HC: Color32 = Color32::from_rgb(0xFF, 0xD4, 0x00);
+
+pub fn apply(ctx: &egui::Context, settings: &wip_core::settings::Settings) {
+    let hc = settings.high_contrast;
     let mut v = Visuals::dark();
     v.panel_fill = PAGE;
     v.window_fill = CARD;
-    v.window_stroke = Stroke::new(1.0_f32, DIVIDER);
+    v.window_stroke = Stroke::new(if hc { 2.0_f32 } else { 1.0 }, if hc { Color32::WHITE } else { DIVIDER });
     v.extreme_bg_color = FIELD;
     v.faint_bg_color = CARD;
-    v.hyperlink_color = ACCENT;
+    v.hyperlink_color = if hc { FOCUS_HC } else { ACCENT };
     v.selection.bg_fill = PRIMARY;
-    v.selection.stroke = Stroke::new(1.0_f32, TEXT);
-    v.override_text_color = Some(TEXT);
+    v.override_text_color = Some(if hc { Color32::WHITE } else { TEXT });
     let r = CornerRadius::same(6);
     for w in [&mut v.widgets.inactive, &mut v.widgets.hovered, &mut v.widgets.active, &mut v.widgets.open] {
         w.corner_radius = r;
     }
-    v.widgets.noninteractive.bg_stroke = Stroke::new(1.0_f32, DIVIDER);
-    v.widgets.noninteractive.fg_stroke = Stroke::new(1.0_f32, TEXT_BODY);
+    let border = if hc { Stroke::new(2.0_f32, Color32::WHITE) } else { Stroke::new(1.0_f32, BOUNDARY) };
+    v.widgets.noninteractive.bg_stroke = Stroke::new(1.0_f32, if hc { BOUNDARY } else { DIVIDER });
+    v.widgets.noninteractive.fg_stroke = Stroke::new(1.0_f32, if hc { Color32::WHITE } else { TEXT_BODY });
     v.widgets.inactive.bg_fill = FIELD;
     v.widgets.inactive.weak_bg_fill = FIELD;
-    v.widgets.inactive.bg_stroke = Stroke::new(1.0_f32, BOUNDARY);
-    v.widgets.inactive.fg_stroke = Stroke::new(1.0_f32, TEXT);
+    v.widgets.inactive.bg_stroke = border;
+    v.widgets.inactive.fg_stroke = Stroke::new(if hc { 2.0_f32 } else { 1.0 }, if hc { Color32::WHITE } else { TEXT });
     v.widgets.hovered.bg_fill = Color32::from_rgb(0x38, 0x38, 0x40);
     v.widgets.hovered.weak_bg_fill = Color32::from_rgb(0x38, 0x38, 0x40);
-    v.widgets.hovered.bg_stroke = Stroke::new(1.0_f32, ACCENT);
+    // Hovered and keyboard-focused widgets share this outline.
+    v.widgets.hovered.bg_stroke = Stroke::new(if hc { 3.0_f32 } else { 1.5 }, if hc { FOCUS_HC } else { ACCENT });
+    v.widgets.hovered.fg_stroke = Stroke::new(if hc { 2.0_f32 } else { 1.0 }, if hc { Color32::WHITE } else { TEXT });
     v.widgets.active.bg_fill = PRIMARY;
     v.widgets.active.weak_bg_fill = PRIMARY;
-    // Visible keyboard focus ring.
     v.widgets.hovered.expansion = 0.0;
+    v.selection.stroke = Stroke::new(if hc { 3.0_f32 } else { 2.0 }, if hc { FOCUS_HC } else { ACCENT });
     ctx.set_visuals(v);
     ctx.style_mut(|s| {
         s.spacing.item_spacing = Vec2::new(8.0, 8.0);
         s.spacing.button_padding = Vec2::new(14.0, 7.0);
         s.spacing.interact_size.y = 30.0;
-        s.visuals.selection.stroke = Stroke::new(2.0_f32, ACCENT);
+        s.animation_time = if settings.reduce_motion { 0.0 } else { 1.0 / 12.0 };
     });
-    ctx.set_zoom_factor(text_scale.clamp(0.75, 2.0));
+    ctx.set_zoom_factor(settings.text_scale.clamp(0.75, 2.0));
 }
 
 pub fn eyebrow(ui: &mut Ui, text: &str) {

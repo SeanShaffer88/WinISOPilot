@@ -23,6 +23,7 @@ impl Mode {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Settings {
     pub schema: u32,
     /// `None` until the user picks a mode on first launch.
@@ -35,6 +36,12 @@ pub struct Settings {
     pub workspace_root: String,
     /// Optional folder holding ADK DISM (dismapi.dll / dism.exe).
     pub dism_folder: String,
+    /// Stronger contrast: pure white text, thicker focus outlines and borders.
+    pub high_contrast: bool,
+    /// No animations (progress bars, panel transitions).
+    pub reduce_motion: bool,
+    /// Show the short tip line at the top of each page.
+    pub show_tips: bool,
 }
 
 impl Default for Settings {
@@ -46,6 +53,9 @@ impl Default for Settings {
             text_scale: 1.0,
             workspace_root: String::new(),
             dism_folder: String::new(),
+            high_contrast: false,
+            reduce_motion: false,
+            show_tips: true,
         }
     }
 }
@@ -59,5 +69,21 @@ impl Settings {
         }
         self.schema = SETTINGS_SCHEMA;
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_settings_files_still_load() {
+        let old =
+            r#"{"schema":1,"mode":"guided","level":"beginner","text_scale":1.0,"workspace_root":"","dism_folder":""}"#;
+        let s: Settings = serde_json::from_str(old).unwrap();
+        assert!(s.show_tips);
+        assert!(!s.high_contrast);
+        let bad: Settings = serde_json::from_str(r#"{"text_scale": 9.0}"#).unwrap();
+        assert_eq!(bad.sanitized().text_scale, 1.0);
     }
 }
