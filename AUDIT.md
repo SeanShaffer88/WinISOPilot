@@ -22,6 +22,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Keyboard-only and screen-reader walkthrough | **Unverified** | AccessKit is enabled; custom rail and table controls have accessible names; shortcuts for Next/Back/Undo/Redo/Search/Help. Needs a Narrator/NVDA pass on Windows |
 | Stronger contrast, reduce motion, tips, help panel, review summary | Partially verified | Rendered on Linux/Mesa with `--demo --review` / `--help-panel`; settings back-compat unit test |
 | Undo/redo history | Verified | `history` tests |
+| Every page fits without a scrollbar at 1200×760 and 1024×700 (100% text); Settings dialog closes with Done/Esc | Partially verified | Linux/Mesa `--demo` screenshots of every page in both layouts at both sizes; demo data has few editions and options, so multi-page lists were checked on Customize only. Not yet on Windows or at 125–200% scaling (a scrollbar appears there as a safety net) |
 | Windows 10 host | **Unverified** | Supported by design; not run |
 | USB eligibility rules, identity check, diskpart script, FAT32 file plan (split only install.wim, size checks) | Verified | `wip-core::usb` tests |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |

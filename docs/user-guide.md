@@ -36,6 +36,7 @@ Pick the edition you'll install (Home, Pro…). Keeping only that edition makes 
 
 ### 4. Customize
 - Tick what to change. Anything left unticked stays as Microsoft ships it.
+- Long lists are split into pages: use **Previous page** / **Next page**, PageUp / PageDown, or scroll the mouse wheel over the list.
 - Select an option's name to read what it does, **what could stop working**, and **how to undo it later**.
 - Risk badges: **Safe**, **Low**, **Moderate**, **High**. Beginner level shows only Safe and Low; use the **Level** menu to see more.
 - **Presets** add a common set (Light cleanup, Privacy, Gaming).
@@ -45,7 +46,7 @@ Pick the edition you'll install (Home, Pro…). Keeping only that edition makes 
 Only options that apply to the opened edition are shown. Options the image already has are marked "Already set".
 
 ### 5. Review
-Every change in one list. Remove any item with ✖. Risky and unrated changes need a tick to confirm. The **What happens when you select Build** box lists each step in plain words.
+Every change in one list. Remove any item with ✖. Risky and unrated changes need their **Confirm** box ticked. The **What happens when you select Build** box lists each step in plain words.
 
 Choose compression (Standard is best for USB sticks), a disc label, and where to save the ISO. **Save choices…** keeps your list in a small file you can load later, even on a newer Windows release; WinISOPilot then shows what still matches and what changed.
 
@@ -68,6 +69,8 @@ Choose **Write to USB** at the top of the left panel.
 
 ## Settings
 
+Select **Settings** at the bottom of the left panel. Changes are saved straight away; close with **Done** or Esc.
+
 - **Layout**: Guided or Advanced.
 - **Options shown in Guided mode**: Beginner, Intermediate or Expert.
 - **Text size** 75–200% (Ctrl + and Ctrl − also work).
@@ -85,6 +88,8 @@ Choose **Write to USB** at the top of the left panel.
 | Ctrl+F | Search options |
 | Tab / Shift+Tab | Move between controls |
 | Space / Enter | Tick a box / press a button |
+| PageUp / PageDown | Previous / next page of a list (pointer over the list) |
+| Esc | Close Settings |
 
 ## When something goes wrong
 

@@ -18,7 +18,7 @@ How WinISOPilot meets each target trait, and what's still open. Review this tabl
 | Consistent | Shared footer (Back / primary), shared cards, badges and colors from `theme.rs`; "changes" for selected options, "choices" for saved files | — |
 | Accessible | Keyboard shortcuts, accessible names on custom controls, text 75–200%, stronger contrast, reduce motion, non-color risk labels | Screen-reader walkthrough on Windows; system high-contrast detection |
 | Forgiving | Undo/redo (200 steps), Clear section, discard and start again, nothing changes before Build, typed confirmation before erasing | — |
-| Focused | One task per page; advanced detail behind Advanced layout and collapsible sections | — |
+| Focused | One task per page; every page fits the window without scrollbars (two columns, paged lists); advanced detail behind Advanced layout and collapsible sections | — |
 | Transparent | "What happens when you select Build", stage names, Details log, measured footprint, boot-test results | — |
 | Customizable | Layout, level, text size, contrast, motion, tips, DISM and working folders | — |
 | Maintainable | Pure logic in `wip-core` with tests; Windows work isolated in `wip-engine/src/win`; catalog in TOML; CI on every push | UI tests |

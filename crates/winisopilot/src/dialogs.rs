@@ -2,7 +2,7 @@
 
 use crate::app::{App, Step};
 use crate::theme::{self, body, dim, h1, h2};
-use eframe::egui::{self, Frame, Margin, RichText, Stroke, Vec2};
+use eframe::egui::{self, RichText, Stroke};
 use std::path::PathBuf;
 use wip_core::inventory::{AppxPackage, Inventory, NamedState, PackageState};
 use wip_core::settings::Mode;
@@ -91,108 +91,109 @@ fn first_run(app: &mut App, ctx: &egui::Context) {
 }
 
 fn settings(app: &mut App, ctx: &egui::Context) {
-    let mut open = true;
     let mut changed = false;
-    egui::Window::new("Settings")
-        .open(&mut open)
-        .collapsible(false)
-        .resizable(false)
-        .default_width(520.0)
-        .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
-        .frame(Frame::window(&ctx.style()).inner_margin(Margin::same(20)))
-        .show(ctx, |ui| {
-            h2(ui, "Layout");
-            let mut mode = app.mode();
-            ui.horizontal(|ui| {
-                changed |= ui.radio_value(&mut mode, Mode::Guided, "Guided").changed();
-                changed |= ui.radio_value(&mut mode, Mode::Advanced, "Advanced").changed();
-            });
-            app.settings.mode = Some(mode);
-            dim(ui, "Guided explains one section at a time. Advanced shows a dense table with technical details.");
-            ui.add_space(8.0);
-            h2(ui, "Options shown in Guided mode");
-            ui.horizontal(|ui| {
-                for l in Level::ALL {
-                    changed |= ui.radio_value(&mut app.settings.level, l, l.label()).changed();
+    let mut close = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+    // A modal keeps the whole window in view (title, Done button) and closes
+    // with Done, Esc or a click outside.
+    let resp = egui::Modal::new(egui::Id::new("settings")).show(ctx, |ui| {
+        ui.set_width(760.0_f32.min(ctx.content_rect().width() - 60.0));
+        ui.horizontal(|ui| {
+            h1(ui, "Settings");
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if theme::primary(ui, "Done", true).on_hover_text("Esc").clicked() {
+                    close = true;
                 }
             });
-            dim(ui, "Beginner: safe and low-risk options. Intermediate adds moderate risk. Expert shows everything.");
-            ui.add_space(8.0);
-            h2(ui, "Text size");
-            let mut pct = (app.settings.text_scale * 100.0).round() as i32;
-            if ui.add(egui::Slider::new(&mut pct, 75..=200).suffix("%")).changed() {
-                app.settings.text_scale = pct as f32 / 100.0;
-                changed = true;
-            }
-            dim(ui, "Ctrl + and Ctrl − also change the size.");
-            ui.add_space(8.0);
-            h2(ui, "Accessibility and comfort");
-            changed |= ui
-                .checkbox(
-                    &mut app.settings.high_contrast,
-                    "Stronger contrast (white text, thicker yellow focus outline)",
-                )
-                .changed();
-            changed |= ui.checkbox(&mut app.settings.reduce_motion, "Reduce motion (no animations)").changed();
-            changed |= ui.checkbox(&mut app.settings.show_tips, "Show a tip at the top of each page").changed();
-            ui.add_space(8.0);
-            h2(ui, "Windows ADK DISM folder");
-            dim(
-                ui,
-                "Optional. Use the ADK's DISM when your PC's own DISM is older than the Windows version you customize.",
-            );
-            ui.horizontal(|ui| {
-                let shown = if app.settings.dism_folder.is_empty() {
-                    "Automatic".to_string()
-                } else {
-                    app.settings.dism_folder.clone()
-                };
-                ui.label(RichText::new(shown).monospace().size(12.5));
-                if ui.button("Choose…").clicked() {
-                    if let Some(p) = rfd::FileDialog::new().pick_folder() {
-                        app.settings.dism_folder = p.display().to_string();
-                        changed = true;
+        });
+        dim(ui, "Changes are saved straight away.");
+        ui.add_space(6.0);
+        crate::pages::two_columns(ui, |i, ui| {
+            if i == 0 {
+                h2(ui, "Layout");
+                let mut mode = app.mode();
+                ui.horizontal(|ui| {
+                    changed |= ui.radio_value(&mut mode, Mode::Guided, "Guided").changed();
+                    changed |= ui.radio_value(&mut mode, Mode::Advanced, "Advanced").changed();
+                });
+                app.settings.mode = Some(mode);
+                dim(ui, "Guided explains one section at a time. Advanced shows a dense table with technical details.");
+                ui.add_space(6.0);
+                h2(ui, "Options shown in Guided mode");
+                ui.horizontal(|ui| {
+                    for l in Level::ALL {
+                        changed |= ui.radio_value(&mut app.settings.level, l, l.label()).changed();
                     }
-                }
-                if !app.settings.dism_folder.is_empty() && ui.button("Reset").clicked() {
-                    app.settings.dism_folder.clear();
+                });
+                dim(ui, "Beginner: safe and low risk. Intermediate adds moderate risk. Expert shows everything.");
+                ui.add_space(6.0);
+                h2(ui, "Text size");
+                let mut pct = (app.settings.text_scale * 100.0).round() as i32;
+                if ui.add(egui::Slider::new(&mut pct, 75..=200).suffix("%")).changed() {
+                    app.settings.text_scale = pct as f32 / 100.0;
                     changed = true;
                 }
-            });
-            dim(ui, "A new DISM folder takes effect the next time WinISOPilot starts.");
-            ui.add_space(8.0);
-            h2(ui, "Default working folder");
-            ui.horizontal(|ui| {
-                let shown = if app.settings.workspace_root.is_empty() {
-                    "Ask each time".to_string()
-                } else {
-                    app.settings.workspace_root.clone()
-                };
-                ui.label(RichText::new(shown).monospace().size(12.5));
-                if ui.button("Choose…").clicked() {
-                    if let Some(p) = rfd::FileDialog::new().pick_folder() {
-                        app.settings.workspace_root = p.display().to_string();
-                        app.workspace_parent.get_or_insert(PathBuf::from(&app.settings.workspace_root));
+                dim(ui, "Ctrl + and Ctrl − also change the size.");
+            } else {
+                h2(ui, "Accessibility and comfort");
+                changed |= ui
+                    .checkbox(&mut app.settings.high_contrast, "Stronger contrast (white text, yellow focus outline)")
+                    .changed();
+                changed |= ui.checkbox(&mut app.settings.reduce_motion, "Reduce motion (no animations)").changed();
+                changed |= ui.checkbox(&mut app.settings.show_tips, "Show a tip at the top of each page").changed();
+                ui.add_space(6.0);
+                h2(ui, "Windows ADK DISM folder");
+                dim(ui, "Optional: for customizing a newer Windows than this PC runs. Takes effect after a restart.");
+                ui.horizontal(|ui| {
+                    if ui.button("Choose…").clicked() {
+                        if let Some(p) = rfd::FileDialog::new().pick_folder() {
+                            app.settings.dism_folder = p.display().to_string();
+                            changed = true;
+                        }
+                    }
+                    if !app.settings.dism_folder.is_empty() && ui.button("Reset").clicked() {
+                        app.settings.dism_folder.clear();
                         changed = true;
                     }
-                }
-            });
-            ui.add_space(8.0);
-            ui.separator();
-            dim(
-                ui,
-                &format!(
-                    "WinISOPilot {} · MIT License · Logs: {}",
-                    wip_core::APP_VERSION,
-                    wip_engine::app_data_dir().join("logs").display()
-                ),
-            );
+                    let shown = if app.settings.dism_folder.is_empty() {
+                        "Automatic".to_string()
+                    } else {
+                        app.settings.dism_folder.clone()
+                    };
+                    crate::pages::path_label(ui, &shown);
+                });
+                ui.add_space(6.0);
+                h2(ui, "Default working folder");
+                ui.horizontal(|ui| {
+                    if ui.button("Choose…").clicked() {
+                        if let Some(p) = rfd::FileDialog::new().pick_folder() {
+                            app.settings.workspace_root = p.display().to_string();
+                            app.workspace_parent.get_or_insert(PathBuf::from(&app.settings.workspace_root));
+                            changed = true;
+                        }
+                    }
+                    let shown = if app.settings.workspace_root.is_empty() {
+                        "Ask each time".to_string()
+                    } else {
+                        app.settings.workspace_root.clone()
+                    };
+                    crate::pages::path_label(ui, &shown);
+                });
+            }
         });
+        ui.add_space(6.0);
+        ui.separator();
+        ui.horizontal(|ui| {
+            dim(ui, &format!("WinISOPilot {} · MIT License", wip_core::APP_VERSION));
+            if ui.link("Open log folder").clicked() {
+                crate::pages::open_folder(wip_engine::app_data_dir().join("logs"));
+            }
+        });
+    });
     if changed {
         crate::theme::apply(ctx, &app.settings);
         app.save_settings();
     }
-    if !open {
+    if close || resp.should_close() {
         app.show_settings = false;
     }
 }

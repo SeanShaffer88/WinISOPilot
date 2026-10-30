@@ -23,6 +23,15 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Settings files from older versions load with new options at their defaults instead of being reset.
 - Free disk space is checked at most every 5 seconds instead of every frame.
 - Guided toolbar wraps on narrow windows; Help and Settings share one row in the rail.
+- **Every page fits the window without scrollbars** (default 1200×760, minimum now 1024×700): Welcome, Choose ISO, Review, results and Write to USB use two columns; editions, options, the Advanced table and the Review list are split into pages (Previous/Next, PageUp/PageDown or the mouse wheel over the list).
+- Review: risky changes are confirmed with a **Confirm** tick on their own row; output settings are a compact form.
+- Results: "What changed" opens as a pop-up list.
+- The Details log shows the last 6 lines and links to the log folder instead of scrolling.
+- Long file paths are shortened with "…" (full path on hover).
+- Demo flags `--welcome`, `--edition`, `--customize`, `--build`, `--advanced`, `--settings`, `--first-run` for screenshots.
+
+### Fixed
+- The Settings window could be taller than the app window, pushing its title bar and close button off-screen so it couldn't be closed. Settings is now a two-column dialog with a **Done** button that also closes with Esc or a click outside.
 
 ## [0.3.0] - 2026-10-30
 

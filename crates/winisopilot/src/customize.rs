@@ -281,37 +281,42 @@ fn guided(app: &mut App, ctx: &egui::Context) {
             });
             ui.add_space(6.0);
             let (list, hidden) = rows(app, View::Cat(cat), true);
-            ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                if list.is_empty() {
-                    dim(ui, "Nothing here matches this image or your search.");
-                }
-                Frame::new().stroke(Stroke::new(1.0_f32, theme::DIVIDER)).corner_radius(CornerRadius::same(10)).show(
-                    ui,
-                    |ui| {
-                        for (i, r) in list.iter().enumerate() {
-                            guided_row(app, ui, r, i + 1 == list.len());
-                        }
-                    },
-                );
-                if hidden > 0 {
-                    ui.add_space(6.0);
-                    ui.horizontal(|ui| {
-                        dim(
-                            ui,
-                            &format!("{hidden} more options are hidden at the {} level.", app.settings.level.label()),
-                        );
-                        if ui.link("Show more").clicked() {
-                            app.settings.level = match app.settings.level {
-                                Level::Beginner => Level::Intermediate,
-                                _ => Level::Expert,
-                            };
-                            app.save_settings();
-                        }
-                    });
-                }
-            });
+            if list.is_empty() {
+                dim(ui, "Nothing here matches this image or your search.");
+            }
+            let reserve = if hidden > 0 { 36.0 } else { 0.0 };
+            let page = crate::pager::layout(ui, ("guided", cat.label()), list.len(), GUIDED_ROW, reserve);
+            let shown = &list[page.range.clone()];
+            let area = Frame::new()
+                .stroke(Stroke::new(1.0_f32, theme::DIVIDER))
+                .corner_radius(CornerRadius::same(10))
+                .show(ui, |ui| {
+                    ui.spacing_mut().item_spacing.y = 0.0;
+                    for (i, r) in shown.iter().enumerate() {
+                        guided_row(app, ui, r, i + 1 == shown.len());
+                    }
+                })
+                .response
+                .rect;
+            ui.add_space(4.0);
+            page.controls(ui, area);
+            if hidden > 0 {
+                ui.horizontal(|ui| {
+                    dim(ui, &format!("{hidden} more options are hidden at the {} level.", app.settings.level.label()));
+                    if ui.link("Show more").clicked() {
+                        app.settings.level = match app.settings.level {
+                            Level::Beginner => Level::Intermediate,
+                            _ => Level::Expert,
+                        };
+                        app.save_settings();
+                    }
+                });
+            }
         });
 }
+
+/// Height of one Guided option row (frame margins included).
+const GUIDED_ROW: f32 = 40.0;
 
 fn guided_row(app: &mut App, ui: &mut Ui, r: &Row, last: bool) {
     let focused = app.focused.as_deref() == Some(r.id.as_str());
@@ -319,10 +324,11 @@ fn guided_row(app: &mut App, ui: &mut Ui, r: &Row, last: bool) {
     let fill = if focused { theme::ROW_SELECTED } else { theme::CARD };
     let resp = Frame::new()
         .fill(fill)
-        .inner_margin(Margin::symmetric(14, 10))
+        .inner_margin(Margin::symmetric(14, 5))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.horizontal(|ui| {
+            ui.set_height(GUIDED_ROW - 10.0);
+            ui.horizontal_centered(|ui| {
                 let mut on = r.checked;
                 let cb = ui.add_enabled(enabled, egui::Checkbox::without_text(&mut on));
                 let cb = cb.on_hover_text(&r.title);
@@ -462,18 +468,28 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                     }
                 });
             });
-            ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                Frame::new().inner_margin(Margin::symmetric(14, 0)).show(ui, |ui| {
-                    for (i, r) in list.iter().enumerate() {
-                        table_row(app, ui, r, &widths, i % 2 == 1);
-                    }
-                    if list.is_empty() {
-                        dim(ui, "Nothing matches.");
-                    }
-                });
+            Frame::new().inner_margin(Margin { left: 14, right: 14, top: 0, bottom: 8 }).show(ui, |ui| {
+                let page = crate::pager::layout(ui, ("table", format!("{:?}", app.view)), list.len(), TABLE_ROW, 0.0);
+                let area = ui
+                    .scope(|ui| {
+                        ui.spacing_mut().item_spacing.y = 0.0;
+                        for (i, r) in list[page.range.clone()].iter().enumerate() {
+                            table_row(app, ui, r, &widths, i % 2 == 1);
+                        }
+                    })
+                    .response
+                    .rect;
+                if list.is_empty() {
+                    dim(ui, "Nothing matches.");
+                }
+                ui.add_space(4.0);
+                page.controls(ui, area);
             });
         });
 }
+
+/// Height of one Advanced table row.
+const TABLE_ROW: f32 = 32.0;
 
 /// A fixed-width, left-aligned table cell.
 fn cell<R>(ui: &mut Ui, w: f32, add: impl FnOnce(&mut Ui) -> R) -> R {

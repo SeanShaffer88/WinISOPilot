@@ -139,7 +139,7 @@ pub fn card(app: &mut App, ui: &mut egui::Ui, locked: bool) {
         let blocked = if app.host.oscdimg.is_none() {
             Some("Making an ISO needs oscdimg.exe from the Windows ADK Deployment Tools.")
         } else if parent.is_none() {
-            Some("Choose a working folder below first; the download and ISO are saved there.")
+            Some("Choose a working folder first (left); the download and ISO are saved there.")
         } else if f.expected_hash().is_none() {
             Some("Microsoft's catalog has no usable hash for this file, so WinISOPilot won't download it.")
         } else {

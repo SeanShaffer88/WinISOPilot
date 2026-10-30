@@ -88,42 +88,45 @@ pub fn footprint_card(ui: &mut egui::Ui, r: &BuildReport) {
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
         h2(ui, "Measured result");
-        dim(ui, "Read from the image before and after your changes. Nothing here is estimated.");
+        dim(ui, "Measured in the image before and after. Nothing is estimated.");
         for l in f.summary_lines() {
             body(ui, &l);
         }
         let c = &f.changes;
-        egui::CollapsingHeader::new(format!("What changed ({} items)", c.count())).show(ui, |ui| {
-            for (title, list) in [
-                ("Apps removed", &c.apps_removed),
-                ("Capabilities removed", &c.capabilities_removed),
-                ("Features turned off", &c.features_turned_off),
-                ("Features turned on", &c.features_turned_on),
-            ] {
-                if !list.is_empty() {
-                    ui.label(RichText::new(title).strong());
-                    for i in list {
-                        ui.label(RichText::new(i).monospace().size(12.0).color(theme::TEXT_DIM));
+        ui.horizontal(|ui| {
+            ui.menu_button(format!("What changed ({} items)…", c.count()), |ui| {
+                for (title, list) in [
+                    ("Apps removed", &c.apps_removed),
+                    ("Capabilities removed", &c.capabilities_removed),
+                    ("Features turned off", &c.features_turned_off),
+                    ("Features turned on", &c.features_turned_on),
+                ] {
+                    if !list.is_empty() {
+                        ui.label(RichText::new(title).strong());
+                        for i in list {
+                            ui.label(RichText::new(i).monospace().size(12.0).color(theme::TEXT_DIM));
+                        }
                     }
                 }
+            });
+            if let Some(root) = r.media_folder.parent() {
+                let p = root.join("footprint.md").display().to_string();
+                ui.add(egui::Label::new(RichText::new("Full report: footprint.md").size(13.5).color(theme::TEXT_DIM)))
+                    .on_hover_text(p);
             }
         });
-        if let Some(root) = r.media_folder.parent() {
-            dim(ui, &format!("Full report: {}", root.join("footprint.md").display()));
-        }
     });
 }
 
 // ------------------------------------------------------------- Boot test
 
 pub fn boot_test_card(app: &mut App, ui: &mut egui::Ui, r: &BuildReport) {
-    ui.add_space(8.0);
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
         h2(ui, "Test it in a virtual machine");
         body(
             ui,
-            "WinISOPilot installs your ISO in a temporary Hyper-V virtual machine, signs in, and checks from inside Windows that every change actually took effect. Your PC and disks aren't touched.",
+            "Installs your ISO in a temporary Hyper-V VM and checks from inside Windows that every change took effect. Your PC and disks aren't touched.",
         );
         let Some(iso) = r.iso.clone() else {
             dim(ui, "Needs an ISO file. Install the Windows ADK Deployment Tools to create one.");
@@ -136,13 +139,15 @@ pub fn boot_test_card(app: &mut App, ui: &mut egui::Ui, r: &BuildReport) {
                 &["Microsoft doesn't publish a setup key for this edition. If the test times out, open the VM in Hyper-V Manager and choose \"I don't have a product key\".".into()],
             );
         }
-        dim(ui, "Needs Hyper-V (Windows Pro, Enterprise or Education), about 70 GB free and 4 GB of spare memory. Usually takes 15–40 minutes.");
-        ui.checkbox(&mut app.extras.keep_vm, "Keep the VM afterwards (it's always kept if a check fails)");
+        dim(ui, "Needs Hyper-V (Pro, Enterprise or Education), about 70 GB free and 4 GB spare memory. Takes 15–40 minutes.");
+        ui.checkbox(&mut app.extras.keep_vm, "Keep the VM afterwards (always kept if a check fails)");
+        let mut run = false;
         ui.horizontal(|ui| {
+            run = theme::primary(ui, "Run boot test", !app.busy()).clicked();
             ui.label("Give up after");
             ui.add(egui::DragValue::new(&mut app.extras.timeout_minutes).range(20..=240).suffix(" min"));
         });
-        if theme::primary(ui, "Run boot test", !app.busy()).clicked() {
+        if run {
             let Some(snap) = app.extras.snapshot.clone() else { return };
             let Some(parent) = app
                 .workspace_parent

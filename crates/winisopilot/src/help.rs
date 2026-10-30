@@ -107,6 +107,7 @@ pub const SHORTCUTS: &[(&str, &str)] = &[
     ("Tab / Shift+Tab", "Move between controls"),
     ("Space / Enter", "Tick a box or press a button"),
     ("Ctrl + / Ctrl −", "Bigger / smaller text"),
+    ("PageUp / PageDown", "Previous / next page of a list"),
 ];
 
 /// One-line tip under the page heading.
@@ -132,27 +133,25 @@ pub fn window(app: &mut App, ctx: &egui::Context) {
         .default_width(420.0)
         .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-16.0, 16.0))
         .show(ctx, |ui| {
-            egui::ScrollArea::vertical().max_height(560.0).show(ui, |ui| {
-                h2(ui, t.title);
-                for p in t.paragraphs {
-                    body(ui, p);
+            h2(ui, t.title);
+            for p in t.paragraphs {
+                body(ui, p);
+            }
+            ui.add_space(6.0);
+            ui.label(RichText::new("What happens next").strong());
+            body(ui, t.next);
+            ui.add_space(8.0);
+            ui.separator();
+            ui.label(RichText::new("Keyboard shortcuts").strong());
+            egui::Grid::new("keys").num_columns(2).spacing([16.0, 4.0]).show(ui, |ui| {
+                for (k, what) in SHORTCUTS {
+                    ui.label(RichText::new(*k).monospace());
+                    ui.label(*what);
+                    ui.end_row();
                 }
-                ui.add_space(6.0);
-                ui.label(RichText::new("What happens next").strong());
-                body(ui, t.next);
-                ui.add_space(8.0);
-                ui.separator();
-                ui.label(RichText::new("Keyboard shortcuts").strong());
-                egui::Grid::new("keys").num_columns(2).spacing([16.0, 4.0]).show(ui, |ui| {
-                    for (k, what) in SHORTCUTS {
-                        ui.label(RichText::new(*k).monospace());
-                        ui.label(*what);
-                        ui.end_row();
-                    }
-                });
-                ui.add_space(8.0);
-                dim(ui, "More: the user guide (docs/user-guide.md) and the log folder in Settings.");
             });
+            ui.add_space(8.0);
+            dim(ui, "More: the user guide (docs/user-guide.md) and the log folder in Settings.");
         });
     if !open {
         app.show_help = false;

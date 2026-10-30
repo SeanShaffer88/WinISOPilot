@@ -48,15 +48,31 @@ pub fn footer(ctx: &egui::Context, status: &str, back: bool, next: Option<(&str,
     nav
 }
 
+/// Page body. Pages are laid out to fit the window; the scroll area is only
+/// a safety net for very large text sizes and never shows otherwise.
 pub fn central(ctx: &egui::Context, add: impl FnOnce(&mut Ui)) {
     egui::CentralPanel::default()
-        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 44, right: 44, top: 30, bottom: 12 }))
+        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 40, right: 40, top: 26, bottom: 10 }))
         .show(ctx, |ui| {
             ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                ui.set_max_width(ui.available_width().min(980.0));
+                ui.set_max_width(ui.available_width().min(1100.0));
                 add(ui);
             });
         });
+}
+
+/// Two equal columns with a 16 px gap.
+/// `add` is called with 0 for the left column and 1 for the right.
+pub fn two_columns(ui: &mut Ui, mut add: impl FnMut(usize, &mut Ui)) {
+    ui.spacing_mut().item_spacing.x = 16.0;
+    ui.columns(2, |c| {
+        for (i, col) in c.iter_mut().enumerate() {
+            col.spacing_mut().item_spacing.x = 8.0;
+            // Plain left-aligned text (columns default to justified).
+            col.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| add(i, ui));
+        }
+    });
+    ui.spacing_mut().item_spacing.x = 8.0;
 }
 
 fn header(app: &App, ui: &mut Ui, step: Step, title: &str, blurb: &str) {
@@ -97,17 +113,23 @@ pub fn job_panel(app: &mut App, ui: &mut Ui) {
             }
         }
     });
-    log_tail(app, ui, 8);
+    log_tail(app, ui, 6);
 }
 
+/// The last few log lines (no scrolling; the full log is in the log folder).
 pub fn log_tail(app: &App, ui: &mut Ui, lines: usize) {
+    if app.log.is_empty() {
+        return;
+    }
     egui::CollapsingHeader::new("Details").default_open(false).show(ui, |ui| {
-        let start = app.log.len().saturating_sub(lines.max(200));
-        ScrollArea::vertical().max_height(220.0).stick_to_bottom(true).show(ui, |ui| {
-            for l in &app.log[start..] {
-                ui.label(RichText::new(l).monospace().size(12.0).color(theme::TEXT_DIM));
-            }
-        });
+        let start = app.log.len().saturating_sub(lines);
+        for l in &app.log[start..] {
+            ui.add(egui::Label::new(RichText::new(l).monospace().size(12.0).color(theme::TEXT_DIM)).truncate())
+                .on_hover_text(l);
+        }
+        if ui.link("Open log folder").clicked() {
+            open_folder(wip_engine::app_data_dir().join("logs"));
+        }
     });
 }
 
@@ -163,57 +185,9 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
             "Make your own Windows installer",
             "WinISOPilot walks you through removing apps, turning features on or off, and changing settings in a Windows 10 or 11 installation ISO. Your original ISO is never changed.",
         );
-        theme::card().show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            h2(ui, "How it works");
-            for (n, t) in [
-                "Choose an official Windows 10 or 11 ISO.",
-                "Pick the edition, for example Windows 11 Pro.",
-                "Choose what to remove or change. Each option explains what it does and what could stop working.",
-                "Review everything in one list. Nothing has changed yet.",
-                "Build. You get a new ISO to put on a USB stick or use in a virtual machine.",
-            ]
-            .iter()
-            .enumerate()
-            {
-                body(ui, &format!("{}.  {t}", n + 1));
-            }
-        });
-        ui.add_space(10.0);
-        theme::card().show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            h2(ui, "This PC");
-            let h = &app.host;
-            check_line(
-                ui,
-                h.is_admin,
-                if h.is_admin {
-                    "Running as administrator"
-                } else {
-                    "Not running as administrator (needed to open images)"
-                },
-            );
-            match &h.dism_api {
-                Some(p) => check_line(ui, true, &format!("DISM {} — {}", h.dism_version, p.display())),
-                None => check_line(ui, false, "DISM not found"),
-            }
-            match &h.oscdimg {
-                Some(p) => check_line(ui, true, &format!("ISO tool found — {}", p.display())),
-                None => check_line(
-                    ui,
-                    false,
-                    "ISO tool (oscdimg.exe from the Windows ADK) not found: you'll get a folder instead of an ISO",
-                ),
-            }
-            if h.os_build > 0 {
-                dim(ui, &format!("Windows build {}", h.os_build));
-            }
-            if h.dism_api.is_none() || h.oscdimg.is_none() {
-                ui.hyperlink_to(
-                    "Get the Windows ADK (Deployment Tools) from Microsoft",
-                    "https://learn.microsoft.com/windows-hardware/get-started/adk-install",
-                );
-            }
+        two_columns(ui, |i, ui| match i {
+            0 => how_it_works(ui),
+            _ => this_pc(app, ui),
         });
         if !app.leftovers.is_empty() {
             ui.add_space(10.0);
@@ -222,6 +196,63 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
         ui.add_space(10.0);
         job_panel(app, ui);
         show_error(app, ui);
+    });
+}
+
+fn how_it_works(ui: &mut Ui) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, "How it works");
+        for (n, t) in [
+            "Choose an official Windows 10 or 11 ISO.",
+            "Pick the edition, for example Windows 11 Pro.",
+            "Choose what to remove or change. Each option explains what it does and what could stop working.",
+            "Review everything in one list. Nothing has changed yet.",
+            "Build. You get a new ISO to put on a USB stick or use in a virtual machine.",
+        ]
+        .iter()
+        .enumerate()
+        {
+            body(ui, &format!("{}.  {t}", n + 1));
+        }
+    });
+}
+
+fn this_pc(app: &App, ui: &mut Ui) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, "This PC");
+        let h = &app.host;
+        check_line(
+            ui,
+            h.is_admin,
+            if h.is_admin {
+                "Running as administrator"
+            } else {
+                "Not running as administrator (needed to open images)"
+            },
+        );
+        match &h.dism_api {
+            Some(p) => check_line(ui, true, &format!("DISM {} — {}", h.dism_version, p.display())),
+            None => check_line(ui, false, "DISM not found"),
+        }
+        match &h.oscdimg {
+            Some(p) => check_line(ui, true, &format!("ISO tool found — {}", p.display())),
+            None => check_line(
+                ui,
+                false,
+                "ISO tool (oscdimg.exe from the Windows ADK) not found: you'll get a folder instead of an ISO",
+            ),
+        }
+        if h.os_build > 0 {
+            dim(ui, &format!("Windows build {}", h.os_build));
+        }
+        if h.dism_api.is_none() || h.oscdimg.is_none() {
+            ui.hyperlink_to(
+                "Get the Windows ADK (Deployment Tools) from Microsoft",
+                "https://learn.microsoft.com/windows-hardware/get-started/adk-install",
+            );
+        }
     });
 }
 
@@ -276,61 +307,72 @@ pub fn source(app: &mut App, ctx: &egui::Context) {
             "Use an official Windows 10 or 11 ISO from Microsoft. WinISOPilot only reads it.",
         );
         let locked = workspace_banner(app, ui) || app.busy();
-        theme::card().show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            h2(ui, "Windows ISO");
-            ui.horizontal(|ui| {
-                let shown = app.iso_path.as_ref().map_or("No ISO chosen".to_string(), |p| p.display().to_string());
-                ui.label(RichText::new(shown).monospace().size(13.0));
-                if theme::secondary(ui, "Browse…", !locked).clicked() {
-                    if let Some(p) = rfd::FileDialog::new()
-                        .add_filter("Disc image", &["iso"])
-                        .set_title("Choose a Windows ISO")
-                        .pick_file()
-                    {
-                        if app.workspace_parent.is_none() {
-                            app.workspace_parent = p.parent().map(|d| d.to_path_buf());
-                        }
-                        app.iso_path = Some(p);
-                        app.source = None;
-                        app.chosen_index = None;
-                    }
-                }
-            });
-            ui.add_space(4.0);
-            dim(ui, "Or get the ISO from Microsoft's website, then choose it here:");
-            ui.horizontal(|ui| {
-                ui.hyperlink_to("Windows 11 download page", "https://www.microsoft.com/software-download/windows11");
-                ui.label("·");
-                ui.hyperlink_to("Windows 10 download page", "https://www.microsoft.com/software-download/windows10ISO");
-            });
+        two_columns(ui, |i, ui| {
+            if i == 0 {
+                iso_card(app, ui, locked);
+                ui.add_space(10.0);
+                working_folder_card(app, ui, locked);
+                ui.add_space(10.0);
+                job_panel(app, ui);
+                show_error(app, ui);
+            } else {
+                crate::download_ui::card(app, ui, locked);
+            }
         });
-        ui.add_space(10.0);
-        crate::download_ui::card(app, ui, locked);
-        ui.add_space(10.0);
-        theme::card().show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            h2(ui, "Working folder");
-            body(
-                ui,
-                "WinISOPilot needs space to unpack Windows while you customize it. Pick a fast local drive (NTFS).",
-            );
-            ui.horizontal(|ui| {
-                let shown =
-                    app.workspace_parent.as_ref().map_or("No folder chosen".to_string(), |p| p.display().to_string());
-                ui.label(RichText::new(shown).monospace().size(13.0));
-                if theme::secondary(ui, "Browse…", !locked).clicked() {
-                    if let Some(p) = rfd::FileDialog::new().set_title("Choose a working folder").pick_folder() {
-                        app.workspace_parent = Some(p);
+    });
+}
+
+fn iso_card(app: &mut App, ui: &mut Ui, locked: bool) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, "Windows ISO");
+        let shown = app.iso_path.as_ref().map_or("No ISO chosen".to_string(), |p| p.display().to_string());
+        path_label(ui, &shown);
+        ui.horizontal(|ui| {
+            if theme::secondary(ui, "Browse…", !locked).clicked() {
+                if let Some(p) = rfd::FileDialog::new()
+                    .add_filter("Disc image", &["iso"])
+                    .set_title("Choose a Windows ISO")
+                    .pick_file()
+                {
+                    if app.workspace_parent.is_none() {
+                        app.workspace_parent = p.parent().map(|d| d.to_path_buf());
                     }
+                    app.iso_path = Some(p);
+                    app.source = None;
+                    app.chosen_index = None;
                 }
-            });
+            }
+        });
+        dim(ui, "Or get it from Microsoft's website, then choose it here:");
+        ui.horizontal_wrapped(|ui| {
+            ui.hyperlink_to("Windows 11 download page", "https://www.microsoft.com/software-download/windows11");
+            ui.hyperlink_to("Windows 10 download page", "https://www.microsoft.com/software-download/windows10ISO");
+        });
+    });
+}
+
+fn working_folder_card(app: &mut App, ui: &mut Ui, locked: bool) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, "Working folder");
+        dim(ui, "Space to unpack Windows while you customize it. Pick a fast local NTFS drive.");
+        let shown = app.workspace_parent.as_ref().map_or("No folder chosen".to_string(), |p| p.display().to_string());
+        path_label(ui, &shown);
+        ui.horizontal(|ui| {
+            if theme::secondary(ui, "Browse…", !locked).clicked() {
+                if let Some(p) = rfd::FileDialog::new().set_title("Choose a working folder").pick_folder() {
+                    app.workspace_parent = Some(p);
+                }
+            }
             space_line(app, ui);
         });
-        ui.add_space(10.0);
-        job_panel(app, ui);
-        show_error(app, ui);
     });
+}
+
+/// A file path on one line, shortened with "…" when it doesn't fit (full path on hover).
+pub fn path_label(ui: &mut Ui, text: &str) {
+    ui.add(egui::Label::new(RichText::new(text).monospace().size(13.0)).truncate()).on_hover_text(text);
 }
 
 fn space_line(app: &mut App, ui: &mut Ui) {
@@ -377,50 +419,52 @@ pub fn edition(app: &mut App, ctx: &egui::Context) {
             body(ui, "Read an ISO first.");
             return;
         };
-        for img in &src.images {
-            let support = img.support();
-            let selected = app.chosen_index == Some(img.index);
-            let frame = theme::card().stroke(egui::Stroke::new(
-                if selected { 2.0_f32 } else { 1.0 },
-                if selected { theme::ACCENT } else { theme::DIVIDER },
-            ));
-            let r = frame
-                .show(ui, |ui| {
+        // One compact row per edition; paged if an ISO holds more than fit.
+        const ROW: f32 = 46.0;
+        let page = crate::pager::layout(ui, "editions", src.images.len(), ROW, 150.0);
+        let list = ui.scope(|ui| {
+            ui.spacing_mut().item_spacing.y = 4.0;
+            for img in &src.images[page.range.clone()] {
+                let support = img.support();
+                let selected = app.chosen_index == Some(img.index);
+                let frame = theme::card().inner_margin(Margin::symmetric(14, 6)).stroke(egui::Stroke::new(
+                    if selected { 2.0_f32 } else { 1.0 },
+                    if selected { theme::ACCENT } else { theme::DIVIDER },
+                ));
+                let enabled = support.is_ok() && !locked;
+                let r = frame.show(ui, |ui| {
                     ui.set_width(ui.available_width());
-                    ui.horizontal(|ui| {
-                        let mut sel = selected;
-                        let rb = ui.add_enabled(support.is_ok() && !locked, egui::RadioButton::new(sel, ""));
-                        if rb.clicked() {
-                            sel = true;
-                        }
-                        ui.vertical(|ui| {
-                            ui.label(RichText::new(&img.name).size(16.0).strong());
-                            let fam = img.family().map_or("Unsupported", |f| f.label());
-                            dim(
-                                ui,
-                                &format!(
-                                    "{fam} · {} · {} · {} · {}",
-                                    img.version_string(),
-                                    img.architecture,
-                                    human_bytes(img.size_bytes),
-                                    img.languages.join(", ")
-                                ),
-                            );
-                            if let Err(why) = &support {
-                                ui.label(RichText::new(why).color(theme::ERR_TEXT));
-                            }
-                        });
-                        sel
+                    ui.set_height(ROW - 16.0);
+                    ui.horizontal_centered(|ui| {
+                        let rb = ui.add_enabled(enabled, egui::RadioButton::new(selected, ""));
+                        let name = RichText::new(&img.name).size(15.5).strong();
+                        let l = ui.add(egui::Label::new(name).sense(egui::Sense::click()));
+                        let fam = img.family().map_or("Unsupported", |f| f.label());
+                        let facts = match &support {
+                            Ok(_) => format!(
+                                "{fam} · {} · {} · {} · {}",
+                                img.version_string(),
+                                img.architecture,
+                                human_bytes(img.size_bytes),
+                                img.languages.join(", ")
+                            ),
+                            Err(why) => why.to_string(),
+                        };
+                        let color = if support.is_ok() { theme::TEXT_DIM } else { theme::ERR_TEXT };
+                        ui.add(egui::Label::new(RichText::new(&facts).size(13.0).color(color)).truncate())
+                            .on_hover_text(&facts);
+                        rb.clicked() || (enabled && l.clicked())
                     })
                     .inner
-                })
-                .inner;
-            if r && !selected && support.is_ok() && !locked {
-                app.chosen_index = Some(img.index);
+                });
+                let clicked = r.inner || (enabled && r.response.interact(egui::Sense::click()).clicked());
+                if clicked && !selected && enabled {
+                    app.chosen_index = Some(img.index);
+                }
             }
-            ui.add_space(6.0);
-        }
-        ui.add_space(4.0);
+        });
+        page.controls(ui, list.response.rect);
+        ui.add_space(8.0);
         ui.add_enabled_ui(!locked, |ui| {
             ui.checkbox(&mut app.single_edition, "Keep only this edition in the new ISO");
         });
@@ -494,139 +538,158 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
             "Review your changes",
             "Nothing has been changed yet. Remove anything you're unsure about, then build.",
         );
-        if !has_ws {
-            theme::warn_box(ui, "No edition is open", &["Open an edition on the Edition step before building.".into()]);
-        }
-        ui.horizontal(|ui| {
-            if theme::secondary(ui, "Undo", app.history.can_undo()).on_hover_text("Ctrl+Z").clicked() {
-                app.undo();
-            }
-            if theme::secondary(ui, "Save choices…", !app.selection.is_empty()).clicked() {
-                save_recipe(app);
-            }
-            if theme::secondary(ui, "Load choices…", !app.busy()).clicked() {
-                load_recipe(app);
+        let ack_ids: std::collections::BTreeSet<String> = acks_needed.iter().map(|(id, _)| id.clone()).collect();
+        two_columns(ui, |i, ui| {
+            if i == 0 {
+                if !has_ws {
+                    theme::warn_box(
+                        ui,
+                        "No edition is open",
+                        &["Open one on the Edition step before building.".into()],
+                    );
+                    ui.add_space(8.0);
+                }
+                changes_list(app, ui, &ack_ids);
+            } else {
+                let errors: Vec<_> = issues.iter().filter(|i| i.severity == Severity::Error).collect();
+                let skipped: Vec<String> = issues
+                    .iter()
+                    .filter(|i| i.severity == Severity::Warning && i.message.contains("skipped"))
+                    .map(|i| i.message.clone())
+                    .collect();
+                for e in errors {
+                    theme::error_box(ui, "Needs fixing", &e.message);
+                    ui.add_space(8.0);
+                }
+                if !skipped.is_empty() {
+                    theme::warn_box(ui, "These will be skipped", &skipped);
+                    ui.add_space(8.0);
+                }
+                what_happens(app, ui);
+                output_card(app, ui);
+                show_error(app, ui);
             }
         });
-        ui.add_space(6.0);
+    });
+}
 
-        if app.selection.is_empty() {
-            body(ui, "You haven't chosen any changes. The new ISO will match the original edition.");
+/// Every chosen change, one row each: risk, name, a confirmation tick for
+/// risky ones, and ✖ to remove. Paged so it never needs a scrollbar.
+fn changes_list(app: &mut App, ui: &mut Ui, ack_ids: &std::collections::BTreeSet<String>) {
+    ui.horizontal(|ui| {
+        if theme::secondary(ui, "Undo", app.history.can_undo()).on_hover_text("Ctrl+Z").clicked() {
+            app.undo();
         }
-        let mut remove: Option<String> = None;
-        for c in Category::ALL {
-            let ids: Vec<String> = app
-                .selection
-                .iter()
-                .filter(|id| app.catalog.get(id).is_some_and(|o| o.category == c))
-                .cloned()
-                .collect();
-            if ids.is_empty() {
-                continue;
-            }
-            eyebrow(ui, c.label());
-            for id in ids {
-                let o = app.catalog.get(&id).expect("filtered");
-                ui.horizontal(|ui| {
-                    theme::badge(ui, Some(o.risk));
-                    ui.label(RichText::new(&o.title).size(14.5));
-                    if ui.small_button("✖").on_hover_text("Remove from changes").clicked() {
-                        remove = Some(id.clone());
-                    }
-                });
-            }
-            ui.add_space(6.0);
+        if theme::secondary(ui, "Save choices…", !app.selection.is_empty()).clicked() {
+            save_recipe(app);
         }
-        let raw: Vec<String> = app.selection.iter().filter(|id| wip_core::raw::is_raw(id)).cloned().collect();
-        if !raw.is_empty() {
-            eyebrow(ui, "Unrated (Advanced)");
-            for id in raw {
-                ui.horizontal(|ui| {
-                    theme::badge(ui, None);
-                    ui.label(RichText::new(wip_core::raw::title(&id)).size(14.5));
-                    if ui.small_button("✖").on_hover_text("Remove from changes").clicked() {
-                        remove = Some(id.clone());
-                    }
-                });
-            }
+        if theme::secondary(ui, "Load choices…", !app.busy()).clicked() {
+            load_recipe(app);
         }
-        if let Some(id) = remove {
-            app.set_selected(&id, false);
+    });
+    ui.add_space(6.0);
+    if app.selection.is_empty() {
+        body(ui, "You haven't chosen any changes. The new ISO will match the original edition.");
+        return;
+    }
+    // Catalog options grouped by section, then unrated items.
+    let mut items: Vec<(String, String, Option<wip_core::Risk>, &'static str)> = Vec::new();
+    for c in Category::ALL {
+        for id in app.selection.iter().filter(|id| app.catalog.get(id).is_some_and(|o| o.category == c)) {
+            let o = app.catalog.get(id).expect("filtered");
+            items.push((id.clone(), o.title.clone(), Some(o.risk), c.label()));
         }
-
-        let errors: Vec<_> = issues.iter().filter(|i| i.severity == Severity::Error).collect();
-        let skipped: Vec<String> = issues
-            .iter()
-            .filter(|i| i.severity == Severity::Warning && i.message.contains("skipped"))
-            .map(|i| i.message.clone())
-            .collect();
-        for e in errors {
-            theme::error_box(ui, "Needs fixing", &e.message);
-        }
-        if !skipped.is_empty() {
-            ui.add_space(6.0);
-            theme::warn_box(ui, "These will be skipped", &skipped);
-        }
-        if !acks_needed.is_empty() {
-            ui.add_space(10.0);
-            theme::warn_box(
-                ui,
-                "Confirm risky changes",
-                &["These can break things other people rely on. Tick each one to confirm.".into()],
-            );
-            for (id, title) in acks_needed {
-                let mut on = app.acks.contains(&id);
-                if ui.checkbox(&mut on, format!("I understand the risks of: {title}")).changed() {
-                    if on {
-                        app.acks.insert(id);
-                    } else {
-                        app.acks.remove(&id);
+    }
+    for id in app.selection.iter().filter(|id| wip_core::raw::is_raw(id)) {
+        items.push((id.clone(), wip_core::raw::title(id), None, "Unrated (Advanced)"));
+    }
+    if !ack_ids.is_empty() {
+        let left = ack_ids.iter().filter(|id| !app.acks.contains(*id)).count();
+        let text = if left == 0 {
+            "Risky changes confirmed.".to_string()
+        } else {
+            format!("Tick Confirm on {left} risky change(s): they can break things other people rely on.")
+        };
+        ui.label(RichText::new(text).color(if left == 0 { theme::OK_TEXT } else { theme::WARN_TEXT }));
+    }
+    const ROW: f32 = 34.0;
+    let page = crate::pager::layout(ui, "review", items.len(), ROW, 0.0);
+    let mut remove: Option<String> = None;
+    let list = ui.scope(|ui| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+        for (id, title, risk, section) in &items[page.range.clone()] {
+            let size = egui::vec2(ui.available_width(), ROW);
+            ui.allocate_ui_with_layout(size, egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.small_button("✖").on_hover_text("Remove from changes").clicked() {
+                    remove = Some(id.clone());
+                }
+                if ack_ids.contains(id) {
+                    let mut on = app.acks.contains(id);
+                    let r = ui.checkbox(&mut on, "Confirm").on_hover_text("I understand what this could break");
+                    if r.changed() {
+                        if on {
+                            app.acks.insert(id.clone());
+                        } else {
+                            app.acks.remove(id);
+                        }
                     }
                 }
-            }
-        }
-
-        what_happens(app, ui);
-        ui.add_space(12.0);
-        theme::card().show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            h2(ui, "Output");
-            let single = app.workspace.as_ref().map_or(app.single_edition, |_| app.output.single_edition);
-            dim(
-                ui,
-                if single {
-                    "Editions: only the customized edition"
-                } else {
-                    "Editions: all editions (only one customized)"
-                },
-            );
-            ui.horizontal(|ui| {
-                ui.label("Compression:");
-                ui.radio_value(&mut app.output.compression, Compression::Maximum, "Standard (install.wim)");
-                ui.radio_value(&mut app.output.compression, Compression::Recovery, "Smallest (install.esd, slower)");
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    theme::badge(ui, *risk);
+                    ui.add(egui::Label::new(RichText::new(title).size(14.5)).truncate())
+                        .on_hover_text(format!("{section}: {title}"));
+                });
             });
-            ui.horizontal(|ui| {
-                ui.label("Disc label:");
-                let r = ui
-                    .add(egui::TextEdit::singleline(&mut app.output.volume_label).desired_width(240.0).char_limit(32));
-                if r.lost_focus() {
-                    app.output.volume_label = sanitize_label(&app.output.volume_label);
+        }
+    });
+    page.controls(ui, list.response.rect);
+    if let Some(id) = remove {
+        app.set_selected(&id, false);
+    }
+}
+
+fn output_card(app: &mut App, ui: &mut Ui) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, "Output");
+        let single = app.workspace.as_ref().map_or(app.single_edition, |_| app.output.single_edition);
+        egui::Grid::new("output").num_columns(2).spacing([12.0, 8.0]).show(ui, |ui| {
+            ui.label("Editions");
+            dim(ui, if single { "Only the customized edition" } else { "All editions (only one customized)" });
+            ui.end_row();
+            ui.label("Compression");
+            let text = |c: Compression| match c {
+                Compression::Recovery => "Smallest (install.esd, slower)",
+                _ => "Standard (install.wim)",
+            };
+            egui::ComboBox::from_id_salt("compression").selected_text(text(app.output.compression)).show_ui(ui, |ui| {
+                for c in [Compression::Maximum, Compression::Recovery] {
+                    ui.selectable_value(&mut app.output.compression, c, text(c));
                 }
             });
+            ui.end_row();
+            ui.label("Disc label");
+            let r =
+                ui.add(egui::TextEdit::singleline(&mut app.output.volume_label).desired_width(200.0).char_limit(32));
+            if r.lost_focus() {
+                app.output.volume_label = sanitize_label(&app.output.volume_label);
+            }
+            ui.end_row();
             if app.host.oscdimg.is_some() {
+                ui.label("Save ISO as");
                 ui.horizontal(|ui| {
-                    ui.label("Save ISO as:");
-                    let shown = app.iso_out.as_ref().map_or("Not chosen".to_string(), |p| p.display().to_string());
-                    ui.label(RichText::new(shown).monospace().size(13.0));
                     if theme::secondary(ui, "Choose…", !app.busy()).clicked() {
                         choose_output(app);
                     }
+                    let shown = app.iso_out.as_ref().map_or("Not chosen".to_string(), |p| p.display().to_string());
+                    path_label(ui, &shown);
                 });
-            } else {
-                dim(ui, "No ISO tool found: the finished files will be left in the working folder's media folder.");
+                ui.end_row();
             }
         });
-        show_error(app, ui);
+        if app.host.oscdimg.is_none() {
+            dim(ui, "No ISO tool found: the finished files stay in the working folder.");
+        }
     });
 }
 
@@ -755,46 +818,33 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
         }
         if let Some(r) = app.report.clone() {
             header(app, ui, Step::Build, "Your Windows is ready", "The original ISO was not changed.");
-            theme::card().show(ui, |ui| {
-                ui.set_width(ui.available_width());
-                match &r.iso {
-                    Some(p) => {
-                        check_line(ui, true, &format!("New ISO: {}", p.display()));
-                        if let Some(b) = r.iso_bytes {
-                            dim(ui, &format!("Size: {}", human_bytes(b)));
-                        }
-                        if theme::secondary(ui, "Show in folder", true).clicked() {
-                            open_folder(p.parent().map(PathBuf::from).unwrap_or_default());
-                        }
+            two_columns(ui, |i, ui| {
+                if i == 0 {
+                    result_card(ui, &r);
+                    if !r.warnings.is_empty() {
+                        ui.add_space(8.0);
+                        theme::warn_box(ui, "Notes", &r.warnings);
                     }
-                    None => {
-                        check_line(ui, true, &format!("Finished files: {}", r.media_folder.display()));
-                        if theme::secondary(ui, "Open folder", true).clicked() {
-                            open_folder(r.media_folder.clone());
+                    crate::extras::footprint_card(ui, &r);
+                } else {
+                    crate::extras::boot_test_card(app, ui, &r);
+                    ui.add_space(10.0);
+                    ui.horizontal_wrapped(|ui| {
+                        if theme::primary(ui, "Write it to a USB drive", true).clicked() {
+                            app.usb.source = None;
+                            app.usb.report = None;
+                            app.switch_tool(crate::app::Tool::Usb);
                         }
-                    }
-                }
-                dim(ui, &format!("{} operations applied. Log: {}", r.applied, r.log_file.display()));
-                if let Some(root) = r.media_folder.parent() {
-                    dim(ui, &format!("You can delete the working folder when you're done: {}", root.display()));
+                        if theme::secondary(ui, "Save choices…", true)
+                            .on_hover_text("Keep this list of changes to reuse on another ISO")
+                            .clicked()
+                        {
+                            save_recipe(app);
+                        }
+                    });
+                    log_tail(app, ui, 6);
                 }
             });
-            if !r.warnings.is_empty() {
-                ui.add_space(8.0);
-                theme::warn_box(ui, "Notes", &r.warnings);
-            }
-            crate::extras::footprint_card(ui, &r);
-            crate::extras::boot_test_card(app, ui, &r);
-            ui.add_space(8.0);
-            if theme::primary(ui, "Write it to a USB drive", true).clicked() {
-                app.usb.source = None;
-                app.usb.report = None;
-                app.switch_tool(crate::app::Tool::Usb);
-            }
-            if theme::secondary(ui, "Save these choices for next time…", true).clicked() {
-                save_recipe(app);
-            }
-            log_tail(app, ui, 200);
             return;
         }
         header(app, ui, Step::Build, "The build stopped", "");
@@ -805,11 +855,45 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
                 app.discard_workspace();
             }
         }
-        log_tail(app, ui, 200);
+        log_tail(app, ui, 6);
     });
 }
 
-fn open_folder(p: PathBuf) {
+fn result_card(ui: &mut Ui, r: &wip_engine::BuildReport) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        match &r.iso {
+            Some(p) => {
+                check_line(ui, true, "New ISO saved");
+                path_label(ui, &p.display().to_string());
+                ui.horizontal(|ui| {
+                    if theme::secondary(ui, "Show in folder", true).clicked() {
+                        open_folder(p.parent().map(PathBuf::from).unwrap_or_default());
+                    }
+                    let size = r.iso_bytes.map(|b| format!("{} · ", human_bytes(b))).unwrap_or_default();
+                    dim(ui, &format!("{size}{} operations applied", r.applied));
+                });
+            }
+            None => {
+                check_line(ui, true, "Finished files saved");
+                path_label(ui, &r.media_folder.display().to_string());
+                ui.horizontal(|ui| {
+                    if theme::secondary(ui, "Open folder", true).clicked() {
+                        open_folder(r.media_folder.clone());
+                    }
+                    dim(ui, &format!("{} operations applied", r.applied));
+                });
+            }
+        }
+        if let Some(root) = r.media_folder.parent() {
+            let text = format!("You can delete the working folder when you're done: {}", root.display());
+            ui.add(egui::Label::new(RichText::new(&text).size(13.5).color(theme::TEXT_DIM)).truncate())
+                .on_hover_text(&text);
+        }
+    });
+}
+
+pub fn open_folder(p: PathBuf) {
     #[cfg(windows)]
     {
         let _ = std::process::Command::new("explorer.exe").arg(p).spawn();
@@ -832,7 +916,6 @@ fn what_happens(app: &App, ui: &mut Ui) {
     let regs = count(&|o| matches!(o, Op::RegSet { .. } | Op::RegDelete { .. }));
     let files = count(&|o| matches!(o, Op::DeleteFile { .. }));
     let cleanup = count(&|o| matches!(o, Op::ComponentCleanup { .. }));
-    ui.add_space(12.0);
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
         h2(ui, "What happens when you select Build");
@@ -866,6 +949,6 @@ fn what_happens(app: &App, ui: &mut Ui) {
         if !p.skipped.is_empty() {
             dim(ui, &format!("{} chosen options have nothing to do in this image and are skipped.", p.skipped.len()));
         }
-        dim(ui, "Your original ISO is never changed. Cancel stops after the current step without saving.");
     });
+    ui.add_space(10.0);
 }

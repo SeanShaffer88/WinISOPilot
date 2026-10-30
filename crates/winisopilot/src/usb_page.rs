@@ -138,17 +138,21 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
             return;
         }
 
-        source_card(app, ui);
-        ui.add_space(10.0);
-        drive_card(app, ui, &prot_letters);
-        ui.add_space(10.0);
-        options_card(app, ui);
-        if let Some(d) = app.usb.chosen_disk().filter(|_| disk_ok) {
-            ui.add_space(10.0);
-            theme::warn_box(ui, "Everything on this drive will be erased", &[d.label()]);
-        }
-        show_error(app, ui);
-        log_tail(app, ui, 200);
+        crate::pages::two_columns(ui, |i, ui| {
+            if i == 0 {
+                source_card(app, ui);
+                if let Some(d) = app.usb.chosen_disk().filter(|_| disk_ok) {
+                    ui.add_space(10.0);
+                    theme::warn_box(ui, "Everything on this drive will be erased", &[d.label()]);
+                }
+                show_error(app, ui);
+                log_tail(app, ui, 6);
+            } else {
+                drive_card(app, ui, &prot_letters);
+                ui.add_space(10.0);
+                options_card(app, ui);
+            }
+        });
     });
     if app.usb.confirm {
         confirm(app, ctx, protected);
@@ -175,7 +179,7 @@ fn source_card(app: &mut App, ui: &mut egui::Ui) {
             Some(UsbSource::Folder(p)) => format!("Folder: {}", p.display()),
             None => "Nothing chosen".into(),
         };
-        ui.label(RichText::new(shown).monospace().size(13.0));
+        crate::pages::path_label(ui, &shown);
         ui.horizontal(|ui| {
             if theme::secondary(ui, "Choose ISO…", true).clicked() {
                 if let Some(p) = rfd::FileDialog::new().add_filter("Disc image", &["iso"]).pick_file() {
@@ -227,9 +231,10 @@ fn options_card(app: &mut App, ui: &mut egui::Ui) {
     theme::card().show(ui, |ui| {
         ui.set_width(ui.available_width());
         h2(ui, "Options");
-        ui.radio_value(&mut app.usb.scheme, Scheme::Mbr, Scheme::Mbr.label());
-        ui.radio_value(&mut app.usb.scheme, Scheme::Gpt, Scheme::Gpt.label());
-        dim(ui, "Not sure? Keep MBR. It works on both older and newer PCs.");
+        ui.radio_value(&mut app.usb.scheme, Scheme::Mbr, Scheme::Mbr.label())
+            .on_hover_text("Not sure? Keep MBR. It works on both older and newer PCs.");
+        ui.radio_value(&mut app.usb.scheme, Scheme::Gpt, Scheme::Gpt.label())
+            .on_hover_text("Only for PCs that boot in UEFI mode without legacy support");
         ui.horizontal(|ui| {
             ui.label("Drive name:");
             let r = ui.add(egui::TextEdit::singleline(&mut app.usb.label).char_limit(11).desired_width(160.0));
@@ -238,7 +243,7 @@ fn options_card(app: &mut App, ui: &mut egui::Ui) {
             }
         });
         ui.checkbox(&mut app.usb.verify, "Check every file after copying (slower, recommended)");
-        dim(ui, "The drive is formatted FAT32. A Windows image larger than 4 GB is split automatically.");
+        dim(ui, "Formatted FAT32; images over 4 GB are split automatically.");
     });
 }
 
@@ -305,5 +310,5 @@ fn done_view(app: &mut App, ui: &mut egui::Ui, r: &UsbReport) {
         ui.add_space(8.0);
         theme::warn_box(ui, "Notes", &r.warnings);
     }
-    log_tail(app, ui, 200);
+    log_tail(app, ui, 6);
 }

@@ -428,6 +428,7 @@ impl App {
                 self.tool_switch(ui, advanced);
                 ui.add_space(12.0);
                 let steps: &[Step] = if self.tool == Tool::Customize { &Step::ALL } else { &[] };
+                ui.spacing_mut().item_spacing.y = 4.0;
                 for &s in steps {
                     self.rail_step(ui, s, advanced);
                     if s == Step::Customize && self.step == Step::Customize && !advanced {
@@ -601,6 +602,7 @@ impl App {
     fn rail_categories(&mut self, ui: &mut egui::Ui) {
         let cats = self.visible_categories();
         ui.indent("cats", |ui| {
+            ui.spacing_mut().item_spacing.y = 2.0;
             for c in cats {
                 let selected = self.view == View::Cat(c);
                 let n = self.selected_in(c);
