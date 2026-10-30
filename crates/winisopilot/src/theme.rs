@@ -72,9 +72,9 @@ pub fn apply(ctx: &egui::Context, settings: &wip_core::settings::Settings) {
     v.selection.stroke = Stroke::new(if hc { 3.0_f32 } else { 2.0 }, if hc { FOCUS_HC } else { ACCENT });
     ctx.set_visuals(v);
     ctx.style_mut(|s| {
-        s.spacing.item_spacing = Vec2::new(8.0, 8.0);
-        s.spacing.button_padding = Vec2::new(14.0, 7.0);
-        s.spacing.interact_size.y = 30.0;
+        s.spacing.item_spacing = Vec2::new(8.0, 6.0);
+        s.spacing.button_padding = Vec2::new(12.0, 5.0);
+        s.spacing.interact_size.y = 26.0;
         s.animation_time = if settings.reduce_motion { 0.0 } else { 1.0 / 12.0 };
     });
     ctx.set_zoom_factor(settings.text_scale.clamp(0.75, 2.0));
@@ -85,11 +85,11 @@ pub fn eyebrow(ui: &mut Ui, text: &str) {
 }
 
 pub fn h1(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).size(26.0).strong().color(TEXT));
+    ui.label(RichText::new(text).size(24.0).strong().color(TEXT));
 }
 
 pub fn h2(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).size(19.0).strong().color(TEXT));
+    ui.label(RichText::new(text).size(17.0).strong().color(TEXT));
 }
 
 pub fn body(ui: &mut Ui, text: &str) {
@@ -120,7 +120,7 @@ pub fn primary(ui: &mut Ui, text: &str, enabled: bool) -> Response {
     let b = egui::Button::new(RichText::new(text).size(15.0).strong().color(TEXT))
         .fill(if enabled { PRIMARY } else { Color32::from_rgb(0x55, 0x2A, 0x34) })
         .stroke(Stroke::NONE)
-        .min_size(Vec2::new(110.0, 40.0));
+        .min_size(Vec2::new(100.0, 34.0));
     ui.add_enabled(enabled, b)
 }
 
@@ -128,7 +128,7 @@ pub fn secondary(ui: &mut Ui, text: &str, enabled: bool) -> Response {
     let b = egui::Button::new(RichText::new(text).size(15.0).color(TEXT))
         .fill(Color32::TRANSPARENT)
         .stroke(Stroke::new(1.0_f32, BOUNDARY))
-        .min_size(Vec2::new(90.0, 40.0));
+        .min_size(Vec2::new(80.0, 34.0));
     ui.add_enabled(enabled, b)
 }
 
@@ -143,7 +143,27 @@ pub fn card() -> Frame {
         .fill(CARD)
         .stroke(Stroke::new(1.0_f32, DIVIDER))
         .corner_radius(CornerRadius::same(10))
-        .inner_margin(Margin::same(16))
+        .inner_margin(Margin::same(12))
+}
+
+/// Asks the next card to stretch down to `reserve` pixels above the bottom
+/// of the space left in `ui`, so pages have no empty band at the bottom.
+pub fn fill_next(ui: &Ui, reserve: f32) {
+    let h = (ui.available_height() - reserve - 2.0 * 12.0 - 2.0).max(0.0);
+    let pass = ui.ctx().cumulative_pass_nr();
+    ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new("card-fill-next"), (pass, h)));
+}
+
+/// First call inside every card: full width, plus any pending stretch.
+pub fn card_body(ui: &mut Ui) {
+    ui.set_width(ui.available_width());
+    let id = egui::Id::new("card-fill-next");
+    // Only a request made earlier in this same frame counts.
+    if let Some((pass, h)) = ui.ctx().data_mut(|d| d.remove_temp::<(u64, f32)>(id)) {
+        if pass == ui.ctx().cumulative_pass_nr() {
+            ui.set_min_height(h);
+        }
+    }
 }
 
 pub fn warn_box(ui: &mut Ui, title: &str, lines: &[String]) {

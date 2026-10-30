@@ -3,7 +3,7 @@
 use crate::app::{App, Step};
 use crate::jobs::{Kind, Outcome};
 use crate::theme::{self, body, check_line, dim, eyebrow, h1, h2};
-use eframe::egui::{self, Frame, Margin, RichText, ScrollArea, Ui};
+use eframe::egui::{self, Frame, Margin, RichText, Ui};
 use std::path::PathBuf;
 use wip_core::plan::{self, Severity};
 use wip_core::recipe::{sanitize_label, Compression, Recipe};
@@ -28,8 +28,8 @@ pub fn footer(ctx: &egui::Context, status: &str, back: bool, next: Option<(&str,
         nav = Nav::Back;
     }
     egui::TopBottomPanel::bottom("footer")
-        .exact_height(68.0)
-        .frame(Frame::new().fill(theme::CHROME).inner_margin(Margin::symmetric(32, 12)))
+        .exact_height(54.0)
+        .frame(Frame::new().fill(theme::CHROME).inner_margin(Margin::symmetric(20, 8)))
         .show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.label(RichText::new(status).color(theme::TEXT_DIM));
@@ -48,23 +48,20 @@ pub fn footer(ctx: &egui::Context, status: &str, back: bool, next: Option<(&str,
     nav
 }
 
-/// Page body. Pages are laid out to fit the window; the scroll area is only
-/// a safety net for very large text sizes and never shows otherwise.
+/// Page body. The window has a fixed size and every page is laid out to fit
+/// it, so there is no scrolling anywhere.
 pub fn central(ctx: &egui::Context, add: impl FnOnce(&mut Ui)) {
     egui::CentralPanel::default()
-        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 40, right: 40, top: 26, bottom: 10 }))
+        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 20, right: 20, top: 14, bottom: 12 }))
         .show(ctx, |ui| {
-            ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                ui.set_max_width(ui.available_width().min(1100.0));
-                add(ui);
-            });
+            add(ui);
         });
 }
 
 /// Two equal columns with a 16 px gap.
 /// `add` is called with 0 for the left column and 1 for the right.
 pub fn two_columns(ui: &mut Ui, mut add: impl FnMut(usize, &mut Ui)) {
-    ui.spacing_mut().item_spacing.x = 16.0;
+    ui.spacing_mut().item_spacing.x = 12.0;
     ui.columns(2, |c| {
         for (i, col) in c.iter_mut().enumerate() {
             col.spacing_mut().item_spacing.x = 8.0;
@@ -82,7 +79,7 @@ fn header(app: &App, ui: &mut Ui, step: Step, title: &str, blurb: &str) {
         body(ui, blurb);
     }
     crate::help::tip(app, ui);
-    ui.add_space(10.0);
+    ui.add_space(4.0);
 }
 
 /// Progress, log tail and Cancel for the running job.
@@ -90,7 +87,7 @@ pub fn job_panel(app: &mut App, ui: &mut Ui) {
     let reduce_motion = app.settings.reduce_motion;
     let Some(job) = app.job.as_mut() else { return };
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         let (n, t, label) = job.stage.clone();
         h2(ui, job.kind.title());
         if t > 0 {
@@ -180,6 +177,22 @@ fn workspace_banner(app: &mut App, ui: &mut Ui) -> bool {
 
 // ---------------------------------------------------------------- Welcome
 
+/// Height kept free under a column's last card for the progress panel,
+/// an error box and the Details line.
+pub fn tail_reserve(app: &App) -> f32 {
+    let mut r = 0.0;
+    if app.busy() {
+        r += 200.0;
+    }
+    if app.last_error.is_some() {
+        r += 150.0;
+    }
+    if !app.leftovers.is_empty() {
+        r += 90.0;
+    }
+    r
+}
+
 /// Guided = plain language, fewest choices. Advanced = every detail.
 pub fn guided(app: &App) -> bool {
     app.mode() == wip_core::settings::Mode::Guided
@@ -209,24 +222,41 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
                 "Answer a few simple questions. Nothing on this PC, and none of your files, is changed.",
             );
             two_columns(ui, |i, ui| {
-                let (title, text, button) = if i == 0 {
+                let (title, text, button, steps): (_, _, _, &[&str]) = if i == 0 {
                     (
                         "Make a cleaner Windows",
                         "Remove apps, ads and extras you don't want, then put the result on a USB stick to install.",
                         "Start",
+                        &[
+                            "Choose a Windows file, or let WinISOPilot download it",
+                            "Pick your Windows (Home, Pro…)",
+                            "Tick what you don't want; each item says what it does",
+                            "Check the list, then make your new Windows",
+                            "Put it on a USB stick and install",
+                        ],
                     )
                 } else {
                     (
                         "Just make a USB stick",
                         "Put Windows on a USB stick exactly as Microsoft ships it, so you can install it on a PC.",
                         "Make a USB stick",
+                        &[
+                            "Choose the Windows file (.iso)",
+                            "Plug in a USB stick of 8 GB or more",
+                            "Pick it and type ERASE to confirm",
+                            "Wait for the copy and the check to finish",
+                        ],
                     )
                 };
                 theme::card().show(ui, |ui| {
-                    ui.set_width(ui.available_width());
-                    ui.set_min_height(150.0);
+                    theme::card_body(ui);
+                    ui.set_min_height(250.0);
                     h2(ui, title);
                     body(ui, text);
+                    ui.add_space(4.0);
+                    for (n, st) in steps.iter().enumerate() {
+                        ui.label(RichText::new(format!("{}.  {st}", n + 1)).size(13.5).color(theme::TEXT_DIM));
+                    }
                     ui.add_space(6.0);
                     let clicked = if i == 0 {
                         theme::primary(ui, button, !app.busy()).clicked()
@@ -240,7 +270,8 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
                     }
                 });
             });
-            ui.add_space(10.0);
+            ui.add_space(8.0);
+            theme::fill_next(ui, tail_reserve(app));
             simple_ready(app, ui);
         } else {
             header(
@@ -250,16 +281,20 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
                 "Host diagnostics",
                 "Offline servicing of install.wim / install.esd via the DISM API, reg.exe hive edits and oscdimg. The source ISO is mounted read-only.",
             );
-            two_columns(ui, |i, ui| match i {
-                0 => diagnostics(app, ui),
-                _ => shortcuts_card(ui),
+            let reserve = tail_reserve(app);
+            two_columns(ui, |i, ui| {
+                theme::fill_next(ui, reserve);
+                match i {
+                    0 => diagnostics(app, ui),
+                    _ => shortcuts_card(ui),
+                }
             });
         }
         if !app.leftovers.is_empty() {
-            ui.add_space(10.0);
+            ui.add_space(8.0);
             leftovers(app, ui);
         }
-        ui.add_space(10.0);
+        ui.add_space(8.0);
         job_panel(app, ui);
         show_error(app, ui);
     });
@@ -296,7 +331,7 @@ pub fn adk_offer(app: &mut App, ui: &mut Ui) {
 fn simple_ready(app: &mut App, ui: &mut Ui) {
     let (admin, dism, iso_tool) = (app.host.is_admin, app.host.dism_api.is_some(), app.host.oscdimg.is_some());
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         if admin && dism && iso_tool {
             check_line(ui, true, "This PC has everything needed.");
             return;
@@ -328,7 +363,7 @@ fn diagnostics(app: &mut App, ui: &mut Ui) {
     let h = app.host.clone();
     let h = &h;
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         h2(ui, "Host");
         let opt = |p: &Option<PathBuf>| p.as_ref().map_or("not found".to_string(), |p| p.display().to_string());
         let rows = [
@@ -365,7 +400,7 @@ fn diagnostics(app: &mut App, ui: &mut Ui) {
 
 fn shortcuts_card(ui: &mut Ui) {
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         h2(ui, "Keyboard");
         egui::Grid::new("keys-welcome").num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
             for (k, what) in crate::help::SHORTCUTS {
@@ -451,12 +486,14 @@ pub fn source(app: &mut App, ctx: &egui::Context) {
         two_columns(ui, |i, ui| {
             if i == 0 {
                 iso_card(app, ui, locked);
-                ui.add_space(10.0);
+                ui.add_space(8.0);
+                theme::fill_next(ui, tail_reserve(app));
                 working_folder_card(app, ui, locked);
-                ui.add_space(10.0);
+                ui.add_space(8.0);
                 job_panel(app, ui);
                 show_error(app, ui);
             } else {
+                theme::fill_next(ui, 0.0);
                 crate::download_ui::card(app, ui, locked);
             }
         });
@@ -485,7 +522,7 @@ fn pick_iso(app: &mut App) {
 fn iso_card(app: &mut App, ui: &mut Ui, locked: bool) {
     let g = guided(app);
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         if g {
             h2(ui, "I already have a Windows ISO file");
             match app.iso_path.as_ref().and_then(|p| p.file_name()) {
@@ -538,7 +575,7 @@ fn iso_card(app: &mut App, ui: &mut Ui, locked: bool) {
 fn working_folder_card(app: &mut App, ui: &mut Ui, locked: bool) {
     let g = guided(app);
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         if g {
             h2(ui, "Where to keep temporary files");
             let shown = app.workspace_parent.as_ref().map_or("Not chosen yet".to_string(), |p| p.display().to_string());
@@ -646,73 +683,120 @@ pub fn edition(app: &mut App, ctx: &egui::Context) {
             body(ui, "Read an ISO first.");
             return;
         };
-        // One compact row per edition; paged if an ISO holds more than fit.
-        const ROW: f32 = 46.0;
-        let page = crate::pager::layout(ui, "editions", src.images.len(), ROW, 150.0);
-        let list = ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.y = 4.0;
-            for img in &src.images[page.range.clone()] {
-                let support = img.support();
-                let selected = app.chosen_index == Some(img.index);
-                let frame = theme::card().inner_margin(Margin::symmetric(14, 6)).stroke(egui::Stroke::new(
-                    if selected { 2.0_f32 } else { 1.0 },
-                    if selected { theme::ACCENT } else { theme::DIVIDER },
-                ));
-                let enabled = support.is_ok() && !locked;
-                let r = frame.show(ui, |ui| {
-                    ui.set_width(ui.available_width());
-                    ui.set_height(ROW - 16.0);
-                    ui.horizontal_centered(|ui| {
-                        let rb = ui.add_enabled(enabled, egui::RadioButton::new(selected, ""));
-                        let name = RichText::new(&img.name).size(15.5).strong();
-                        let l = ui.add(egui::Label::new(name).sense(egui::Sense::click()));
-                        let fam = img.family().map_or("Unsupported", |f| f.label());
-                        let facts = match (&support, g) {
-                            (Ok(_), true) if img.edition_id.eq_ignore_ascii_case("Professional") => {
-                                "Recommended if you're not sure".to_string()
-                            }
-                            (Ok(_), true) => String::new(),
-                            (Ok(_), false) => format!(
-                                "#{} · {fam} · {} · {} · {} · {} · {} · {}",
-                                img.index,
-                                img.edition_id,
-                                img.installation_type,
-                                img.version_string(),
-                                img.architecture,
-                                human_bytes(img.size_bytes),
-                                img.languages.join(", ")
-                            ),
-                            (Err(why), _) => why.to_string(),
-                        };
-                        let color = if support.is_ok() { theme::TEXT_DIM } else { theme::ERR_TEXT };
-                        ui.add(egui::Label::new(RichText::new(&facts).size(13.0).color(color)).truncate())
-                            .on_hover_text(&facts);
-                        rb.clicked() || (enabled && l.clicked())
-                    })
-                    .inner
-                });
-                let clicked = r.inner || (enabled && r.response.interact(egui::Sense::click()).clicked());
-                if clicked && !selected && enabled {
-                    app.chosen_index = Some(img.index);
-                }
+        two_columns(ui, |col, ui| {
+            if col == 0 {
+                edition_list(app, ui, &src, locked, g);
+                job_panel(app, ui);
+                show_error(app, ui);
+            } else {
+                theme::fill_next(ui, 0.0);
+                edition_side(app, ui, &src, locked, g);
             }
         });
-        page.controls(ui, list.response.rect);
-        ui.add_space(8.0);
+    });
+}
+
+/// One compact row per edition; paged if an ISO holds more than fit.
+fn edition_list(app: &mut App, ui: &mut Ui, src: &wip_engine::SourceInfo, locked: bool, g: bool) {
+    const ROW: f32 = 42.0;
+    let page = crate::pager::layout(ui, "editions", src.images.len(), ROW, tail_reserve(app));
+    let list = ui.scope(|ui| {
+        ui.spacing_mut().item_spacing.y = 4.0;
+        for img in &src.images[page.range.clone()] {
+            let support = img.support();
+            let selected = app.chosen_index == Some(img.index);
+            let frame = theme::card().inner_margin(Margin::symmetric(12, 4)).stroke(egui::Stroke::new(
+                if selected { 2.0_f32 } else { 1.0 },
+                if selected { theme::ACCENT } else { theme::DIVIDER },
+            ));
+            let enabled = support.is_ok() && !locked;
+            let r = frame.show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.set_height(ROW - 14.0);
+                ui.horizontal_centered(|ui| {
+                    let rb = ui.add_enabled(enabled, egui::RadioButton::new(selected, ""));
+                    let name = RichText::new(&img.name).size(15.0).strong();
+                    let l = ui.add(egui::Label::new(name).sense(egui::Sense::click()));
+                    let facts = match (&support, g) {
+                        (Ok(_), true) if img.edition_id.eq_ignore_ascii_case("Professional") => {
+                            "Recommended if you're not sure".to_string()
+                        }
+                        (Ok(_), true) => String::new(),
+                        (Ok(_), false) => format!("#{} · {}", img.index, img.edition_id),
+                        (Err(why), _) => why.to_string(),
+                    };
+                    let color = if support.is_ok() { theme::TEXT_DIM } else { theme::ERR_TEXT };
+                    ui.add(egui::Label::new(RichText::new(&facts).size(13.0).color(color)).truncate())
+                        .on_hover_text(&facts);
+                    rb.clicked() || (enabled && l.clicked())
+                })
+                .inner
+            });
+            let clicked = r.inner || (enabled && r.response.interact(egui::Sense::click()).clicked());
+            if clicked && !selected && enabled {
+                app.chosen_index = Some(img.index);
+            }
+        }
+    });
+    page.controls(ui, list.response.rect);
+}
+
+/// Right column of the Edition page: plain advice (Guided) or the selected
+/// index's metadata (Advanced), plus the output choice and space check.
+fn edition_side(app: &mut App, ui: &mut Ui, src: &wip_engine::SourceInfo, locked: bool, g: bool) {
+    theme::card().show(ui, |ui| {
+        theme::card_body(ui);
         if g {
             // Beginners always get a single-edition ISO: smaller, and Setup asks one question less.
             app.single_edition = true;
+            h2(ui, "Home, Pro or Education?");
+            for (name, text) in [
+                ("Home", "For most home PCs. Everything you need for everyday use."),
+                ("Pro", "Home plus extras for work: BitLocker drive encryption, Remote Desktop, joining a company network."),
+                ("Education", "Like Pro, for schools. Only pick it if your school gave you a key."),
+                ("N editions", "The same, without Media Player and some media apps (made for Europe)."),
+            ] {
+                ui.label(RichText::new(name).strong().color(theme::TEXT));
+                dim(ui, text);
+            }
+            ui.add_space(6.0);
+            body(ui, "Windows will only activate with the edition your key or PC is licensed for. If unsure, pick Pro: Setup activates Home or Pro automatically on most PCs that came with Windows.");
         } else {
+            h2(ui, "Selected index");
+            match src.images.iter().find(|i| Some(i.index) == app.chosen_index) {
+                Some(img) => {
+                    let fam = img.family().map_or("Unsupported", |f| f.label());
+                    let rows = [
+                        ("Index", img.index.to_string()),
+                        ("Name", img.name.clone()),
+                        ("Description", img.description.clone()),
+                        ("EditionID", img.edition_id.clone()),
+                        ("Installation type", img.installation_type.clone()),
+                        ("Family", fam.to_string()),
+                        ("Version", img.version_string()),
+                        ("Architecture", img.architecture.clone()),
+                        ("Installed size", format!("{} ({} bytes)", human_bytes(img.size_bytes), img.size_bytes)),
+                        ("Languages", img.languages.join(", ")),
+                        ("Image file", src.image_rel.clone()),
+                    ];
+                    egui::Grid::new("index-meta").num_columns(2).spacing([12.0, 4.0]).striped(true).show(ui, |ui| {
+                        for (k, v) in rows {
+                            ui.label(RichText::new(k).size(13.0).color(theme::TEXT_DIM));
+                            ui.add(egui::Label::new(RichText::new(&v).monospace().size(12.5)).truncate()).on_hover_text(&v);
+                            ui.end_row();
+                        }
+                    });
+                }
+                None => dim(ui, "Select an index."),
+            }
+            ui.add_space(6.0);
             ui.add_enabled_ui(!locked, |ui| {
                 ui.checkbox(&mut app.single_edition, "Export only this index (single-edition install image)");
             });
             dim(ui, "Untick to keep every index in the output; only the selected one is serviced.");
-            ui.add_space(6.0);
         }
+        ui.add_space(6.0);
         space_line(app, ui);
-        ui.add_space(10.0);
-        job_panel(app, ui);
-        show_error(app, ui);
     });
 }
 
@@ -803,7 +887,11 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
                     );
                     ui.add_space(8.0);
                 }
-                changes_list(app, ui, &ack_ids);
+                theme::fill_next(ui, 0.0);
+                theme::card().show(ui, |ui| {
+                    theme::card_body(ui);
+                    changes_list(app, ui, &ack_ids);
+                });
             } else {
                 let errors: Vec<_> = issues.iter().filter(|i| i.severity == Severity::Error).collect();
                 let skipped: Vec<String> = issues
@@ -824,6 +912,7 @@ pub fn review(app: &mut App, ctx: &egui::Context) {
                 } else {
                     operation_plan(app, ui);
                 }
+                theme::fill_next(ui, if app.last_error.is_some() { 150.0 } else { 0.0 });
                 output_card(app, ui);
                 show_error(app, ui);
             }
@@ -912,7 +1001,7 @@ fn changes_list(app: &mut App, ui: &mut Ui, ack_ids: &std::collections::BTreeSet
 fn output_card(app: &mut App, ui: &mut Ui) {
     let g = guided(app);
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         if g {
             h2(ui, "Where your new Windows is saved");
             if app.host.oscdimg.is_some() {
@@ -982,18 +1071,18 @@ fn default_output(app: &App) -> Option<PathBuf> {
 fn operation_plan(app: &mut App, ui: &mut Ui) {
     let Some(ctx) = app.plan_ctx().filter(|c| c.inventory.is_some()) else {
         theme::card().show(ui, |ui| {
-            ui.set_width(ui.available_width());
+            theme::card_body(ui);
             h2(ui, "Operation plan");
             dim(ui, "Open an index to compile the plan.");
         });
-        ui.add_space(10.0);
+        ui.add_space(8.0);
         return;
     };
     let p = match plan::compile(&app.selection, &ctx) {
         Ok(p) => p,
         Err(e) => {
             theme::error_box(ui, "Plan doesn't compile", &e);
-            ui.add_space(10.0);
+            ui.add_space(8.0);
             return;
         }
     };
@@ -1006,7 +1095,7 @@ fn operation_plan(app: &mut App, ui: &mut Ui) {
         .map(|(n, (target, o))| format!("{:>3} [{target}] {}  ← {}", n + 1, o.op.describe(), o.origin))
         .collect();
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         ui.horizontal(|ui| {
             h2(ui, &format!("Operation plan ({})", lines.len()));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -1042,7 +1131,7 @@ fn operation_plan(app: &mut App, ui: &mut Ui) {
             dim(ui, &format!("{} selected options compile to nothing on this image (see Copy).", p.skipped.len()));
         }
     });
-    ui.add_space(10.0);
+    ui.add_space(8.0);
 }
 
 fn choose_output(app: &mut App) {
@@ -1177,10 +1266,12 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
                         ui.add_space(8.0);
                         theme::warn_box(ui, "Notes", &r.warnings);
                     }
+                    theme::fill_next(ui, 0.0);
                     crate::extras::footprint_card(ui, &r);
                 } else {
+                    theme::fill_next(ui, 80.0);
                     crate::extras::boot_test_card(app, ui, &r);
-                    ui.add_space(10.0);
+                    ui.add_space(8.0);
                     ui.horizontal_wrapped(|ui| {
                         if theme::primary(ui, "Write it to a USB drive", true).clicked() {
                             app.usb.source = None;
@@ -1212,7 +1303,7 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
 
 fn result_card(ui: &mut Ui, r: &wip_engine::BuildReport) {
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         match &r.iso {
             Some(p) => {
                 check_line(ui, true, "New ISO saved");
@@ -1268,7 +1359,7 @@ fn what_happens(app: &App, ui: &mut Ui) {
     let files = count(&|o| matches!(o, Op::DeleteFile { .. }));
     let cleanup = count(&|o| matches!(o, Op::ComponentCleanup { .. }));
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         h2(ui, "What happens when you select Build");
         let mut lines = Vec::new();
         if apps + caps + feats > 0 {
@@ -1301,5 +1392,5 @@ fn what_happens(app: &App, ui: &mut Ui) {
             dim(ui, &format!("{} chosen options have nothing to do in this image and are skipped.", p.skipped.len()));
         }
     });
-    ui.add_space(10.0);
+    ui.add_space(8.0);
 }

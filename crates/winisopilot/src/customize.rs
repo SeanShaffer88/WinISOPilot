@@ -5,7 +5,7 @@
 use crate::app::{App, Step, View};
 use crate::pages::{footer, Nav};
 use crate::theme::{self, body, dim, eyebrow, h1, h2};
-use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, RichText, ScrollArea, Sense, Stroke, Ui, Vec2};
+use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, RichText, Sense, Stroke, Ui, Vec2};
 use wip_core::plan::{availability, Availability};
 use wip_core::settings::Mode;
 use wip_core::{Category, Level, Risk};
@@ -230,17 +230,17 @@ fn guided(app: &mut App, ctx: &egui::Context) {
     }
 
     egui::SidePanel::right("explainer")
-        .exact_width(340.0)
+        .exact_width(320.0)
         .resizable(false)
         .frame(
-            Frame::new().fill(theme::CARD).inner_margin(Margin::same(26)).stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
+            Frame::new().fill(theme::CARD).inner_margin(Margin::same(16)).stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
         )
         .show(ctx, |ui| {
-            ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| explainer(app, ui, false));
+            explainer(app, ui, false);
         });
 
     egui::CentralPanel::default()
-        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 36, right: 28, top: 28, bottom: 8 }))
+        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 20, right: 16, top: 14, bottom: 10 }))
         .show(ctx, |ui| {
             eyebrow(ui, "Step 4 of 6 · Customize");
             h1(ui, cat.label());
@@ -303,7 +303,7 @@ fn guided(app: &mut App, ctx: &egui::Context) {
 }
 
 /// Height of one Guided option row (frame margins included).
-const GUIDED_ROW: f32 = 40.0;
+const GUIDED_ROW: f32 = 34.0;
 
 fn guided_row(app: &mut App, ui: &mut Ui, r: &Row, last: bool) {
     let focused = app.focused.as_deref() == Some(r.id.as_str());
@@ -311,10 +311,10 @@ fn guided_row(app: &mut App, ui: &mut Ui, r: &Row, last: bool) {
     let fill = if focused { theme::ROW_SELECTED } else { theme::CARD };
     let resp = Frame::new()
         .fill(fill)
-        .inner_margin(Margin::symmetric(14, 5))
+        .inner_margin(Margin::symmetric(12, 3))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.set_height(GUIDED_ROW - 10.0);
+            ui.set_height(GUIDED_ROW - 6.0);
             ui.horizontal_centered(|ui| {
                 let mut on = r.checked;
                 let cb = ui.add_enabled(enabled, egui::Checkbox::without_text(&mut on));
@@ -411,7 +411,7 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
             Frame::new().fill(theme::CARD).inner_margin(Margin::same(18)).stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
         )
         .show(ctx, |ui| {
-            ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| explainer(app, ui, true));
+            explainer(app, ui, true);
         });
 
     egui::CentralPanel::default()
@@ -421,7 +421,7 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                 ui.horizontal_wrapped(|ui| {
                     search_box(app, ui, 240.0);
                     let label = app.risk_filter.map_or("Risk: all".to_string(), |r| format!("Risk: {}", r.label()));
-                    egui::ComboBox::from_id_salt("risk").selected_text(label).show_ui(ui, |ui| {
+                    egui::ComboBox::from_id_salt("risk").selected_text(label).height(400.0).show_ui(ui, |ui| {
                         ui.selectable_value(&mut app.risk_filter, None, "All");
                         for r in [Risk::Safe, Risk::Low, Risk::Moderate, Risk::High] {
                             ui.selectable_value(&mut app.risk_filter, Some(r), r.label());
@@ -476,11 +476,11 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
 }
 
 /// Height of one Advanced table row.
-const TABLE_ROW: f32 = 32.0;
+const TABLE_ROW: f32 = 28.0;
 
 /// A fixed-width, left-aligned table cell.
 fn cell<R>(ui: &mut Ui, w: f32, add: impl FnOnce(&mut Ui) -> R) -> R {
-    ui.allocate_ui_with_layout(Vec2::new(w, 32.0), egui::Layout::left_to_right(egui::Align::Center), |ui| {
+    ui.allocate_ui_with_layout(Vec2::new(w, TABLE_ROW), egui::Layout::left_to_right(egui::Align::Center), |ui| {
         ui.set_width(w);
         add(ui)
     })

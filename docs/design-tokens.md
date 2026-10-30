@@ -29,6 +29,6 @@ Risk badges always carry a text label (SAFE / LOW / MODERATE / HIGH / UNRATED); 
 | Moderate | `#4A3A16` | `#F5D38A` |
 | High / Unrated | `#4D1624` | `#FF9DB0` |
 
-Layouts: Guided = mockup 2 (232 px rail, list, 340 px explainer); Advanced = mockup 5 (64 px icon rail, 210 px categories, table, 290 px inspector). Default window 1200×760, minimum 1024×700. Every page must fit the minimum size at 100% text without a scrollbar: use two columns (`pages::two_columns`) and page long lists (`pager.rs`). A scrollbar appears only as a safety net at larger text sizes.
+Layouts: Guided = mockup 2 (232 px rail, list, 340 px explainer); Advanced = mockup 5 (64 px icon rail, 210 px categories, table, 290 px inspector). Fixed window 1200×760 (not resizable). No scroll areas anywhere: use two columns (`pages::two_columns`), page long lists (`pager.rs`), and call `theme::fill_next` before a column's last card so it stretches to the bottom (cards start with `theme::card_body`). Spacing: page margin 20/14, card padding 12, item spacing 8×6, controls 26 px high, buttons 34 px.
 
 Deviation from the InstallScope defaults: none recorded.

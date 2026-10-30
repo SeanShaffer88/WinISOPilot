@@ -127,7 +127,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
         h1(ui, "Make a bootable USB drive");
         body(ui, "Puts Windows installation media on a USB stick that boots on BIOS and UEFI PCs. Everything on the stick is erased.");
         crate::help::tip(app, ui);
-        ui.add_space(10.0);
+        ui.add_space(8.0);
 
         if let Some(r) = app.usb.report.clone() {
             done_view(app, ui, &r);
@@ -141,9 +141,13 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
 
         crate::pages::two_columns(ui, |i, ui| {
             if i == 0 {
+                let chosen = app.usb.chosen_disk().is_some() && disk_ok;
+                let reserve =
+                    30.0 + if chosen { 90.0 } else { 0.0 } + if app.last_error.is_some() { 110.0 } else { 0.0 };
+                theme::fill_next(ui, reserve);
                 source_card(app, ui);
                 if let Some(d) = app.usb.chosen_disk().filter(|_| disk_ok) {
-                    ui.add_space(10.0);
+                    ui.add_space(8.0);
                     let mut lines = vec![d.label()];
                     if likely_backup_drive(d) {
                         lines.push(format!(
@@ -157,7 +161,8 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                 log_tail(app, ui, 6);
             } else {
                 drive_card(app, ui, &prot_letters);
-                ui.add_space(10.0);
+                ui.add_space(8.0);
+                theme::fill_next(ui, 0.0);
                 options_card(app, ui);
             }
         });
@@ -185,7 +190,7 @@ fn guided(app: &App) -> bool {
 fn source_card(app: &mut App, ui: &mut egui::Ui) {
     let g = guided(app);
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         h2(ui, if g { "1. Which Windows file?" } else { "Source" });
         let shown = match &app.usb.source {
             Some(UsbSource::Iso(p)) => format!("ISO: {}", p.display()),
@@ -218,7 +223,7 @@ fn source_card(app: &mut App, ui: &mut egui::Ui) {
 
 fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         let g = guided(app);
         ui.horizontal(|ui| {
             h2(ui, if g { "2. Which USB stick?" } else { "Target disk" });
@@ -253,7 +258,7 @@ fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
 fn options_card(app: &mut App, ui: &mut egui::Ui) {
     let g = guided(app);
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         if g {
             // Safe defaults for beginners: MBR boots on old and new PCs.
             h2(ui, "3. Check the copy?");
@@ -335,7 +340,7 @@ fn confirm(app: &mut App, ctx: &egui::Context, protected: Vec<PathBuf>) {
 
 fn done_view(app: &mut App, ui: &mut egui::Ui, r: &UsbReport) {
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         h2(ui, &format!("USB drive {}: is ready", r.letter));
         check_line(ui, true, &format!("{} copied", human_bytes(r.bytes_written)));
         if r.split {

@@ -112,6 +112,53 @@ pub struct App {
     pub toast: Option<(String, Instant)>,
 }
 
+/// Two-option switch used in the rail (ISO/USB, Guided/Advanced): side by
+/// side in the Guided rail, stacked in the narrow Advanced rail. Returns the
+/// newly picked index.
+fn segmented(ui: &mut egui::Ui, compact: bool, opts: &[(&str, &str)], current: usize, busy: bool) -> Option<usize> {
+    let mut pick = None;
+    Frame::new()
+        .fill(theme::RAIL_SELECTED.gamma_multiply(0.6))
+        .corner_radius(CornerRadius::same(8))
+        .inner_margin(Margin::same(3))
+        .show(ui, |ui| {
+            ui.spacing_mut().item_spacing = Vec2::splat(3.0);
+            ui.spacing_mut().button_padding = Vec2::new(2.0, 4.0);
+            let mut button = |ui: &mut egui::Ui, i: usize, w: f32| {
+                let (label, hint) = opts[i];
+                let on = i == current;
+                let text =
+                    RichText::new(label).size(12.5).strong().color(if on { theme::TEXT } else { theme::RAIL_MUTED });
+                let b = egui::Button::new(text)
+                    .fill(if on { theme::PRIMARY } else { Color32::TRANSPARENT })
+                    .stroke(Stroke::NONE)
+                    .corner_radius(CornerRadius::same(6))
+                    .min_size(Vec2::new(w, 26.0));
+                let r = ui.add_enabled(!busy || on, b).on_hover_text(hint);
+                r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::RadioButton, true, on, label));
+                if r.clicked() && !on {
+                    pick = Some(i);
+                }
+            };
+            if compact {
+                ui.vertical(|ui| {
+                    let w = ui.available_width();
+                    for i in 0..opts.len() {
+                        button(ui, i, w);
+                    }
+                });
+            } else {
+                ui.horizontal(|ui| {
+                    let w = (ui.available_width() - 3.0 * (opts.len() - 1) as f32) / opts.len() as f32;
+                    for i in 0..opts.len() {
+                        button(ui, i, w);
+                    }
+                });
+            }
+        });
+    pick
+}
+
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>, demo: bool) -> App {
         let data = wip_engine::app_data_dir();
@@ -425,11 +472,11 @@ impl App {
 
     fn rail(&mut self, ctx: &egui::Context) {
         let advanced = self.mode() == Mode::Advanced;
-        let width = if advanced { 64.0 } else { 232.0 };
+        let width = if advanced { 80.0 } else { 220.0 };
         egui::SidePanel::left("rail")
             .exact_width(width)
             .resizable(false)
-            .frame(Frame::new().fill(theme::RAIL).inner_margin(Margin::symmetric(if advanced { 10 } else { 18 }, 22)))
+            .frame(Frame::new().fill(theme::RAIL).inner_margin(Margin::symmetric(if advanced { 6 } else { 14 }, 14)))
             .show(ctx, |ui| {
                 if !advanced {
                     ui.horizontal(|ui| {
@@ -441,7 +488,9 @@ impl App {
                     ui.add_space(10.0);
                 }
                 self.tool_switch(ui, advanced);
-                ui.add_space(12.0);
+                ui.add_space(6.0);
+                self.mode_switch(ui, advanced);
+                ui.add_space(10.0);
                 let steps: &[Step] = if self.tool == Tool::Customize { &Step::ALL } else { &[] };
                 ui.spacing_mut().item_spacing.y = 4.0;
                 for &s in steps {
@@ -483,54 +532,23 @@ impl App {
             });
     }
 
+    /// ISO / USB switch.
     fn tool_switch(&mut self, ui: &mut egui::Ui, compact: bool) {
-        let tools = [(Tool::Customize, "Customize ISO", "ISO"), (Tool::Usb, "Write to USB", "USB")];
-        let mut pick = None;
-        let busy = self.busy();
-        let current = self.tool;
-        let mut button = |ui: &mut egui::Ui, t: Tool, long: &str, short: &str, w: f32| {
-            let on = current == t;
-            let text = RichText::new(if compact { short } else { long }).size(12.5).color(if on {
-                theme::TEXT
-            } else {
-                theme::RAIL_MUTED
-            });
-            let b = egui::Button::new(text)
-                .wrap_mode(egui::TextWrapMode::Extend)
-                .fill(if on { theme::PRIMARY } else { Color32::TRANSPARENT })
-                .stroke(Stroke::NONE)
-                .min_size(Vec2::new(w, 32.0));
-            let r = ui.add_enabled(!busy || on, b).on_hover_text(long);
-            r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::RadioButton, true, on, long));
-            if r.clicked() && !on {
-                pick = Some(t);
-            }
-        };
-        Frame::new()
-            .fill(theme::RAIL_SELECTED.gamma_multiply(0.6))
-            .corner_radius(CornerRadius::same(8))
-            .inner_margin(Margin::same(3))
-            .show(ui, |ui| {
-                ui.spacing_mut().item_spacing = Vec2::splat(3.0);
-                ui.spacing_mut().button_padding = Vec2::new(4.0, 4.0);
-                if compact {
-                    ui.vertical(|ui| {
-                        let w = ui.available_width();
-                        for (t, l, s) in tools {
-                            button(ui, t, l, s, w);
-                        }
-                    });
-                } else {
-                    ui.horizontal(|ui| {
-                        let w = (ui.available_width() - 3.0) / 2.0;
-                        for (t, l, s) in tools {
-                            button(ui, t, l, s, w);
-                        }
-                    });
-                }
-            });
-        if let Some(t) = pick {
-            self.switch_tool(t);
+        let opts = [("ISO", "Customize an ISO"), ("USB", "Write to a USB drive")];
+        let cur = if self.tool == Tool::Customize { 0 } else { 1 };
+        if let Some(i) = segmented(ui, compact, &opts, cur, self.busy()) {
+            self.switch_tool(if i == 0 { Tool::Customize } else { Tool::Usb });
+        }
+    }
+
+    /// Guided / Advanced switch, right under ISO / USB.
+    fn mode_switch(&mut self, ui: &mut egui::Ui, compact: bool) {
+        let opts = [("Guided", "Simple questions, safe choices"), ("Advanced", "Every detail and option")];
+        let cur = if self.mode() == Mode::Guided { 0 } else { 1 };
+        if let Some(i) = segmented(ui, compact, &opts, cur, false) {
+            self.settings.mode = Some(if i == 0 { Mode::Guided } else { Mode::Advanced });
+            self.save_settings();
+            self.layout_changed();
         }
     }
 

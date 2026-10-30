@@ -26,7 +26,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | ADK auto-install (download, Microsoft signature check, silent Deployment Tools install, re-probe) | **Unverified** | Link and arguments from learn.microsoft.com and published scripts; not run yet |
 | Backup-drive guard (> 300 GB) | Verified | `eligibility_rules` test |
 | Live Microsoft catalog parses (Windows 10 and 11) | Verified on Windows | Sean's run after the BOM-less UTF-16 fix listed language/architecture/package for both |
-| Every page fits without a scrollbar at 1200×760 and 1024×700 (100% text); Settings dialog closes with Done/Esc | Partially verified | Linux/Mesa `--demo` screenshots of every page in both layouts at both sizes; demo data has few editions and options, so multi-page lists were checked on Customize only. Not yet on Windows or at 125–200% scaling (a scrollbar appears there as a safety net) |
+| Fixed 1200×760 window, no scroll areas, pages fill the window; Settings closes with Done/Esc | Partially verified | No `ScrollArea` in the UI code; Linux/Mesa `--demo` screenshots of every page in both layouts. Text sizes above 100% can now clip content (no scrolling by design); not yet checked on Windows at 125–200% display scaling |
 | Windows 10 host | **Unverified** | Supported by design; not run |
 | USB eligibility rules, identity check, diskpart script, FAT32 file plan (split only install.wim, size checks) | Verified | `wip-core::usb` tests |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |

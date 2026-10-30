@@ -64,7 +64,7 @@ fn first_run(app: &mut App, ctx: &egui::Context) {
     egui::Modal::new(egui::Id::new("first-run")).show(ctx, |ui| {
         ui.set_width(660.0);
         h1(ui, "How would you like to work?");
-        body(ui, "Pick the layout for this session. You can switch any time in Settings; your work is kept.");
+        body(ui, "Pick the layout for this session. Switch any time with Guided / Advanced in the left panel; your work is kept.");
         ui.add_space(10.0);
         ui.columns(2, |cols| {
             let (left, right) = cols.split_at_mut(1);
@@ -127,18 +127,6 @@ fn settings(app: &mut App, ctx: &egui::Context) {
         ui.add_space(6.0);
         crate::pages::two_columns(ui, |i, ui| {
             if i == 0 {
-                h2(ui, "Layout");
-                let mut mode = app.mode();
-                ui.horizontal(|ui| {
-                    changed |= ui.radio_value(&mut mode, Mode::Guided, "Guided").changed();
-                    changed |= ui.radio_value(&mut mode, Mode::Advanced, "Advanced").changed();
-                });
-                if Some(mode) != app.settings.mode {
-                    app.settings.mode = Some(mode);
-                    app.layout_changed();
-                }
-                dim(ui, "Guided explains one section at a time. Advanced shows a dense table with technical details. Switching returns to step 1; your choices are kept.");
-                ui.add_space(6.0);
                 h2(ui, "Options shown in Guided mode");
                 ui.horizontal(|ui| {
                     for l in Level::ALL {
@@ -154,6 +142,12 @@ fn settings(app: &mut App, ctx: &egui::Context) {
                     changed = true;
                 }
                 dim(ui, "Ctrl + and Ctrl − also change the size.");
+                ui.add_space(6.0);
+                h2(ui, "Layout");
+                changed |= ui
+                    .checkbox(&mut app.settings.ask_mode_on_launch, "Ask Guided or Advanced at every launch")
+                    .changed();
+                dim(ui, "Switch layout any time with Guided / Advanced in the left panel.");
             } else {
                 h2(ui, "Accessibility and comfort");
                 changed |= ui
@@ -161,9 +155,6 @@ fn settings(app: &mut App, ctx: &egui::Context) {
                     .changed();
                 changed |= ui.checkbox(&mut app.settings.reduce_motion, "Reduce motion (no animations)").changed();
                 changed |= ui.checkbox(&mut app.settings.show_tips, "Show a tip at the top of each page").changed();
-                changed |= ui
-                    .checkbox(&mut app.settings.ask_mode_on_launch, "Ask Guided or Advanced at every launch")
-                    .changed();
                 ui.add_space(6.0);
                 h2(ui, "Windows ADK DISM folder");
                 dim(ui, "Optional: for customizing a newer Windows than this PC runs. Takes effect after a restart.");

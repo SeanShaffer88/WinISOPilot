@@ -87,9 +87,23 @@ fn combo(
     let before = value.clone();
     ui.label(label);
     let text = value.as_deref().map(&shown).unwrap_or_default();
-    egui::ComboBox::from_id_salt(id).selected_text(text).width(240.0).show_ui(ui, |ui| {
-        for o in options {
-            ui.selectable_value(value, Some(o.clone()), shown(o));
+    // Long lists (languages) are shown in columns so the popup never scrolls.
+    const ROWS: usize = 14;
+    egui::ComboBox::from_id_salt(id).selected_text(text).width(240.0).height(2000.0).show_ui(ui, |ui| {
+        if options.len() <= ROWS {
+            for o in options {
+                ui.selectable_value(value, Some(o.clone()), shown(o));
+            }
+        } else {
+            ui.horizontal_top(|ui| {
+                for col in options.chunks(ROWS) {
+                    ui.vertical(|ui| {
+                        for o in col {
+                            ui.selectable_value(value, Some(o.clone()), shown(o));
+                        }
+                    });
+                }
+            });
         }
     });
     *value != before
@@ -110,7 +124,7 @@ fn unique_iso(dir: &std::path::Path, base: &str) -> PathBuf {
 pub fn card(app: &mut App, ui: &mut egui::Ui, locked: bool) {
     let guided = app.mode() == wip_core::settings::Mode::Guided;
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         if guided {
             h2(ui, "Download Windows for me");
             body(ui, "Don't have an ISO? WinISOPilot gets the latest Windows straight from Microsoft and checks that it arrived intact.");

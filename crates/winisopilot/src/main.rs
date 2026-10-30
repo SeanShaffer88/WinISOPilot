@@ -53,7 +53,8 @@ fn main() -> eframe::Result<()> {
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("WinISOPilot")
         .with_inner_size([1200.0, 760.0])
-        .with_min_inner_size([1024.0, 700.0]);
+        .with_resizable(false)
+        .with_maximize_button(false);
     if let Some(i) = icon() {
         viewport = viewport.with_icon(i);
     }

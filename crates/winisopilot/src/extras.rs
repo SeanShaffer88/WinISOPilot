@@ -4,7 +4,7 @@
 use crate::app::App;
 use crate::jobs::{Kind, Outcome};
 use crate::theme::{self, body, check_line, dim, h2};
-use eframe::egui::{self, RichText, ScrollArea};
+use eframe::egui::{self, RichText};
 use std::collections::BTreeSet;
 use wip_core::boottest::checks;
 use wip_core::inventory::Inventory;
@@ -86,7 +86,7 @@ pub fn footprint_card(ui: &mut egui::Ui, r: &BuildReport) {
     let Some(f) = &r.footprint else { return };
     ui.add_space(8.0);
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         h2(ui, "Measured result");
         dim(ui, "Measured in the image before and after. Nothing is estimated.");
         for l in f.summary_lines() {
@@ -123,7 +123,7 @@ pub fn footprint_card(ui: &mut egui::Ui, r: &BuildReport) {
 pub fn boot_test_card(app: &mut App, ui: &mut egui::Ui, r: &BuildReport) {
     let guided = app.mode() == wip_core::settings::Mode::Guided;
     theme::card().show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        theme::card_body(ui);
         if guided {
             h2(ui, "Try it safely first (optional)");
             body(
@@ -245,7 +245,9 @@ pub fn port_dialog(app: &mut App, ctx: &egui::Context) {
         let changed: Vec<_> = rep.items.iter().filter(|i| matches!(i.status, PortStatus::Changed { .. })).collect();
         let missing: Vec<_> = rep.items.iter().filter(|i| matches!(i.status, PortStatus::Missing(_))).collect();
         let unverified = rep.count(|s| *s == PortStatus::Unverified);
-        ScrollArea::vertical().max_height(380.0).show(ui, |ui| {
+        // Long lists are capped (no scrolling); the rest are summarized.
+        const CAP: usize = 6;
+        {
             check_line(ui, true, &format!("{same} options do exactly the same thing"));
             if unverified > 0 {
                 dim(ui, &format!("{unverified} options apply, but this recipe is from an older version and can't be compared in detail."));
@@ -253,31 +255,35 @@ pub fn port_dialog(app: &mut App, ctx: &egui::Context) {
             if !changed.is_empty() {
                 ui.add_space(6.0);
                 ui.label(RichText::new(format!("{} options now affect different items", changed.len())).strong().color(theme::WARN_TEXT));
-                for i in changed {
+                let n_changed = changed.len();
+                for i in changed.into_iter().take(CAP) {
                     if let PortStatus::Changed { gone, new } = &i.status {
-                        ui.label(&i.title);
-                        for g in gone {
-                            ui.label(RichText::new(format!("   − {g}")).monospace().size(12.0).color(theme::TEXT_DIM));
-                        }
-                        for n in new {
-                            ui.label(RichText::new(format!("   + {n}")).monospace().size(12.0).color(theme::TEXT_DIM));
-                        }
+                        let what = format!("{} ({} gone, {} new)", i.title, gone.len(), new.len());
+                        let detail: Vec<String> =
+                            gone.iter().map(|g| format!("− {g}")).chain(new.iter().map(|n| format!("+ {n}"))).collect();
+                        ui.label(&what).on_hover_text(detail.join("\n"));
                     }
+                }
+                if n_changed > CAP {
+                    dim(ui, &format!("…and {} more", n_changed - CAP));
                 }
             }
             if !missing.is_empty() {
                 ui.add_space(6.0);
                 ui.label(RichText::new(format!("{} options don't apply to this image", missing.len())).strong().color(theme::WARN_TEXT));
-                for i in &missing {
+                for i in missing.iter().take(CAP) {
                     if let PortStatus::Missing(why) = &i.status {
-                        ui.label(RichText::new(format!("{} — {why}", i.title)).color(theme::TEXT_DIM));
+                        ui.add(egui::Label::new(RichText::new(format!("{} — {why}", i.title)).color(theme::TEXT_DIM)).truncate());
                     }
+                }
+                if missing.len() > CAP {
+                    dim(ui, &format!("…and {} more", missing.len() - CAP));
                 }
             }
             if !rep.new_options.is_empty() {
                 ui.add_space(6.0);
                 ui.label(RichText::new(format!("{} new options since this recipe was saved", rep.new_options.len())).strong());
-                for id in &rep.new_options {
+                for id in rep.new_options.iter().take(CAP) {
                     let Some(o) = app.catalog.get(id) else { continue };
                     let mut on = app.extras.add_new.contains(id);
                     ui.horizontal(|ui| {
@@ -291,12 +297,15 @@ pub fn port_dialog(app: &mut App, ctx: &egui::Context) {
                         theme::badge(ui, Some(o.risk));
                     });
                 }
+                if rep.new_options.len() > CAP {
+                    dim(ui, &format!("…and {} more; find them in Customize", rep.new_options.len() - CAP));
+                }
             }
             if !rep.unknown.is_empty() {
                 ui.add_space(6.0);
                 dim(ui, &format!("{} entries come from a newer WinISOPilot and were ignored.", rep.unknown.len()));
             }
-        });
+        }
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             if !missing.is_empty() && theme::secondary(ui, "Remove options that don't apply", true).clicked() {
