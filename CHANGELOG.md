@@ -2,7 +2,7 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [0.3.0] - Unreleased
+## [0.3.0] - 2026-10-30
 
 ### Added
 - **Measured footprint**: every build reads the image before and after (DISM installed size, image file size, apps, capabilities, features) and lists exactly what changed. Shown on the result screen and saved as `footprint.md` / `footprint.json` in the workspace.
@@ -15,7 +15,7 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Page content could extend past the window's right edge when the Guided rail was shown.
 - Long status lines now wrap.
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-10-30
 
 ### Added
 - **Write to USB** tool (switch in the rail): bootable USB from an ISO or media folder.
