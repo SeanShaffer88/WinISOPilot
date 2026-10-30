@@ -9,7 +9,7 @@ use wip_core::settings::Mode;
 use wip_core::{ImageSummary, Level};
 
 pub fn show(app: &mut App, ctx: &egui::Context) {
-    if app.settings.mode.is_none() {
+    if app.settings.mode.is_none() || app.mode_prompt {
         first_run(app, ctx);
         return;
     }
@@ -43,49 +43,59 @@ fn mode_card(ui: &mut egui::Ui, title: &str, text: &str, selected: bool) -> bool
     r.clicked()
 }
 
+/// Layout question: on first run, and at every launch unless turned off.
 fn first_run(app: &mut App, ctx: &egui::Context) {
+    let current = app.settings.mode.unwrap_or(Mode::Guided);
     let mut pick: Option<Mode> = None;
     egui::Modal::new(egui::Id::new("first-run")).show(ctx, |ui| {
         ui.set_width(660.0);
         h1(ui, "How would you like to work?");
-        body(ui, "You can change this any time in Settings.");
+        body(ui, "Pick the layout for this session. You can switch any time in Settings; your work is kept.");
         ui.add_space(10.0);
         ui.columns(2, |cols| {
             let (left, right) = cols.split_at_mut(1);
-            let ui = &mut left[0];
             if mode_card(
-                ui,
+                &mut left[0],
                 "Guided (recommended)",
                 "For everyone. Simple questions, plain words, safe choices made for you. Riskier options stay hidden until you ask for them.",
-                true,
+                current == Mode::Guided,
             ) {
                 pick = Some(Mode::Guided);
             }
-            let ui = &mut right[0];
             if mode_card(
-                ui,
+                &mut right[0],
                 "Advanced",
                 "For experts. Every package, capability and setting in one table, editable paths, the exact DISM/registry operation plan, all output and USB options.",
-                false,
+                current == Mode::Advanced,
             ) {
                 pick = Some(Mode::Advanced);
             }
         });
         ui.add_space(10.0);
         ui.horizontal(|ui| {
-            if theme::primary(ui, "Use Guided", true).clicked() {
-                pick = Some(Mode::Guided);
+            let (first, second) = match current {
+                Mode::Guided => ((Mode::Guided, "Use Guided"), (Mode::Advanced, "Use Advanced")),
+                Mode::Advanced => ((Mode::Advanced, "Use Advanced"), (Mode::Guided, "Use Guided")),
+            };
+            if theme::primary(ui, first.1, true).clicked() {
+                pick = Some(first.0);
             }
-            if theme::secondary(ui, "Use Advanced", true).clicked() {
-                pick = Some(Mode::Advanced);
+            if theme::secondary(ui, second.1, true).clicked() {
+                pick = Some(second.0);
+            }
+            if app.settings.mode.is_some() {
+                ui.add_space(12.0);
+                ui.checkbox(&mut app.mode_prompt_dont_ask, "Don't ask again")
+                    .on_hover_text("Start with the layout you pick. Turn the question back on in Settings.");
             }
         });
     });
     if let Some(m) = pick {
         app.settings.mode = Some(m);
-        if m == Mode::Advanced {
-            app.settings.level = Level::Expert;
+        if app.mode_prompt_dont_ask {
+            app.settings.ask_mode_on_launch = false;
         }
+        app.mode_prompt = false;
         app.save_settings();
     }
 }
@@ -143,6 +153,9 @@ fn settings(app: &mut App, ctx: &egui::Context) {
                     .changed();
                 changed |= ui.checkbox(&mut app.settings.reduce_motion, "Reduce motion (no animations)").changed();
                 changed |= ui.checkbox(&mut app.settings.show_tips, "Show a tip at the top of each page").changed();
+                changed |= ui
+                    .checkbox(&mut app.settings.ask_mode_on_launch, "Ask Guided or Advanced at every launch")
+                    .changed();
                 ui.add_space(6.0);
                 h2(ui, "Windows ADK DISM folder");
                 dim(ui, "Optional: for customizing a newer Windows than this PC runs. Takes effect after a restart.");

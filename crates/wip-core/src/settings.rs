@@ -42,6 +42,8 @@ pub struct Settings {
     pub reduce_motion: bool,
     /// Show the short tip line at the top of each page.
     pub show_tips: bool,
+    /// Ask Guided or Advanced every time WinISOPilot starts.
+    pub ask_mode_on_launch: bool,
 }
 
 impl Default for Settings {
@@ -56,6 +58,7 @@ impl Default for Settings {
             high_contrast: false,
             reduce_motion: false,
             show_tips: true,
+            ask_mode_on_launch: true,
         }
     }
 }
@@ -82,6 +85,7 @@ mod tests {
             r#"{"schema":1,"mode":"guided","level":"beginner","text_scale":1.0,"workspace_root":"","dism_folder":""}"#;
         let s: Settings = serde_json::from_str(old).unwrap();
         assert!(s.show_tips);
+        assert!(s.ask_mode_on_launch, "older settings files ask at launch by default");
         assert!(!s.high_contrast);
         let bad: Settings = serde_json::from_str(r#"{"text_scale": 9.0}"#).unwrap();
         assert_eq!(bad.sanitized().text_scale, 1.0);

@@ -99,6 +99,10 @@ pub struct App {
     pub report: Option<BuildReport>,
 
     pub show_settings: bool,
+    /// The layout question is showing (first run, or every launch if enabled).
+    pub mode_prompt: bool,
+    /// "Don't ask again" box in the layout question.
+    pub mode_prompt_dont_ask: bool,
     pub show_help: bool,
     window_title: String,
     free_cache: Option<(PathBuf, Instant, Option<u64>)>,
@@ -165,6 +169,8 @@ impl App {
             last_error: None,
             report: None,
             show_settings: false,
+            mode_prompt: false,
+            mode_prompt_dont_ask: false,
             show_help: false,
             window_title: String::new(),
             free_cache: None,
@@ -173,6 +179,7 @@ impl App {
             allow_close: false,
             toast: None,
         };
+        app.mode_prompt = app.settings.mode.is_none() || app.settings.ask_mode_on_launch;
         if demo {
             crate::dialogs::load_demo(&mut app);
         }

@@ -189,7 +189,8 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
     let ready = app.host.is_admin && app.host.dism_api.is_some();
     let status = match (ready, app.host.oscdimg.is_some()) {
         (true, true) => "This PC is ready.",
-        (true, false) => "Ready, but one optional tool is missing (see Before you start).",
+        (true, false) if guided(app) => "Ready, but one optional tool is missing (see Before you start).",
+        (true, false) => "Ready; oscdimg missing (output will be a media folder).",
         _ => "Some checks need attention.",
     };
     if let Nav::Next = footer(ctx, status, false, Some(("Get started", !app.busy()))) {

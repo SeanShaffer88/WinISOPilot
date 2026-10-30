@@ -82,7 +82,9 @@ fn main() -> eframe::Result<()> {
                 // Screenshot helpers: skip the first-run choice unless asked,
                 // and open a given step, layout or the Settings window.
                 let flag = |name: &str| args.iter().any(|a| a == name);
-                if app.settings.mode.is_none() && !flag("--first-run") {
+                // --first-run: no layout chosen yet; --ask: the every-launch question.
+                if !flag("--first-run") {
+                    app.mode_prompt = flag("--ask");
                     app.settings.mode = Some(if flag("--advanced") {
                         wip_core::settings::Mode::Advanced
                     } else {
