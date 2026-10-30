@@ -49,7 +49,8 @@ pub fn apply(ctx: &egui::Context, settings: &wip_core::settings::Settings) {
     v.hyperlink_color = if hc { FOCUS_HC } else { ACCENT };
     v.selection.bg_fill = PRIMARY;
     v.override_text_color = Some(if hc { Color32::WHITE } else { TEXT });
-    let r = CornerRadius::same(6);
+    // 3 px: checkboxes stay visibly square (6 px made them look like radio buttons).
+    let r = CornerRadius::same(3);
     for w in [&mut v.widgets.inactive, &mut v.widgets.hovered, &mut v.widgets.active, &mut v.widgets.open] {
         w.corner_radius = r;
     }

@@ -24,21 +24,35 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
     }
 }
 
+/// A whole card that acts as one button (click, or Tab then Space/Enter).
 fn mode_card(ui: &mut egui::Ui, title: &str, text: &str, selected: bool) -> bool {
-    let stroke =
-        Stroke::new(if selected { 2.0_f32 } else { 1.0 }, if selected { theme::ACCENT } else { theme::DIVIDER });
+    let id = ui.id().with(title);
+    let hovered = ui.ctx().data(|d| d.get_temp::<bool>(id)).unwrap_or(false);
+    let accent = selected || hovered;
+    let stroke = Stroke::new(if accent { 2.0_f32 } else { 1.0 }, if accent { theme::ACCENT } else { theme::DIVIDER });
     let r = theme::card()
+        .fill(if hovered { theme::ROW_SELECTED } else { theme::CARD })
         .stroke(stroke)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.set_min_height(150.0);
+            ui.set_min_height(140.0);
             ui.vertical(|ui| {
                 ui.label(RichText::new(title).size(18.0).strong());
                 body(ui, text);
+                ui.add_space(6.0);
+                ui.label(
+                    RichText::new(format!("Select to use {}", title.split(' ').next().unwrap_or(title)))
+                        .color(theme::ACCENT),
+                );
             });
         })
         .response;
-    let r = r.interact(egui::Sense::click());
+    let r = r.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+    let now = r.hovered() || r.has_focus();
+    if now != hovered {
+        ui.ctx().data_mut(|d| d.insert_temp(id, now));
+        ui.ctx().request_repaint();
+    }
     r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::RadioButton, true, selected, title));
     r.clicked()
 }
@@ -73,22 +87,16 @@ fn first_run(app: &mut App, ctx: &egui::Context) {
         });
         ui.add_space(10.0);
         ui.horizontal(|ui| {
-            let (first, second) = match current {
-                Mode::Guided => ((Mode::Guided, "Use Guided"), (Mode::Advanced, "Use Advanced")),
-                Mode::Advanced => ((Mode::Advanced, "Use Advanced"), (Mode::Guided, "Use Guided")),
-            };
-            if theme::primary(ui, first.1, true).clicked() {
-                pick = Some(first.0);
-            }
-            if theme::secondary(ui, second.1, true).clicked() {
-                pick = Some(second.0);
-            }
+            dim(ui, "Click a card (or press Enter for the highlighted one).");
             if app.settings.mode.is_some() {
                 ui.add_space(12.0);
                 ui.checkbox(&mut app.mode_prompt_dont_ask, "Don't ask again")
                     .on_hover_text("Start with the layout you pick. Turn the question back on in Settings.");
             }
         });
+        if pick.is_none() && ui.input(|i| i.key_pressed(egui::Key::Enter)) && ui.memory(|m| m.focused().is_none()) {
+            pick = Some(current);
+        }
     });
     if let Some(m) = pick {
         app.settings.mode = Some(m);

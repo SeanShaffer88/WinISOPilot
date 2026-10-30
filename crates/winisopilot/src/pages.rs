@@ -193,10 +193,12 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
         (true, false) => "Ready; oscdimg missing (output will be a media folder).",
         _ => "Some checks need attention.",
     };
-    if let Nav::Next = footer(ctx, status, false, Some(("Get started", !app.busy()))) {
+    let g = guided(app);
+    // Guided has its own Start button on the page; only Advanced needs one in the footer.
+    let next = if g { None } else { Some(("Get started", !app.busy())) };
+    if let Nav::Next = footer(ctx, status, false, next) {
         app.goto(Step::Source);
     }
-    let g = guided(app);
     central(ctx, |ui| {
         if g {
             header(
