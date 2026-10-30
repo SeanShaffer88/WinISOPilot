@@ -2,6 +2,11 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- Roadmap: USB layout modes and write-through progress (from windows2usb), reusable projects / cached source media (from JLIVECD). Credited in CREDITS.md as ideas only.
+
 ## [0.4.0] - 2026-10-30
 
 ### Added

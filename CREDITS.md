@@ -30,3 +30,8 @@ Full transitive dependency licenses can be listed with `cargo license` or `cargo
 ## Assets
 
 The icon and logo were made for this project and are covered by the project license. The app uses egui's built-in fonts.
+
+## Ideas from other projects (no code used)
+
+- [windows2usb](https://github.com/ValdikSS/windows2usb) (Apache-2.0): USB layout modes and write-through progress.
+- [JLIVECD](https://github.com/neurobin/JLIVECD) (GPL-2.0): project workflow and caching extracted media.
