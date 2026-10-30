@@ -4,7 +4,12 @@
 
 A guided Windows 10/11 installation-media customizer. Pick an official ISO, choose an edition, then remove built-in apps, turn features on or off, change privacy and desktop defaults, and adjust Windows Setup. Each option explains what it does, what could stop working, and how to undo it. WinISOPilot then builds a new ISO. The original ISO is never changed.
 
-> **Status: 0.1.0 pre-release.** The core logic is unit-tested and the Windows build compiles, but no real ISO has been serviced end to end yet. See [AUDIT.md](AUDIT.md). Test any result in a virtual machine before installing it on a PC you rely on.
+> **Status: 0.2.0 pre-release.** The core logic is unit-tested and the Windows build compiles, but no real ISO has been serviced end to end yet. See [AUDIT.md](AUDIT.md). Test any result in a virtual machine before installing it on a PC you rely on.
+
+## Two tools
+
+- **Customize ISO**: the six-step wizard described below.
+- **Write to USB**: makes a bootable USB stick from any Windows 10/11 ISO or media folder (including the one you just built). FAT32 with MBR (BIOS + UEFI, recommended) or GPT (UEFI only); `install.wim` over 4 GB is split automatically; optional read-back check of every file. Only USB drives are offered, never the disk Windows runs from or the drive holding your ISO or working folder, and erasing needs you to type `ERASE`.
 
 ## Two layouts
 

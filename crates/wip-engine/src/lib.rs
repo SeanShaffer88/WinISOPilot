@@ -160,6 +160,61 @@ pub struct BuildReport {
     pub log_file: PathBuf,
 }
 
+/// What to put on the USB drive.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UsbSource {
+    Iso(PathBuf),
+    /// A finished media folder (for example a build without an ISO tool).
+    Folder(PathBuf),
+}
+
+#[derive(Debug, Clone)]
+pub struct UsbRequest {
+    pub source: UsbSource,
+    /// The disk as the user confirmed it; re-checked before erasing.
+    pub disk: wip_core::usb::Disk,
+    pub scheme: wip_core::usb::Scheme,
+    pub label: String,
+    pub verify: bool,
+    /// Paths whose drives must never be erased (e.g. the working folder).
+    pub protected_paths: Vec<PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsbReport {
+    pub letter: String,
+    pub bytes_written: u64,
+    pub split: bool,
+    pub verified: bool,
+    pub warnings: Vec<String>,
+}
+
+/// Lists disks with their bus type and drive letters.
+pub fn list_disks(job: &Job) -> Result<Vec<wip_core::usb::Disk>> {
+    #[cfg(windows)]
+    {
+        win::usb::list_disks(job)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = job;
+        Err(EngineError::unsupported())
+    }
+}
+
+/// Erases the chosen USB drive and writes bootable Windows media to it.
+pub fn write_usb(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> {
+    #[cfg(windows)]
+    {
+        win::usb::write(req, host, job)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (req, host, job);
+        Err(EngineError::unsupported())
+    }
+}
+
 /// Rough free-space requirement for a workspace: two copies of the ISO
 /// contents, one expanded edition and headroom for DISM scratch.
 pub fn required_space(iso_bytes: u64, edition_bytes: u64) -> u64 {

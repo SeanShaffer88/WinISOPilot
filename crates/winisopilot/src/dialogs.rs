@@ -234,6 +234,29 @@ fn confirm_close(app: &mut App, ctx: &egui::Context) {
     });
 }
 
+/// Sample drives for `--demo`.
+pub fn demo_disks() -> Vec<wip_core::usb::Disk> {
+    let d = |n: u32, name: &str, size: u64, bus: &str, sys: bool, l: &str| wip_core::usb::Disk {
+        number: n,
+        friendly_name: format!("{name} (demo)"),
+        serial_number: None,
+        unique_id: None,
+        size,
+        bus_type: bus.into(),
+        is_boot: sys,
+        is_system: sys,
+        is_read_only: false,
+        is_offline: false,
+        letters: vec![l.into()],
+    };
+    vec![
+        d(0, "NVMe SSD", 1_000_204_886_016, "NVMe", true, "C"),
+        d(1, "SATA HDD", 2_000_398_934_016, "SATA", false, "D"),
+        d(2, "USB Flash Drive", 31_037_849_600, "USB", false, "E"),
+        d(3, "USB Flash Drive", 4_009_754_624, "USB", false, "F"),
+    ]
+}
+
 /// `--demo`: sample data so the interface can be explored and screenshotted
 /// without Windows tools. Clearly labelled in the rail.
 pub fn load_demo(app: &mut App) {

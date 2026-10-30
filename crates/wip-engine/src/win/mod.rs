@@ -3,6 +3,7 @@ pub mod host;
 pub mod journal;
 pub mod proc;
 pub mod registry;
+pub mod usb;
 pub mod workflow;
 
 use std::ffi::OsStr;

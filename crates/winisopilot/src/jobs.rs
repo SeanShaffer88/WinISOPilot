@@ -14,6 +14,8 @@ pub enum Outcome {
     Built(BuildReport),
     Discarded,
     LeftoverCleaned(String),
+    Disks(Vec<wip_core::usb::Disk>),
+    UsbWritten(wip_engine::UsbReport),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,6 +25,8 @@ pub enum Kind {
     Build,
     Discard,
     Leftover,
+    ListDisks,
+    WriteUsb,
 }
 
 impl Kind {
@@ -33,12 +37,14 @@ impl Kind {
             Kind::Build => "Building your Windows",
             Kind::Discard => "Discarding the open image",
             Kind::Leftover => "Cleaning up an earlier session",
+            Kind::ListDisks => "Looking for USB drives",
+            Kind::WriteUsb => "Writing the USB drive",
         }
     }
 
     /// Whether Cancel is offered. Discards always run to completion.
     pub fn cancellable(self) -> bool {
-        matches!(self, Kind::Inspect | Kind::Prepare | Kind::Build)
+        matches!(self, Kind::Inspect | Kind::Prepare | Kind::Build | Kind::WriteUsb)
     }
 }
 

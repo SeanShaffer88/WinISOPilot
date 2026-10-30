@@ -12,6 +12,7 @@ pub mod plan;
 pub mod raw;
 pub mod recipe;
 pub mod settings;
+pub mod usb;
 
 pub use catalog::{Action, Catalog, CatalogOption, Category, Hive, Level, RegData, Risk};
 
