@@ -1,0 +1,25 @@
+[package]
+name = "winisopilot"
+description = "Guided Windows 10/11 installation media customizer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "WinISOPilot"
+path = "src/main.rs"
+
+[dependencies]
+wip-core = { path = "../wip-core" }
+wip-engine = { path = "../wip-engine" }
+serde_json.workspace = true
+eframe = { version = "0.33", default-features = false, features = ["glow", "default_fonts", "accesskit"] }
+rfd = "0.15"
+
+[build-dependencies]
+winresource = "0.1"
+
+[target.'cfg(unix)'.dependencies]
+eframe = { version = "0.33", default-features = false, features = ["x11", "wayland"] }

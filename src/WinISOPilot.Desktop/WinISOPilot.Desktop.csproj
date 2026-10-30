@@ -1,4 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>WinExe</OutputType><AssemblyName>WinISOPilot.Desktop</AssemblyName><Product>WinISOPilot</Product><TargetFramework>net10.0-windows</TargetFramework><UseWPF>true</UseWPF><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><ApplicationIcon>../WinISOPilot/Assets/WinISOPilot.ico</ApplicationIcon></PropertyGroup>
-  <ItemGroup><ProjectReference Include="../WinISOPilot/ImageGuide.csproj" /></ItemGroup>
-</Project>

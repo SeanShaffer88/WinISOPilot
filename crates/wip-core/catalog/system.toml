@@ -1,0 +1,444 @@
+# Windows capabilities (Features on Demand), optional features and services.
+# Capability `prefix` matches the start of the full capability name
+# (e.g. "App.StepsRecorder~~~~0.0.1.0"). Feature `name` is the exact DISM
+# feature name. Only items actually found in the mounted image are offered.
+
+# ---------------- Capabilities ----------------
+
+[[option]]
+id = "cap.steps_recorder"
+category = "capabilities"
+title = "Steps Recorder"
+summary = "Records clicks and screenshots for support."
+details = "Microsoft has deprecated Steps Recorder. Snipping Tool can record the screen instead."
+risk = "safe"
+undo = "Settings > System > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "App.StepsRecorder" }]
+
+[[option]]
+id = "cap.ie_mode"
+category = "capabilities"
+title = "Internet Explorer 11"
+summary = "Legacy Internet Explorer engine (Windows 10)."
+details = "Internet Explorer is retired. Edge's IE mode relies on this component, so keep it if a work site needs IE mode."
+risk = "low"
+breaks = ["Edge IE mode for old intranet sites"]
+undo = "Settings > Apps > Optional features > Add a feature."
+applies = "win10"
+actions = [{ kind = "remove_capability", prefix = "Browser.InternetExplorer" }]
+
+[[option]]
+id = "cap.math_recognizer"
+category = "capabilities"
+title = "Math Input Panel"
+summary = "Handwritten math recognition."
+details = "Converts handwritten formulas to text. Rarely used without a pen."
+risk = "safe"
+undo = "Settings > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "MathRecognizer" }]
+
+[[option]]
+id = "cap.wmp_legacy"
+category = "capabilities"
+title = "Windows Media Player Legacy"
+summary = "The classic Windows Media Player."
+details = "The old player. Windows 11's Media Player app is separate. Some apps embed the legacy player to play video."
+risk = "low"
+breaks = ["Apps that embed the classic Windows Media Player"]
+undo = "Settings > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "Media.WindowsMediaPlayer" }]
+
+[[option]]
+id = "cap.wordpad"
+category = "capabilities"
+title = "WordPad"
+summary = "Basic word processor."
+details = "Microsoft has deprecated WordPad. .rtf files will need another editor."
+risk = "safe"
+undo = "Settings > Optional features > Add a feature (on builds that still offer it)."
+actions = [{ kind = "remove_capability", prefix = "Microsoft.Windows.WordPad" }]
+
+[[option]]
+id = "cap.powershell_ise"
+category = "capabilities"
+title = "PowerShell ISE"
+summary = "Old PowerShell script editor."
+details = "PowerShell itself stays. Only the ISE editor is removed."
+risk = "safe"
+undo = "Settings > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "Microsoft.Windows.PowerShell.ISE" }]
+
+[[option]]
+id = "cap.hello_face"
+category = "capabilities"
+title = "Windows Hello Face"
+summary = "Face sign-in with an IR camera."
+details = "Removing it disables face sign-in. Only useful on PCs with a Windows Hello camera."
+risk = "moderate"
+breaks = ["Face sign-in"]
+undo = "Settings > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "Hello.Face" }]
+
+[[option]]
+id = "cap.quick_assist_legacy"
+category = "capabilities"
+title = "Quick Assist (legacy)"
+summary = "Older built-in Quick Assist on Windows 10."
+details = "The legacy Quick Assist capability found on older Windows 10 images."
+risk = "low"
+breaks = ["Receiving remote help through legacy Quick Assist"]
+undo = "Settings > Optional features > Add a feature."
+applies = "win10"
+actions = [{ kind = "remove_capability", prefix = "App.Support.QuickAssist" }]
+
+[[option]]
+id = "cap.wireless_display"
+category = "capabilities"
+title = "Wireless Display"
+summary = "Lets other devices project to this PC."
+details = "Only for using this PC as a Miracast receiver. Projecting from this PC to a TV is unaffected."
+risk = "safe"
+undo = "Settings > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "App.WirelessDisplay.Connect" }]
+
+[[option]]
+id = "cap.handwriting"
+category = "capabilities"
+title = "Handwriting recognition"
+summary = "Pen handwriting to text."
+details = "Removes handwriting recognition for installed languages. Typing is unaffected."
+risk = "moderate"
+breaks = ["Converting pen handwriting to text"]
+undo = "Settings > Time & language > Language > Language options."
+actions = [{ kind = "remove_capability", prefix = "Language.Handwriting" }]
+
+[[option]]
+id = "cap.speech"
+category = "capabilities"
+title = "Speech recognition"
+summary = "Voice typing and speech recognition data."
+details = "Voice typing (Win+H) and Windows Speech Recognition may stop working for the installed language."
+risk = "moderate"
+breaks = ["Voice typing", "Windows Speech Recognition"]
+undo = "Settings > Time & language > Language > Language options."
+actions = [{ kind = "remove_capability", prefix = "Language.Speech" }]
+
+[[option]]
+id = "cap.tts"
+category = "capabilities"
+title = "Text-to-speech voices"
+summary = "Voices used by Narrator and read-aloud."
+details = "Narrator and read-aloud features need a voice. Keep this if anyone using the PC relies on Narrator."
+risk = "high"
+breaks = ["Narrator screen reader", "Read aloud in Edge and other apps"]
+undo = "Settings > Time & language > Speech > Add voices."
+actions = [{ kind = "remove_capability", prefix = "Language.TextToSpeech" }]
+
+[[option]]
+id = "cap.ocr"
+category = "capabilities"
+title = "Optical character recognition"
+summary = "Reads text from images."
+details = "Used by Snipping Tool text actions, Photos and some apps to read text in pictures."
+risk = "moderate"
+breaks = ["Copying text from screenshots", "Text detection in Photos"]
+undo = "Settings > Time & language > Language > Language options."
+actions = [{ kind = "remove_capability", prefix = "Language.OCR" }]
+
+[[option]]
+id = "cap.fax_scan"
+category = "capabilities"
+title = "Windows Fax and Scan"
+summary = "Fax and basic scanning app."
+details = "Scanning from other apps or the printer's own software still works."
+risk = "low"
+breaks = ["Windows Fax and Scan app"]
+undo = "Settings > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "Print.Fax.Scan" }]
+
+[[option]]
+id = "cap.xps_viewer"
+category = "capabilities"
+title = "XPS Viewer"
+summary = "Opens .xps documents."
+details = "XPS is an old document format, rarely used today."
+risk = "safe"
+undo = "Settings > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "XPS.Viewer" }]
+
+[[option]]
+id = "cap.extended_wallpapers"
+category = "capabilities"
+title = "Extra wallpapers"
+summary = "Additional built-in wallpaper images."
+details = "Only removes optional wallpaper images. The default wallpaper stays."
+risk = "safe"
+undo = "Settings > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "Microsoft.Wallpapers.Extended" }]
+
+[[option]]
+id = "cap.mixed_reality"
+category = "capabilities"
+title = "Windows Mixed Reality"
+summary = "Support files for Mixed Reality headsets."
+details = "Only needed for Windows Mixed Reality headsets, which Microsoft has discontinued."
+risk = "safe"
+undo = "Settings > Optional features > Add a feature."
+actions = [{ kind = "remove_capability", prefix = "Analog.Holographic.Desktop" }]
+
+# ---------------- Optional features ----------------
+
+[[option]]
+id = "feat.smb1"
+category = "features"
+title = "Turn off SMB 1.0 file sharing"
+summary = "Old, insecure network file sharing protocol."
+details = "SMB 1.0 is insecure and off by default on modern Windows. Some very old NAS boxes and printers need it."
+risk = "safe"
+breaks = ["Very old network drives that only speak SMB 1.0"]
+undo = "Turn Windows features on or off > SMB 1.0/CIFS File Sharing Support."
+actions = [{ kind = "disable_feature", name = "SMB1Protocol" }]
+
+[[option]]
+id = "feat.powershell2"
+category = "features"
+title = "Turn off PowerShell 2.0"
+summary = "Legacy PowerShell engine."
+details = "PowerShell 2.0 lacks modern security logging. Current PowerShell versions are unaffected."
+risk = "safe"
+undo = "Turn Windows features on or off > Windows PowerShell 2.0."
+actions = [
+  { kind = "disable_feature", name = "MicrosoftWindowsPowerShellV2Root" },
+  { kind = "disable_feature", name = "MicrosoftWindowsPowerShellV2" },
+]
+
+[[option]]
+id = "feat.work_folders"
+category = "features"
+title = "Turn off Work Folders client"
+summary = "Sync with a company Work Folders server."
+details = "Only used by organizations that run Work Folders servers."
+risk = "safe"
+undo = "Turn Windows features on or off > Work Folders Client."
+actions = [{ kind = "disable_feature", name = "WorkFolders-Client" }]
+
+[[option]]
+id = "feat.xps_services"
+category = "features"
+title = "Turn off XPS printing services"
+summary = "Microsoft XPS Document Writer."
+details = "Removes the XPS printer. Microsoft Print to PDF stays."
+risk = "safe"
+undo = "Turn Windows features on or off > Microsoft XPS Document Writer."
+actions = [{ kind = "disable_feature", name = "Printing-XPSServices-Features" }]
+
+[[option]]
+id = "feat.recall"
+category = "features"
+title = "Turn off Recall"
+summary = "Copilot+ PC screen snapshot history."
+details = "Recall saves snapshots of your screen to search later. Only Copilot+ PCs can run it."
+risk = "safe"
+undo = "Turn Windows features on or off > Recall."
+applies = "win11"
+actions = [{ kind = "disable_feature", name = "Recall" }]
+
+[[option]]
+id = "feat.netfx3"
+category = "features"
+title = "Turn on .NET Framework 3.5"
+summary = "Needed by many older programs and games."
+details = "Installs .NET 3.5 from the install media so older apps run without downloading it later. Adds roughly a few hundred MB."
+risk = "safe"
+undo = "Turn Windows features on or off > .NET Framework 3.5."
+actions = [{ kind = "enable_feature", name = "NetFx3", source_sxs = true }]
+
+[[option]]
+id = "feat.sandbox"
+category = "features"
+title = "Turn on Windows Sandbox"
+summary = "Disposable desktop for testing programs."
+details = "Requires Pro, Enterprise or Education and hardware virtualization enabled in firmware."
+risk = "low"
+undo = "Turn Windows features on or off > Windows Sandbox."
+actions = [{ kind = "enable_feature", name = "Containers-DisposableClientVM" }]
+
+[[option]]
+id = "feat.wsl"
+category = "features"
+title = "Turn on Windows Subsystem for Linux"
+summary = "Run Linux distributions."
+details = "Enables WSL and the Virtual Machine Platform. A Linux distribution is installed separately after setup."
+risk = "low"
+undo = "Turn Windows features on or off > Windows Subsystem for Linux."
+actions = [
+  { kind = "enable_feature", name = "Microsoft-Windows-Subsystem-Linux" },
+  { kind = "enable_feature", name = "VirtualMachinePlatform" },
+]
+
+[[option]]
+id = "feat.hyperv"
+category = "features"
+title = "Turn on Hyper-V"
+summary = "Microsoft's virtual machine platform."
+details = "Requires Pro, Enterprise or Education. Some other virtualization software runs slower with Hyper-V on."
+risk = "moderate"
+breaks = ["Some older VirtualBox/VMware versions", "Some anti-cheat software"]
+undo = "Turn Windows features on or off > Hyper-V."
+actions = [{ kind = "enable_feature", name = "Microsoft-Hyper-V-All" }]
+
+[[option]]
+id = "feat.telnet"
+category = "features"
+title = "Turn on Telnet client"
+summary = "Command-line telnet tool."
+details = "Useful for testing network ports. Telnet sends data unencrypted."
+risk = "safe"
+undo = "Turn Windows features on or off > Telnet Client."
+actions = [{ kind = "enable_feature", name = "TelnetClient" }]
+
+# ---------------- Services ----------------
+# Start values: auto = 2, manual = 3, disabled = 4 (in ControlSet001).
+
+[[option]]
+id = "svc.diagtrack"
+category = "services"
+title = "Disable Connected User Experiences and Telemetry"
+summary = "DiagTrack service that sends diagnostic data."
+details = "Stops the main diagnostic-data upload service. Windows Update keeps working. Some diagnostics in Feedback Hub stop working."
+risk = "low"
+breaks = ["Feedback Hub diagnostics upload"]
+undo = "services.msc > Connected User Experiences and Telemetry > Automatic."
+actions = [{ kind = "service_start", name = "DiagTrack", start = "disabled" }]
+
+[[option]]
+id = "svc.dmwappush"
+category = "services"
+title = "Disable WAP push message routing"
+summary = "Device-management push messages."
+details = "Used by mobile-device-management enrollment. Keep it on PCs managed by an organization."
+risk = "moderate"
+breaks = ["Some company device-management (MDM) enrollment"]
+undo = "services.msc > Device Management WAP Push > Manual."
+actions = [{ kind = "service_start", name = "dmwappushservice", start = "disabled" }]
+
+[[option]]
+id = "svc.maps_broker"
+category = "services"
+title = "Disable Downloaded Maps Manager"
+summary = "Updates offline maps."
+details = "Only used by the Maps app's offline maps."
+risk = "safe"
+undo = "services.msc > Downloaded Maps Manager > Automatic (Delayed Start)."
+actions = [{ kind = "service_start", name = "MapsBroker", start = "disabled" }]
+
+[[option]]
+id = "svc.geolocation"
+category = "services"
+title = "Disable location service"
+summary = "Windows location (geolocation) service."
+details = "Apps can no longer get the PC's location, and automatic time zone stops working."
+risk = "moderate"
+breaks = ["Location in apps and Find my device", "Automatic time zone"]
+undo = "services.msc > Geolocation Service > Manual."
+actions = [{ kind = "service_start", name = "lfsvc", start = "disabled" }]
+
+[[option]]
+id = "svc.retail_demo"
+category = "services"
+title = "Disable Retail Demo service"
+summary = "Store-display demo mode."
+details = "Only used on PCs displayed in shops."
+risk = "safe"
+undo = "services.msc > Retail Demo Service > Manual."
+actions = [{ kind = "service_start", name = "RetailDemo", start = "disabled" }]
+
+[[option]]
+id = "svc.wer"
+category = "services"
+title = "Disable Windows Error Reporting service"
+summary = "Sends crash reports to Microsoft."
+details = "Crash reports are no longer collected or sent. Reliability Monitor shows fewer details."
+risk = "low"
+breaks = ["Crash reports and some Reliability Monitor details"]
+undo = "services.msc > Windows Error Reporting Service > Manual."
+actions = [{ kind = "service_start", name = "WerSvc", start = "disabled" }]
+
+[[option]]
+id = "svc.link_tracking"
+category = "services"
+title = "Disable Distributed Link Tracking Client"
+summary = "Repairs shortcuts to moved files on NTFS."
+details = "Shortcuts to files moved between NTFS drives on a network may no longer be repaired automatically."
+risk = "low"
+undo = "services.msc > Distributed Link Tracking Client > Automatic."
+actions = [{ kind = "service_start", name = "TrkWks", start = "disabled" }]
+
+[[option]]
+id = "svc.xbox"
+category = "services"
+title = "Disable Xbox services"
+summary = "Xbox Live auth, game save and networking services."
+details = "Games that use Xbox sign-in, cloud saves or Xbox controllers' extra features may fail."
+risk = "moderate"
+breaks = ["Xbox sign-in and cloud saves in games", "Xbox accessory features"]
+undo = "services.msc > set each Xbox service back to Manual."
+actions = [
+  { kind = "service_start", name = "XblAuthManager", start = "disabled" },
+  { kind = "service_start", name = "XblGameSave", start = "disabled" },
+  { kind = "service_start", name = "XboxNetApiSvc", start = "disabled" },
+  { kind = "service_start", name = "XboxGipSvc", start = "disabled" },
+]
+
+[[option]]
+id = "svc.fax"
+category = "services"
+title = "Disable Fax service"
+summary = "Sending and receiving faxes."
+details = "Only needed with a fax modem."
+risk = "safe"
+undo = "services.msc > Fax > Manual."
+actions = [{ kind = "service_start", name = "Fax", start = "disabled" }]
+
+[[option]]
+id = "svc.remote_registry"
+category = "services"
+title = "Keep Remote Registry disabled"
+summary = "Remote editing of this PC's registry."
+details = "Already disabled on home editions. This makes sure it stays off."
+risk = "safe"
+undo = "services.msc > Remote Registry > Manual."
+actions = [{ kind = "service_start", name = "RemoteRegistry", start = "disabled" }]
+
+[[option]]
+id = "svc.sysmain"
+category = "services"
+title = "Disable SysMain (Superfetch)"
+summary = "Preloads frequently used apps into memory."
+details = "Can reduce disk activity on slow hard drives, but usually makes app launches slower on SSDs. Measure before and after."
+risk = "moderate"
+breaks = ["App launch speed may drop"]
+undo = "services.msc > SysMain > Automatic."
+actions = [{ kind = "service_start", name = "SysMain", start = "disabled" }]
+
+[[option]]
+id = "svc.search"
+category = "services"
+title = "Disable Windows Search indexing"
+summary = "The search index service."
+details = "File search in Start, Explorer and Outlook becomes much slower and less complete."
+risk = "high"
+breaks = ["Fast file search in Start and Explorer", "Outlook search"]
+undo = "services.msc > Windows Search > Automatic (Delayed Start)."
+actions = [{ kind = "service_start", name = "WSearch", start = "disabled" }]
+
+[[option]]
+id = "svc.spooler"
+category = "services"
+title = "Disable Print Spooler"
+summary = "The printing service."
+details = "No printing at all, including Print to PDF. Only for PCs that never print."
+risk = "high"
+breaks = ["All printing, including Microsoft Print to PDF"]
+undo = "services.msc > Print Spooler > Automatic."
+actions = [{ kind = "service_start", name = "Spooler", start = "disabled" }]

@@ -1,0 +1,479 @@
+# Registry defaults, setup options, slimming, and presets.
+# Hives: software = HKLM\SOFTWARE, system = HKLM\SYSTEM (use ControlSet001),
+# default_user = Users\Default\NTUSER.DAT (copied to each new account),
+# boot_system = SYSTEM hive of boot.wim index 2 (Windows Setup environment).
+
+# ---------------- Privacy ----------------
+
+[[option]]
+id = "priv.advertising_id"
+category = "privacy"
+title = "Turn off advertising ID"
+summary = "Apps can't use an ID to show you personalized ads."
+details = "Sets the AdvertisingInfo policy so the advertising ID is disabled for every user."
+risk = "safe"
+undo = "Delete the AdvertisingInfo policy value with Registry Editor."
+actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\AdvertisingInfo', value = "DisabledByGroupPolicy", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "priv.consumer_features"
+category = "privacy"
+title = "Stop suggested apps installing themselves"
+summary = "Blocks promoted apps and games appearing after sign-in."
+details = "Turns off silent installs and pre-installed app suggestions for new users, and sets the consumer-features policy (that policy is honored by Enterprise and Education only)."
+risk = "safe"
+undo = "Settings > Personalization > Start, or delete the values with Registry Editor."
+actions = [
+  { kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\CloudContent', value = "DisableWindowsConsumerFeatures", data = { type = "dword", value = 1 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "SilentInstalledAppsEnabled", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "PreInstalledAppsEnabled", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "OemPreInstalledAppsEnabled", data = { type = "dword", value = 0 } },
+]
+
+[[option]]
+id = "priv.tips"
+category = "privacy"
+title = "Turn off tips, suggestions and lock-screen ads"
+summary = "No suggestions in Start, Settings or on the lock screen."
+details = "Turns off Windows tips, suggested content in Settings, Start suggestions and lock-screen fun facts for new users."
+risk = "safe"
+undo = "Settings > Personalization and Settings > Privacy > General."
+actions = [
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "SystemPaneSuggestionsEnabled", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "SubscribedContent-338388Enabled", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "SubscribedContent-338389Enabled", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "SubscribedContent-353694Enabled", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "SubscribedContent-353696Enabled", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "SubscribedContent-338387Enabled", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', value = "RotatingLockScreenOverlayEnabled", data = { type = "dword", value = 0 } },
+]
+
+[[option]]
+id = "priv.web_search"
+category = "privacy"
+title = "Hide web results in Start search"
+summary = "Search shows only files, apps and settings on this PC."
+details = "Sets the per-user policy that turns off Bing suggestions in the search box."
+risk = "safe"
+undo = "Delete the DisableSearchBoxSuggestions value with Registry Editor."
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Policies\Microsoft\Windows\Explorer', value = "DisableSearchBoxSuggestions", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "priv.telemetry_min"
+category = "privacy"
+title = "Set diagnostic data to the minimum"
+summary = "Limit diagnostic data sent to Microsoft."
+details = "Sets AllowTelemetry to 0. Enterprise and Education treat this as off; Home and Pro treat it as Required (the lowest level they support)."
+risk = "low"
+undo = "Delete the AllowTelemetry policy value with Registry Editor."
+actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\DataCollection', value = "AllowTelemetry", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "priv.activity_history"
+category = "privacy"
+title = "Turn off activity history"
+summary = "Windows stops recording which apps and files you use."
+details = "Sets the System policies that stop publishing and uploading activity history."
+risk = "safe"
+undo = "Delete the values under Policies\\Microsoft\\Windows\\System."
+actions = [
+  { kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\System', value = "EnableActivityFeed", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\System', value = "PublishUserActivities", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\System', value = "UploadUserActivities", data = { type = "dword", value = 0 } },
+]
+
+[[option]]
+id = "priv.tailored"
+category = "privacy"
+title = "Turn off tailored experiences"
+summary = "No tips and offers based on your diagnostic data."
+details = "Sets the per-user CloudContent policy for new users."
+risk = "safe"
+undo = "Settings > Privacy > Diagnostics & feedback."
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Policies\Microsoft\Windows\CloudContent', value = "DisableTailoredExperiencesWithDiagnosticData", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "priv.language_list"
+category = "privacy"
+title = "Don't share your language list with websites"
+summary = "Websites can't read your installed languages."
+details = "Turns off 'Let websites provide locally relevant content by accessing my language list' for new users."
+risk = "safe"
+undo = "Settings > Privacy > General."
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Control Panel\International\User Profile', value = "HttpAcceptLanguageOptOut", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "priv.cortana_policy"
+category = "privacy"
+title = "Turn off Cortana in search"
+summary = "Sets the Allow Cortana policy to off."
+details = "Mainly affects Windows 10, where Cortana is part of search."
+risk = "safe"
+undo = "Delete the AllowCortana policy value."
+applies = "win10"
+actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\Windows Search', value = "AllowCortana", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "priv.recall_policy"
+category = "privacy"
+title = "Block Recall snapshots"
+summary = "Policy that stops Recall saving screen snapshots."
+details = "Sets the WindowsAI policy so Recall cannot save snapshots, even if the feature is present."
+risk = "safe"
+undo = "Delete the DisableAIDataAnalysis policy value."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\WindowsAI', value = "DisableAIDataAnalysis", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "priv.copilot_policy"
+category = "privacy"
+title = "Turn off Windows Copilot (policy)"
+summary = "Per-user policy that hides the built-in Copilot."
+details = "Microsoft is changing how Copilot is delivered, and newer builds may ignore this policy. Combine it with removing the Copilot app."
+risk = "safe"
+undo = "Delete the TurnOffWindowsCopilot value."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Policies\Microsoft\Windows\WindowsCopilot', value = "TurnOffWindowsCopilot", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "priv.feeds_win10"
+category = "privacy"
+title = "Turn off News and interests"
+summary = "Taskbar weather and news feed on Windows 10."
+details = "Sets the Windows Feeds policy that removes the taskbar news widget."
+risk = "safe"
+undo = "Delete the EnableFeeds policy value."
+applies = "win10"
+actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\Windows Feeds', value = "EnableFeeds", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "priv.widgets_policy"
+category = "privacy"
+title = "Turn off Widgets (policy)"
+summary = "Hides the Widgets board without removing the app."
+details = "Sets the Dsh policy that disables Widgets."
+risk = "safe"
+undo = "Delete the AllowNewsAndInterests policy value."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Dsh', value = "AllowNewsAndInterests", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "priv.wer_policy"
+category = "privacy"
+title = "Turn off error reporting uploads"
+summary = "Crash reports are not sent to Microsoft."
+details = "Sets Windows Error Reporting to disabled."
+risk = "low"
+undo = "Delete the Disabled value under Windows Error Reporting."
+actions = [{ kind = "reg_set", hive = "software", key = 'Microsoft\Windows\Windows Error Reporting', value = "Disabled", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "priv.delivery_optimization"
+category = "privacy"
+title = "Download updates only from Microsoft"
+summary = "Turn off peer-to-peer update sharing."
+details = "Delivery Optimization will download over HTTP only, without sharing with other PCs."
+risk = "safe"
+undo = "Delete the DODownloadMode policy value."
+actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\DeliveryOptimization', value = "DODownloadMode", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "priv.no_wu_drivers"
+category = "privacy"
+title = "Don't install drivers through Windows Update"
+summary = "Windows Update skips driver updates."
+details = "You will need to install and update drivers yourself, including after setup."
+risk = "moderate"
+breaks = ["Automatic driver installs after setup"]
+undo = "Delete the ExcludeWUDriversInQualityUpdate policy value."
+actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\WindowsUpdate', value = "ExcludeWUDriversInQualityUpdate", data = { type = "dword", value = 1 } }]
+
+# ---------------- Desktop & taskbar ----------------
+
+[[option]]
+id = "desk.file_extensions"
+category = "desktop"
+title = "Show file extensions"
+summary = "See .exe, .pdf and other endings on file names."
+details = "Helps spot disguised files like 'invoice.pdf.exe'."
+risk = "safe"
+undo = "Explorer > View > Show > File name extensions."
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced', value = "HideFileExt", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "desk.hidden_files"
+category = "desktop"
+title = "Show hidden files"
+summary = "Explorer shows hidden files and folders."
+details = "Protected system files stay hidden."
+risk = "safe"
+undo = "Explorer > View > Show > Hidden items."
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced', value = "Hidden", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "desk.this_pc"
+category = "desktop"
+title = "Open Explorer to This PC"
+summary = "Explorer starts on your drives instead of Home."
+details = ""
+risk = "safe"
+undo = "Explorer > Options > Open File Explorer to."
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced', value = "LaunchTo", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "desk.classic_context"
+category = "desktop"
+title = "Classic right-click menu"
+summary = "Show the full Windows 10-style context menu."
+details = "Skips 'Show more options' in Explorer's right-click menu."
+risk = "safe"
+undo = "Delete the CLSID key with Registry Editor."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32', value = "", data = { type = "string", value = "" } }]
+
+[[option]]
+id = "desk.taskbar_left"
+category = "desktop"
+title = "Align taskbar to the left"
+summary = "Start button in the corner, like Windows 10."
+details = ""
+risk = "safe"
+undo = "Settings > Personalization > Taskbar > Taskbar behaviors."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced', value = "TaskbarAl", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "desk.task_view"
+category = "desktop"
+title = "Hide Task View button"
+summary = "Removes the Task View button from the taskbar."
+details = "Win+Tab still opens Task View."
+risk = "safe"
+undo = "Settings > Personalization > Taskbar."
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced', value = "ShowTaskViewButton", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "desk.search_icon"
+category = "desktop"
+title = "Search as an icon"
+summary = "Replace the taskbar search box with an icon."
+details = ""
+risk = "safe"
+undo = "Settings > Personalization > Taskbar > Search."
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Search', value = "SearchboxTaskbarMode", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "desk.widgets_button"
+category = "desktop"
+title = "Hide Widgets button"
+summary = "Removes the weather/Widgets button from the taskbar."
+details = ""
+risk = "safe"
+undo = "Settings > Personalization > Taskbar."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced', value = "TaskbarDa", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "desk.chat_button"
+category = "desktop"
+title = "Hide Chat button"
+summary = "Removes the Teams Chat button on Windows 11 22H2."
+details = "Newer builds no longer have this button."
+risk = "safe"
+undo = "Settings > Personalization > Taskbar."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced', value = "TaskbarMn", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "desk.dark_mode"
+category = "desktop"
+title = "Dark mode by default"
+summary = "Apps and Windows start in dark mode."
+details = ""
+risk = "safe"
+undo = "Settings > Personalization > Colors."
+actions = [
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize', value = "AppsUseLightTheme", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize', value = "SystemUsesLightTheme", data = { type = "dword", value = 0 } },
+]
+
+[[option]]
+id = "desk.game_dvr"
+category = "desktop"
+title = "Turn off background game recording"
+summary = "Game DVR stops recording gameplay in the background."
+details = "Can reduce overhead in games. Manual Win+G captures need Game Bar."
+risk = "safe"
+undo = "Settings > Gaming > Captures."
+actions = [
+  { kind = "reg_set", hive = "default_user", key = 'System\GameConfigStore', value = "GameDVR_Enabled", data = { type = "dword", value = 0 } },
+  { kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\GameDVR', value = "AllowGameDVR", data = { type = "dword", value = 0 } },
+]
+
+[[option]]
+id = "desk.onedrive_autoinstall"
+category = "desktop"
+title = "Don't auto-install OneDrive for new users"
+summary = "Skips OneDrive setup at first sign-in."
+details = "Removes the OneDriveSetup entry that runs for each new account. OneDrive can still be installed later from microsoft.com. Some builds install OneDrive differently; verify after setup."
+risk = "moderate"
+breaks = ["OneDrive will not be set up automatically"]
+undo = "Install OneDrive from microsoft.com."
+actions = [{ kind = "reg_delete", hive = "default_user", key = 'Software\Microsoft\Windows\CurrentVersion\Run', value = "OneDriveSetup" }]
+
+[[option]]
+id = "desk.fast_startup"
+category = "desktop"
+title = "Turn off Fast Startup"
+summary = "Shut down fully instead of hybrid hibernate."
+details = "Avoids problems with dual-boot and drivers that need a clean start. Boot from shutdown may be slightly slower."
+risk = "low"
+undo = "Control Panel > Power Options > Choose what the power buttons do."
+actions = [{ kind = "reg_set", hive = "system", key = 'ControlSet001\Control\Session Manager\Power', value = "HiberbootEnabled", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "desk.device_encryption"
+category = "desktop"
+title = "Don't turn on device encryption automatically"
+summary = "Setup won't silently enable BitLocker device encryption."
+details = "Your drive will not be encrypted unless you turn it on. Encryption protects data if the PC is lost or stolen; turning it off is a security trade-off."
+risk = "moderate"
+breaks = ["Automatic disk encryption (less protection if the PC is stolen)"]
+undo = "Settings > Privacy & security > Device encryption."
+actions = [{ kind = "reg_set", hive = "system", key = 'ControlSet001\Control\BitLocker', value = "PreventDeviceEncryption", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "desk.reserved_storage"
+category = "desktop"
+title = "Turn off Reserved Storage"
+summary = "Frees the space Windows keeps for updates."
+details = "Windows keeps several GB for updates. Without it, large updates can fail on nearly full disks."
+risk = "moderate"
+breaks = ["Updates may fail when the disk is nearly full"]
+undo = "Run 'DISM /Online /Set-ReservedStorageState /State:Enabled'."
+actions = [{ kind = "reg_set", hive = "software", key = 'Microsoft\Windows\CurrentVersion\ReserveManager', value = "ShippedWithReserves", data = { type = "dword", value = 0 } }]
+
+# ---------------- Setup ----------------
+
+[[option]]
+id = "setup.bypass_tpm"
+category = "setup"
+title = "Skip TPM 2.0 and Secure Boot checks"
+summary = "Install Windows 11 on PCs without TPM 2.0 or Secure Boot."
+details = "Edits the Setup environment (boot.wim) so the installer doesn't block unsupported PCs. Microsoft does not support such PCs and may withhold updates."
+risk = "moderate"
+breaks = ["Microsoft support and possibly some updates on unsupported PCs"]
+undo = "Build a new image without this option."
+applies = "win11"
+actions = [
+  { kind = "reg_set", hive = "boot_system", key = 'Setup\LabConfig', value = "BypassTPMCheck", data = { type = "dword", value = 1 } },
+  { kind = "reg_set", hive = "boot_system", key = 'Setup\LabConfig', value = "BypassSecureBootCheck", data = { type = "dword", value = 1 } },
+]
+
+[[option]]
+id = "setup.bypass_ram"
+category = "setup"
+title = "Skip the 4 GB memory check"
+summary = "Install Windows 11 on PCs with less RAM."
+details = "Windows 11 will run poorly with less than 4 GB of memory."
+risk = "moderate"
+breaks = ["Performance on low-memory PCs"]
+undo = "Build a new image without this option."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "boot_system", key = 'Setup\LabConfig', value = "BypassRAMCheck", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "setup.bypass_cpu"
+category = "setup"
+title = "Skip the processor check"
+summary = "Install Windows 11 on older CPUs."
+details = "Very old CPUs may lack instructions newer Windows 11 builds require (for example POPCNT/SSE4.2); setup would still fail or Windows would not boot on them."
+risk = "high"
+breaks = ["Microsoft support on unsupported CPUs"]
+undo = "Build a new image without this option."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "boot_system", key = 'Setup\LabConfig', value = "BypassCPUCheck", data = { type = "dword", value = 1 } }]
+
+[[option]]
+id = "setup.bypass_nro"
+category = "setup"
+title = "Allow setup without internet (local account)"
+summary = "Adds 'I don't have internet' to first-run setup."
+details = "Sets BypassNRO so setup can finish offline with a local account. Microsoft has been removing this route in newer builds, so it may have no effect."
+risk = "low"
+breaks = []
+undo = "Delete the BypassNRO value."
+applies = "win11"
+actions = [{ kind = "reg_set", hive = "software", key = 'Microsoft\Windows\CurrentVersion\OOBE', value = "BypassNRO", data = { type = "dword", value = 1 } }]
+
+# ---------------- Slimming ----------------
+
+[[option]]
+id = "slim.component_cleanup"
+category = "slimming"
+title = "Clean up the component store"
+summary = "Removes superseded update files from WinSxS."
+details = "Runs DISM StartComponentCleanup. It may free little space on a fresh image."
+risk = "safe"
+undo = "Not needed."
+actions = [{ kind = "component_cleanup", reset_base = false }]
+
+[[option]]
+id = "slim.reset_base"
+category = "slimming"
+title = "Make updates permanent (ResetBase)"
+summary = "Deeper cleanup; installed updates can no longer be uninstalled."
+details = "Runs StartComponentCleanup with ResetBase. Saves more space, but updates already in the image can't be rolled back."
+risk = "moderate"
+breaks = ["Uninstalling updates that are already in the image"]
+undo = "Build a new image from the original."
+conflicts = ["slim.component_cleanup"]
+actions = [{ kind = "component_cleanup", reset_base = true }]
+
+[[option]]
+id = "slim.remove_winre"
+category = "slimming"
+title = "Remove the recovery environment (WinRE)"
+summary = "Deletes winre.wim from the installed system."
+details = "Saves several hundred MB, but Startup Repair, Reset this PC and BitLocker recovery tools will not be available on the installed PC."
+risk = "high"
+breaks = ["Startup Repair", "Reset this PC", "Advanced startup recovery tools"]
+undo = "Copy winre.wim back and run 'reagentc /enable'."
+actions = [{ kind = "delete_file", path = 'Windows\System32\Recovery\Winre.wim' }]
+
+# ---------------- Presets ----------------
+
+[[preset]]
+id = "light"
+title = "Light cleanup"
+summary = "Removes ads and rarely used apps. Safe for anyone."
+options = [
+  "apps.clipchamp", "apps.news", "apps.weather", "apps.solitaire", "apps.get_started",
+  "apps.feedback_hub", "apps.office_hub", "apps.bing_search", "apps.mixed_reality",
+  "apps.paint3d", "apps.skype", "apps.wallet", "apps.dev_home",
+  "priv.consumer_features", "priv.tips", "feat.smb1", "feat.powershell2", "cap.steps_recorder",
+]
+
+[[preset]]
+id = "privacy"
+title = "Privacy"
+summary = "Light cleanup plus fewer data collection and web features."
+options = [
+  "apps.clipchamp", "apps.news", "apps.weather", "apps.solitaire", "apps.get_started",
+  "apps.feedback_hub", "apps.office_hub", "apps.bing_search", "apps.copilot", "apps.cortana",
+  "priv.advertising_id", "priv.consumer_features", "priv.tips", "priv.web_search",
+  "priv.telemetry_min", "priv.activity_history", "priv.tailored", "priv.language_list",
+  "priv.recall_policy", "priv.copilot_policy", "priv.cortana_policy", "priv.delivery_optimization",
+  "feat.recall", "svc.diagtrack", "feat.smb1", "feat.powershell2",
+]
+
+[[preset]]
+id = "gaming"
+title = "Gaming"
+summary = "Removes clutter but keeps everything Xbox games need."
+options = [
+  "apps.clipchamp", "apps.news", "apps.weather", "apps.solitaire", "apps.get_started",
+  "apps.office_hub", "apps.bing_search", "apps.copilot",
+  "priv.consumer_features", "priv.tips", "priv.advertising_id", "desk.game_dvr",
+  "feat.netfx3", "feat.smb1",
+]
