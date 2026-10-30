@@ -2,6 +2,19 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - Unreleased
+
+### Added
+- **Measured footprint**: every build reads the image before and after (DISM installed size, image file size, apps, capabilities, features) and lists exactly what changed. Shown on the result screen and saved as `footprint.md` / `footprint.json` in the workspace.
+- **Boot test**: one click installs the built ISO unattended in a temporary Hyper-V VM (Gen 2, Secure Boot, vTPM, no network), signs in, and checks from inside Windows that every removed app, capability, feature, service, registry value and file change actually landed. VM removed after a pass; kept for inspection after a failure, timeout or when asked.
+- **Recipe porting**: saved choices (format 2) record what each option resolved to and which catalog options existed. Loading them on another Windows build reports, per option, same / changed items / doesn't apply, and offers options added since. Version-only package changes don't count as changes.
+- `--done` demo flag (with `--demo`) for the result screen.
+- docs/verification-checklist.md.
+
+### Fixed
+- Page content could extend past the window's right edge when the Guided rail was shown.
+- Long status lines now wrap.
+
 ## [0.2.0] - Unreleased
 
 ### Added

@@ -6,7 +6,10 @@ Planned, not implemented. Order may change.
 - Done: USB drive list with safety filters, MBR/GPT FAT32, automatic `install.wim` split, BIOS boot code, read-back verify, typed confirmation.
 - Remaining: NTFS layout with a UEFI:NTFS boot partition; FAT32 beyond 32 GB without diskpart's limit; real-hardware boot tests.
 
-## 0.3 — Get Windows
+## 0.3 — Evidence (in progress)
+- Done in code: measured footprint, Hyper-V boot test, recipe porting. Remaining: real-hardware verification (docs/verification-checklist.md).
+
+## 0.4 — Get Windows
 - In-app download of official Windows 10/11 ISOs from Microsoft (release, edition, language, architecture), with hash verification.
 
 ## 0.4 — Integrate

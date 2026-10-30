@@ -60,6 +60,7 @@ pub enum View {
 pub struct App {
     pub tool: Tool,
     pub usb: crate::usb_page::UsbState,
+    pub extras: crate::extras::ExtrasState,
     pub settings: Settings,
     settings_path: PathBuf,
     pub catalog: Catalog,
@@ -126,6 +127,7 @@ impl App {
         let mut app = App {
             tool: Tool::Customize,
             usb: Default::default(),
+            extras: Default::default(),
             settings,
             settings_path,
             catalog,
@@ -324,8 +326,10 @@ impl App {
                 self.workspace = Some(*ws);
                 self.view = View::Cat(Category::Apps);
                 self.goto(Step::Customize);
+                crate::extras::check_pending_recipe(self);
             }
             Outcome::Built(report) => {
+                let report = *report;
                 self.report = Some(report);
                 self.workspace = None;
                 self.inventory = None;
@@ -341,6 +345,7 @@ impl App {
             }
             Outcome::Disks(d) => self.usb.set_disks(d),
             Outcome::UsbWritten(r) => self.usb.report = Some(r),
+            Outcome::BootTested(r) => self.extras.boot_report = Some(r),
             Outcome::LeftoverCleaned(dir) => {
                 self.leftovers.retain(|l| l.mount_dir != dir);
                 self.notify("Cleaned up the earlier session.");
@@ -626,6 +631,7 @@ impl eframe::App for App {
             Step::Build => crate::pages::build(self, ctx),
         }
         crate::dialogs::show(self, ctx);
+        crate::extras::port_dialog(self, ctx);
         self.toast(ctx);
     }
 }

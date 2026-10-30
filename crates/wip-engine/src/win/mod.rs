@@ -1,3 +1,4 @@
+pub mod boottest;
 pub mod dism;
 pub mod host;
 pub mod journal;

@@ -16,3 +16,8 @@
 | 12 | 2026-10-30 | No ISO without `oscdimg` (folder instead) | Writing a correct dual-boot UDF ISO natively is a project on its own | ADK needed for ISO output in 0.1 |
 | 13 | 2026-10-30 | TPM/Secure Boot and RAM bypass rated Moderate, CPU bypass High | Setup-check bypasses don't damage anything but leave PCs unsupported; very old CPUs can still fail | Shown from Intermediate level |
 | 14 | 2026-10-30 | Never offer disabling Windows Update, Defender or firewall | Owner's dev charter | Users who want this need other tools |
+| 15 | 2026-10-30 | Three differentiators: measured footprint, Hyper-V boot test, recipe porting | Owner chose all three; they turn claims into evidence and keep recipes useful across Windows releases | More code paths to verify on real hardware |
+| 16 | 2026-10-30 | Follow the existing codebase (crates layout, `EngineError` codes, synchronous jobs on a worker thread) rather than a `src/features/` + `thiserror` + async spec | Owner's choice; avoids a refactor with no user-visible benefit | None |
+| 17 | 2026-10-30 | Boot test answer disc built with `oscdimg`; Setup only searches removable/optical media for `autounattend.xml` | Keeps the user's ISO untouched | Needs the ADK |
+| 18 | 2026-10-30 | Boot test uses Microsoft's published KMS client setup keys to pick the edition | Published for setup use; they don't activate | Home editions have no published key |
+| 19 | 2026-10-30 | Boot test polls VM state every 15 s on the job thread | Hyper-V has no completion event reachable without WMI eventing; 15 s is negligible load | Up to 15 s latency |

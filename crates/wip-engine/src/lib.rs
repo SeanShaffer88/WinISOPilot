@@ -156,8 +156,60 @@ pub struct BuildReport {
     pub media_folder: PathBuf,
     pub iso_bytes: Option<u64>,
     pub applied: usize,
+    /// Measured before/after footprint; `None` if measuring failed.
+    pub footprint: Option<wip_core::footprint::Footprint>,
+    /// What a boot test of this ISO should install.
+    pub test_target: wip_core::boottest::TestTarget,
     pub warnings: Vec<String>,
     pub log_file: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct BootTestRequest {
+    pub iso: PathBuf,
+    pub target: wip_core::boottest::TestTarget,
+    pub checks: Vec<wip_core::boottest::Check>,
+    /// The test VM's folder is created inside this one.
+    pub work_parent: PathBuf,
+    /// Keep the VM even when every check passes.
+    pub keep_vm: bool,
+    pub timeout_minutes: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BootOutcome {
+    /// Installed, booted, and every check passed.
+    Passed,
+    /// Installed and booted, but some changes weren't found.
+    ChecksFailed,
+    /// The VM stopped without writing results (setup error or crash).
+    SetupDidNotFinish,
+    TimedOut,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BootTestReport {
+    pub vm_name: String,
+    pub folder: PathBuf,
+    pub minutes: u32,
+    pub outcome: BootOutcome,
+    pub scored: Option<wip_core::boottest::Scored>,
+    /// The VM was left in Hyper-V Manager for inspection.
+    pub vm_kept: bool,
+}
+
+/// Installs the ISO unattended in a throwaway Hyper-V VM and checks every
+/// change from inside the installed Windows.
+pub fn boot_test(req: &BootTestRequest, host: &HostInfo, job: &Job) -> Result<BootTestReport> {
+    #[cfg(windows)]
+    {
+        win::boottest::run_test(req, host, job)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (req, host, job);
+        Err(EngineError::unsupported())
+    }
 }
 
 /// What to put on the USB drive.
@@ -274,21 +326,24 @@ pub fn prepare(req: &PrepareRequest, host: &HostInfo, job: &Job) -> Result<(Work
 }
 
 /// Applies the plan, saves the image and writes the new ISO.
+/// `before` is the inventory read when the edition was opened; it is used
+/// for the footprint report.
 pub fn build(
     ws: &Workspace,
     plan: &CompiledPlan,
     output: &OutputSettings,
     iso_out: &Path,
     host: &HostInfo,
+    before: &Inventory,
     job: &Job,
 ) -> Result<BuildReport> {
     #[cfg(windows)]
     {
-        win::workflow::build(ws, plan, output, iso_out, host, job)
+        win::workflow::build(ws, plan, output, iso_out, host, before, job)
     }
     #[cfg(not(windows))]
     {
-        let _ = (ws, plan, output, iso_out, host, job);
+        let _ = (ws, plan, output, iso_out, host, before, job);
         Err(EngineError::unsupported())
     }
 }

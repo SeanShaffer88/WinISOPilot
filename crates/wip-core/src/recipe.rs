@@ -5,8 +5,9 @@
 use crate::catalog::Catalog;
 use crate::plan::Selection;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
-pub const RECIPE_SCHEMA: u32 = 1;
+pub const RECIPE_SCHEMA: u32 = 2;
 /// Upper bound on recipe file size accepted on import.
 pub const MAX_RECIPE_BYTES: usize = 256 * 1024;
 
@@ -50,6 +51,13 @@ pub fn sanitize_label(s: &str) -> String {
     }
 }
 
+/// The image a recipe was made for.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecipeSource {
+    pub build: u32,
+    pub edition_id: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Recipe {
     pub schema: u32,
@@ -57,6 +65,15 @@ pub struct Recipe {
     pub options: Vec<String>,
     #[serde(default)]
     pub output: OutputSettings,
+    /// Schema 2: the image the recipe was made against.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<RecipeSource>,
+    /// Schema 2: what each option resolved to in that image (see `port`).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub resolved: BTreeMap<String, Vec<String>>,
+    /// Schema 2: every catalog option known when the recipe was saved.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub known_options: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,6 +82,9 @@ pub struct LoadedRecipe {
     pub output: OutputSettings,
     /// IDs this version of the app doesn't know; they are dropped.
     pub unknown: Vec<String>,
+    pub source: Option<RecipeSource>,
+    pub resolved: BTreeMap<String, Vec<String>>,
+    pub known_options: Vec<String>,
 }
 
 impl Recipe {
@@ -74,7 +94,27 @@ impl Recipe {
             app_version: crate::APP_VERSION.into(),
             options: sel.iter().cloned().collect(),
             output: output.clone(),
+            source: None,
+            resolved: BTreeMap::new(),
+            known_options: Vec::new(),
         }
+    }
+
+    /// A recipe that also records what each option resolved to in the
+    /// current image, so it can be checked against future Windows builds.
+    pub fn with_fingerprint(
+        sel: &Selection,
+        output: &OutputSettings,
+        ctx: &crate::plan::Context,
+        edition_id: &str,
+    ) -> Recipe {
+        let mut r = Recipe::new(sel, output);
+        if ctx.inventory.is_some() {
+            r.resolved = crate::port::resolve(sel, ctx);
+            r.source = Some(RecipeSource { build: ctx.build, edition_id: edition_id.to_string() });
+        }
+        r.known_options = ctx.catalog.options.iter().map(|o| o.id.clone()).collect();
+        r
     }
 
     pub fn to_json(&self) -> String {
@@ -104,6 +144,13 @@ impl Recipe {
         }
         let mut output = r.output;
         output.volume_label = sanitize_label(&output.volume_label);
-        Ok(LoadedRecipe { selection, output, unknown })
+        Ok(LoadedRecipe {
+            selection,
+            output,
+            unknown,
+            source: r.source,
+            resolved: r.resolved,
+            known_options: r.known_options,
+        })
     }
 }

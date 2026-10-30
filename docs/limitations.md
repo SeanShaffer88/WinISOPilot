@@ -15,4 +15,7 @@
 - English only.
 - USB writer: FAT32 only (NTFS/UEFI:NTFS not yet). Drives over 32 GB get a 32 GB partition. Only USB-bus drives are offered (no SD readers on other buses). `install.esd` over 4 GB can't be placed on FAT32.
 - USB writer cancel during copying leaves an incomplete stick; write it again.
+- Boot test needs Hyper-V (Pro/Enterprise/Education), `oscdimg.exe`, ~70 GB free and 4 GB spare memory. Editions without a Microsoft-published setup key (Home, Home N, Home Single Language) may stop at the product key page.
+- Boot test checks only what the build changed; it doesn't judge whether the result is pleasant to use.
+- Footprint compares the customized edition; with all editions kept, the image file size covers every edition.
 - Leftover-session detection ignores records made by the current process ID.

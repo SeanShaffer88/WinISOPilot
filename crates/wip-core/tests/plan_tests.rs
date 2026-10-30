@@ -247,7 +247,7 @@ fn recipe_roundtrip_and_unknowns() {
     let loaded = Recipe::parse(with_unknown.as_bytes(), &c).unwrap();
     assert_eq!(loaded.unknown, vec!["future.option".to_string()]);
 
-    let future = json.replace("\"schema\": 1", "\"schema\": 99");
+    let future = json.replace("\"schema\": 2", "\"schema\": 99");
     assert!(Recipe::parse(future.as_bytes(), &c).is_err());
     assert!(Recipe::parse(b"not json", &c).is_err());
     assert!(Recipe::parse(&vec![b' '; 300 * 1024], &c).is_err());
@@ -286,4 +286,44 @@ fn raw_items_exclude_catalogued_and_protected() {
     assert!(p.skipped.iter().any(|(id, _)| id.contains("VCLibs")));
     let acks = plan::needs_ack(&s, &c);
     assert_eq!(acks.len(), 2);
+}
+
+#[test]
+fn recipe_port_detects_same_changed_missing_new() {
+    use wip_core::port::{port, PortStatus};
+    let c = cat();
+    let i = inv();
+    let s = sel(&["apps.clipchamp", "apps.xbox", "cap.steps_recorder", "feat.smb1", "priv.tips"]);
+    let x = ctx(&c, Some(&i));
+    let mut r = Recipe::with_fingerprint(&s, &OutputSettings::default(), &x, "Professional");
+    // Pretend the recipe came from an older catalog without priv.tips's sibling options.
+    r.known_options.retain(|id| id != "priv.advertising_id");
+    let loaded = Recipe::parse(r.to_json().as_bytes(), &c).unwrap();
+    assert_eq!(loaded.source.as_ref().unwrap().build, 26100);
+
+    // Same image: everything Same, one new option.
+    let rep = port(&loaded, &x);
+    assert!(rep.items.iter().all(|it| it.status == PortStatus::Same), "{rep:?}");
+    assert_eq!(rep.new_options, vec!["priv.advertising_id".to_string()]);
+
+    // New build: Xbox overlay gone, Clipchamp gone, capability version bumped.
+    let mut i2 = inv();
+    i2.appx.retain(|a| a.display_name != "Microsoft.XboxGamingOverlay" && a.display_name != "Clipchamp.Clipchamp");
+    i2.capabilities[0].name = "App.StepsRecorder~~~~0.0.2.0".into();
+    let x2 = Context { catalog: &c, family: WindowsFamily::Win11, build: 26200, inventory: Some(&i2) };
+    let rep = port(&loaded, &x2);
+    let st = |id: &str| rep.items.iter().find(|it| it.id == id).unwrap().status.clone();
+    assert!(matches!(st("apps.clipchamp"), PortStatus::Missing(_)));
+    assert!(
+        matches!(st("apps.xbox"), PortStatus::Changed { ref gone, .. } if gone.iter().any(|g| g.contains("xboxgamingoverlay")))
+    );
+    assert_eq!(st("cap.steps_recorder"), PortStatus::Same, "version-only change is not a change");
+    assert_eq!(rep.from_build, Some(26100));
+    assert_eq!(rep.to_build, 26200);
+    assert!(!rep.applicable_selection().contains("apps.clipchamp"));
+
+    // Old-format recipe: Unverified.
+    let old = Recipe::parse(Recipe::new(&s, &OutputSettings::default()).to_json().as_bytes(), &c).unwrap();
+    let rep = port(&old, &x);
+    assert!(rep.items.iter().all(|it| it.status == PortStatus::Unverified));
 }

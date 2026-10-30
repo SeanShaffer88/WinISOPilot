@@ -45,7 +45,7 @@ pub fn central(ctx: &egui::Context, add: impl FnOnce(&mut Ui)) {
         .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 44, right: 44, top: 30, bottom: 12 }))
         .show(ctx, |ui| {
             ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                ui.set_max_width(980.0);
+                ui.set_max_width(ui.available_width().min(980.0));
                 add(ui);
             });
         });
@@ -628,7 +628,11 @@ fn save_recipe(app: &mut App) {
         .set_file_name("winisopilot-choices.json")
         .save_file()
     {
-        let json = Recipe::new(&app.selection, &app.output).to_json();
+        let recipe = match crate::extras::fingerprint_ctx(app) {
+            Some((ctx, edition_id)) => Recipe::with_fingerprint(&app.selection, &app.output, &ctx, &edition_id),
+            None => Recipe::new(&app.selection, &app.output),
+        };
+        let json = recipe.to_json();
         match wip_core::fsutil::atomic_write(&p, json.as_bytes()) {
             Ok(()) => app.notify(format!("Saved {} choices.", app.selection.len())),
             Err(e) => app.notify(format!("Couldn't save: {e}")),
@@ -645,9 +649,11 @@ pub fn load_recipe(app: &mut App) {
     match Recipe::parse(&bytes, &app.catalog) {
         Ok(r) => {
             let n = r.selection.len();
-            app.replace_selection(r.selection);
+            app.replace_selection(r.selection.clone());
             app.output.compression = r.output.compression;
-            app.output.volume_label = r.output.volume_label;
+            app.output.volume_label = r.output.volume_label.clone();
+            app.extras.pending_recipe = Some(r.clone());
+            crate::extras::check_pending_recipe(app);
             let extra = if r.unknown.is_empty() {
                 String::new()
             } else {
@@ -666,6 +672,13 @@ fn start_build(app: &mut App) {
         Err(e) => return app.notify(e),
     };
     let Some(ws) = app.workspace.clone() else { return };
+    let Some(before) = app.inventory.clone() else { return };
+    app.extras.snapshot = Some(crate::extras::BuildSnapshot {
+        plan: compiled.clone(),
+        inventory: before.clone(),
+        edition: ws.edition.clone(),
+    });
+    app.extras.boot_report = None;
     let out = app.iso_out.clone().unwrap_or_else(|| ws.root.join("unused.iso"));
     let output = app.output.clone();
     let host = app.host.clone();
@@ -674,7 +687,9 @@ fn start_build(app: &mut App) {
     }
     app.report = None;
     app.goto(Step::Build);
-    app.start(Kind::Build, move |job| wip_engine::build(&ws, &compiled, &output, &out, &host, job).map(Outcome::Built));
+    app.start(Kind::Build, move |job| {
+        wip_engine::build(&ws, &compiled, &output, &out, &host, &before, job).map(|r| Outcome::Built(Box::new(r)))
+    });
 }
 
 // ---------------------------------------------------------------- Build
@@ -695,12 +710,16 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
     }
     central(ctx, |ui| {
         if app.busy() {
-            header(
-                ui,
-                Step::Build,
-                "Building your Windows",
-                "This can take 10–40 minutes. You can keep using your PC.",
-            );
+            let testing = app.job.as_ref().is_some_and(|j| j.kind == Kind::BootTest);
+            let (title, blurb) = if testing {
+                (
+                    "Testing in a virtual machine",
+                    "Windows is installing in a temporary VM. This can take 15–40 minutes.",
+                )
+            } else {
+                ("Building your Windows", "This can take 10–40 minutes. You can keep using your PC.")
+            };
+            header(ui, Step::Build, title, blurb);
             job_panel(app, ui);
             return;
         }
@@ -734,8 +753,9 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
                 ui.add_space(8.0);
                 theme::warn_box(ui, "Notes", &r.warnings);
             }
+            crate::extras::footprint_card(ui, &r);
+            crate::extras::boot_test_card(app, ui, &r);
             ui.add_space(8.0);
-            body(ui, "Test the ISO in a virtual machine before installing it on a PC you rely on.");
             if theme::primary(ui, "Write it to a USB drive", true).clicked() {
                 app.usb.source = None;
                 app.usb.report = None;
