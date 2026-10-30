@@ -2,6 +2,11 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **Text size is now Scale**: the whole window and everything in it grows or shrinks together (75–200%, applied when the slider is released). Ctrl +, Ctrl − and Ctrl 0 do the same and are remembered; scale is capped so the window still fits the screen.
+
 ## [0.4.1] - 2026-10-30
 
 ### Added

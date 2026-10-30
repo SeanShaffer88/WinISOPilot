@@ -57,6 +57,9 @@ pub enum View {
     Raw,
 }
 
+/// Window size in points at 100% scale. The Scale setting multiplies it.
+pub const BASE_SIZE: [f32; 2] = [960.0, 456.0];
+
 pub struct App {
     pub tool: Tool,
     pub usb: crate::usb_page::UsbState,
@@ -237,6 +240,32 @@ impl App {
         let json = serde_json::to_string_pretty(&self.settings).unwrap_or_default();
         if let Err(e) = atomic_write(&self.settings_path, json.as_bytes()) {
             self.notify(format!("Couldn't save settings: {e}"));
+        }
+    }
+
+    /// Keeps the window the same size in points whatever the scale, so the
+    /// whole window grows or shrinks with its contents. Also picks up
+    /// Ctrl + / Ctrl − / Ctrl 0, which change egui's zoom directly.
+    fn sync_scale(&mut self, ctx: &egui::Context) {
+        let zoom = ctx.zoom_factor();
+        if (zoom - self.settings.text_scale).abs() > 0.001 {
+            // Biggest scale whose window still fits the screen.
+            let fit = ctx
+                .input(|i| i.viewport().monitor_size)
+                .map(|m| zoom * (m.x / BASE_SIZE[0]).min((m.y - 48.0) / BASE_SIZE[1]))
+                .unwrap_or(2.0);
+            let z = ((zoom * 20.0).round() / 20.0).clamp(0.75, fit.clamp(0.75, 2.0));
+            self.settings.text_scale = z;
+            if (z - zoom).abs() > 0.001 {
+                ctx.set_zoom_factor(z);
+            }
+            self.save_settings();
+        }
+        let id = egui::Id::new("applied_pixels_per_point");
+        let ppp = ctx.pixels_per_point();
+        if ctx.data(|d| d.get_temp::<f32>(id)) != Some(ppp) {
+            ctx.data_mut(|d| d.insert_temp(id, ppp));
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::Vec2::from(BASE_SIZE)));
         }
     }
 
@@ -723,6 +752,7 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.pump_job(ctx);
         self.handle_close(ctx);
+        self.sync_scale(ctx);
         if !self.busy() {
             let redo = ctx.input_mut(|i| {
                 i.consume_key(egui::Modifiers::COMMAND, egui::Key::Y)

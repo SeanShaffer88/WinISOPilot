@@ -135,13 +135,24 @@ fn settings(app: &mut App, ctx: &egui::Context) {
                 });
                 dim(ui, "Beginner: safe and low risk. Intermediate adds moderate risk. Expert shows everything.");
                 ui.add_space(6.0);
-                h2(ui, "Text size");
-                let mut pct = (app.settings.text_scale * 100.0).round() as i32;
-                if ui.add(egui::Slider::new(&mut pct, 75..=200).suffix("%")).changed() {
-                    app.settings.text_scale = pct as f32 / 100.0;
-                    changed = true;
+                h2(ui, "Scale");
+                // Applied when the slider is released, so the window doesn't
+                // resize under the pointer while dragging.
+                let id = egui::Id::new("scale_slider");
+                let mut pct = ui
+                    .data(|d| d.get_temp::<i32>(id))
+                    .unwrap_or_else(|| (app.settings.text_scale * 100.0).round() as i32);
+                let r = ui.add(egui::Slider::new(&mut pct, 75..=200).step_by(5.0).suffix("%"));
+                if r.dragged() {
+                    ui.data_mut(|d| d.insert_temp(id, pct));
+                } else {
+                    ui.data_mut(|d| d.remove::<i32>(id));
+                    if r.changed() || r.drag_stopped() {
+                        app.settings.text_scale = pct as f32 / 100.0;
+                        changed = true;
+                    }
                 }
-                dim(ui, "Ctrl + and Ctrl − also change the size.");
+                dim(ui, "Resizes the window and everything in it. Ctrl + / Ctrl − / Ctrl 0 also work.");
                 ui.add_space(6.0);
                 h2(ui, "Layout");
                 changed |= ui

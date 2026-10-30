@@ -52,7 +52,7 @@ fn main() -> eframe::Result<()> {
     let help_open = args.iter().any(|a| a == "--help-panel");
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("WinISOPilot")
-        .with_inner_size([960.0, 456.0])
+        .with_inner_size(app::BASE_SIZE)
         .with_resizable(false)
         .with_maximize_button(false);
     if let Some(i) = icon() {
@@ -93,6 +93,11 @@ fn main() -> eframe::Result<()> {
                     });
                 }
                 app.show_settings = flag("--settings");
+                // --scale=150: open at that scale.
+                if let Some(pct) = args.iter().find_map(|a| a.strip_prefix("--scale=")?.parse::<f32>().ok()) {
+                    app.settings.text_scale = (pct / 100.0).clamp(0.75, 2.0);
+                    theme::apply(&cc.egui_ctx, &app.settings);
+                }
                 for (name, step) in [
                     ("--welcome", app::Step::Welcome),
                     ("--edition", app::Step::Edition),

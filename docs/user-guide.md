@@ -87,7 +87,7 @@ Select **Settings** at the bottom of the left panel. Changes are saved straight 
 
 - **Layout**: whether to ask Guided or Advanced at every launch. (Switching itself is in the left panel; it takes you back to step 1 and keeps everything you entered.)
 - **Options shown in Guided mode**: Beginner, Intermediate or Expert.
-- **Text size** 75–200% (Ctrl + and Ctrl − also work).
+- **Scale** 75–200%: the whole window and everything in it grows or shrinks (Ctrl +, Ctrl − and Ctrl 0 also work). Capped so the window still fits the screen.
 - **Stronger contrast**, **Reduce motion**, **Show tips**, **Ask Guided or Advanced at every launch**.
 - **Windows ADK DISM folder**: use the ADK's DISM when customizing a newer Windows than this PC runs.
 - **Default working folder**.
