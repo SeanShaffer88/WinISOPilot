@@ -4,6 +4,7 @@
 mod app;
 mod customize;
 mod dialogs;
+mod extras;
 mod jobs;
 mod pages;
 mod theme;
@@ -42,6 +43,7 @@ fn main() -> eframe::Result<()> {
     }
     let demo = args.iter().any(|a| a == "--demo");
     let usb = args.iter().any(|a| a == "--usb");
+    let done = args.iter().any(|a| a == "--done");
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("WinISOPilot")
         .with_inner_size([1200.0, 760.0])
@@ -57,6 +59,9 @@ fn main() -> eframe::Result<()> {
             let mut app = app::App::new(cc, demo);
             if usb {
                 app.switch_tool(app::Tool::Usb);
+            }
+            if done && demo {
+                dialogs::load_demo_done(&mut app);
             }
             Ok(Box::new(app))
         }),

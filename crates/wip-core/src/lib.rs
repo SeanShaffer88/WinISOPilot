@@ -4,11 +4,14 @@
 //! a mounted image actually contains; [`plan`] checks a selection against
 //! both and compiles it into concrete [`plan::Op`]s the engine executes.
 
+pub mod boottest;
 pub mod catalog;
+pub mod footprint;
 pub mod fsutil;
 pub mod inventory;
 pub mod journal;
 pub mod plan;
+pub mod port;
 pub mod raw;
 pub mod recipe;
 pub mod settings;

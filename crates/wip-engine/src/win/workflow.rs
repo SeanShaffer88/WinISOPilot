@@ -8,6 +8,8 @@ use crate::{required_space, BuildReport, EngineError, HostInfo, Job, PrepareRequ
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use wip_core::boottest::TestTarget;
+use wip_core::footprint::{Changes, Footprint, Measure};
 use wip_core::inventory::{AppxPackage, Inventory};
 use wip_core::plan::{CompiledPlan, Op, PlannedOp};
 use wip_core::recipe::{sanitize_label, Compression, OutputSettings};
@@ -453,10 +455,12 @@ pub fn build(
     output: &OutputSettings,
     iso_out: &Path,
     host: &HostInfo,
+    before: &Inventory,
     job: &Job,
 ) -> Result<BuildReport> {
     need_admin(host)?;
     let (dism, dism_exe) = need_dism(host)?;
+    let work_wim_bytes = fs::metadata(&ws.work_wim).map(|m| m.len()).unwrap_or(0);
     if iso_out.exists() {
         return Err(EngineError::new(
             "WIP-E070",
@@ -484,6 +488,15 @@ pub fn build(
     };
     let mut applied = applier.run_all(&plan.install, job)?;
     drop(applier);
+
+    // Measure what's left, for the footprint report. Never fails the build.
+    let after_inv = match read_inventory(&dism, &ws.mount_dir, &ws.media, job) {
+        Ok(i) => Some(i),
+        Err(e) => {
+            job.log(format!("Footprint: couldn't read the changed image: {e}"));
+            None
+        }
+    };
 
     next("Saving the edition");
     dism.unmount(&ws.mount_dir, true, job)?;
@@ -539,6 +552,37 @@ pub fn build(
         job.log(format!("Exporting edition {i}/{count}"));
         export(&dism_exe, &ws.work_wim, i, &dst, comp, &ws.scratch, job)?;
     }
+    let kept_index = if count == 1 { 1 } else { ws.work_index };
+    let footprint = after_inv.and_then(|after| {
+        let expanded_after = dism.image_info(&dst).ok()?.into_iter().find(|i| i.index == kept_index)?.size_bytes;
+        let file_after = fs::metadata(&dst).ok()?.len();
+        let settings_changed = plan
+            .install
+            .iter()
+            .chain(plan.boot.iter())
+            .filter(|p| matches!(p.op, Op::RegSet { .. } | Op::RegDelete { .. }))
+            .count();
+        Some(Footprint {
+            schema: 1,
+            edition: ws.edition.name.clone(),
+            version: ws.edition.version_string(),
+            before: Measure::of(before, ws.edition.size_bytes, work_wim_bytes),
+            after: Measure::of(&after, expanded_after, file_after),
+            changes: Changes::between(before, &after),
+            recompressed: output.compression == Compression::Recovery,
+            settings_changed,
+        })
+    });
+    match &footprint {
+        Some(f) => {
+            let _ = wip_core::fsutil::atomic_write(&ws.root.join("footprint.md"), f.to_markdown().as_bytes());
+            let _ = wip_core::fsutil::atomic_write(
+                &ws.root.join("footprint.json"),
+                serde_json::to_string_pretty(f).unwrap_or_default().as_bytes(),
+            );
+        }
+        None => warnings.push("The before/after footprint couldn't be measured; see the log.".into()),
+    }
     if output.compression == Compression::Maximum {
         if let Ok(m) = fs::metadata(&dst) {
             if m.len() > 4 * 1024 * 1024 * 1024 - 1 {
@@ -565,7 +609,22 @@ pub fn build(
         }
     };
     let iso_bytes = iso.as_ref().and_then(|p| fs::metadata(p).ok()).map(|m| m.len());
-    Ok(BuildReport { iso, media_folder: ws.media.clone(), iso_bytes, applied, warnings, log_file: ws.log_file.clone() })
+    let test_target = TestTarget {
+        language: ws.edition.languages.first().cloned().unwrap_or_else(|| "en-US".into()),
+        index: kept_index,
+        edition_id: ws.edition.edition_id.clone(),
+        arch: TestTarget::arch_from(&ws.edition.architecture),
+    };
+    Ok(BuildReport {
+        iso,
+        media_folder: ws.media.clone(),
+        iso_bytes,
+        applied,
+        footprint,
+        test_target,
+        warnings,
+        log_file: ws.log_file.clone(),
+    })
 }
 
 fn make_iso(oscdimg: &Path, media: &Path, out: &Path, label: &str, job: &Job) -> Result<()> {

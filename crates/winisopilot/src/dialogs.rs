@@ -234,6 +234,49 @@ fn confirm_close(app: &mut App, ctx: &egui::Context) {
     });
 }
 
+/// `--demo --done`: a sample finished build to show the result screen.
+pub fn load_demo_done(app: &mut App) {
+    use wip_core::footprint::{Changes, Footprint, Measure};
+    let Some(inv) = app.inventory.clone() else { return };
+    let Some(ctx) = app.plan_ctx() else { return };
+    let Ok(plan) = wip_core::plan::compile(&app.selection, &ctx) else { return };
+    let mut after = inv.clone();
+    after.appx.retain(|a| {
+        !a.display_name.starts_with("Clipchamp")
+            && !a.display_name.contains("Bing")
+            && !a.display_name.contains("Solitaire")
+    });
+    let edition = app.edition().cloned().expect("demo edition");
+    let fp = Footprint {
+        schema: 1,
+        edition: edition.name.clone(),
+        version: edition.version_string(),
+        before: Measure::of(&inv, 18_000_000_000, 5_400_000_000),
+        after: Measure::of(&after, 17_200_000_000, 5_150_000_000),
+        changes: Changes::between(&inv, &after),
+        recompressed: false,
+        settings_changed: 7,
+    };
+    app.extras.snapshot = Some(crate::extras::BuildSnapshot { plan, inventory: inv, edition });
+    app.report = Some(wip_engine::BuildReport {
+        iso: Some(PathBuf::from(r"D:\ISO\Windows-11-Pro-custom.iso")),
+        media_folder: PathBuf::from(r"D:\ISO\WinISOPilot-demo\media"),
+        iso_bytes: Some(5_300_000_000),
+        applied: 14,
+        footprint: Some(fp),
+        test_target: wip_core::boottest::TestTarget {
+            language: "en-US".into(),
+            index: 1,
+            edition_id: "Professional".into(),
+            arch: "amd64".into(),
+        },
+        warnings: vec![],
+        log_file: PathBuf::from(r"D:\ISO\WinISOPilot-demo\winisopilot.log"),
+    });
+    app.max_step = Step::Build;
+    app.step = Step::Build;
+}
+
 /// Sample drives for `--demo`.
 pub fn demo_disks() -> Vec<wip_core::usb::Disk> {
     let d = |n: u32, name: &str, size: u64, bus: &str, sys: bool, l: &str| wip_core::usb::Disk {

@@ -11,11 +11,12 @@ use wip_engine::{BuildReport, EngineError, Event, Job, SourceInfo, Workspace};
 pub enum Outcome {
     Inspected(SourceInfo),
     Prepared(Box<Workspace>, Box<Inventory>),
-    Built(BuildReport),
+    Built(Box<BuildReport>),
     Discarded,
     LeftoverCleaned(String),
     Disks(Vec<wip_core::usb::Disk>),
     UsbWritten(wip_engine::UsbReport),
+    BootTested(wip_engine::BootTestReport),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +28,7 @@ pub enum Kind {
     Leftover,
     ListDisks,
     WriteUsb,
+    BootTest,
 }
 
 impl Kind {
@@ -39,12 +41,13 @@ impl Kind {
             Kind::Leftover => "Cleaning up an earlier session",
             Kind::ListDisks => "Looking for USB drives",
             Kind::WriteUsb => "Writing the USB drive",
+            Kind::BootTest => "Testing in a virtual machine",
         }
     }
 
     /// Whether Cancel is offered. Discards always run to completion.
     pub fn cancellable(self) -> bool {
-        matches!(self, Kind::Inspect | Kind::Prepare | Kind::Build | Kind::WriteUsb)
+        matches!(self, Kind::Inspect | Kind::Prepare | Kind::Build | Kind::WriteUsb | Kind::BootTest)
     }
 }
 

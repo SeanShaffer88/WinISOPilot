@@ -173,6 +173,6 @@ pub fn check_line(ui: &mut Ui, ok: bool, text: &str) {
     ui.horizontal(|ui| {
         let (sym, c) = if ok { ("✔", OK_TEXT) } else { ("✖", ERR_TEXT) };
         ui.label(RichText::new(sym).strong().color(c));
-        ui.label(RichText::new(text).color(TEXT_BODY));
+        ui.add(egui::Label::new(RichText::new(text).color(TEXT_BODY)).wrap());
     });
 }

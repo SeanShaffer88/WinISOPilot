@@ -1,4 +1,4 @@
-# Audit — WinISOPilot 0.2.0 (pre-release)
+# Audit — WinISOPilot 0.3.0 (pre-release)
 
 Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Verified** (run and observed), **Partially verified**, **Unverified**.
 
@@ -24,6 +24,9 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | USB eligibility rules, identity check, diskpart script, FAT32 file plan (split only install.wim, size checks) | Verified | `wip-core::usb` tests |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
 | Writing a real USB stick; BIOS and UEFI boot from it | **Unverified** | Needs elevated Windows run with a real stick |
+| Footprint diff and report text; recipe port statuses (same / changed / missing / unverified / new / version-only) | Verified | `footprint` and `recipe_port_detects_same_changed_missing_new` tests |
+| Boot test answer file, check generation, in-guest script, scoring, encoded loader size | Verified | `boottest` tests |
+| Boot test end to end on Hyper-V; footprint numbers from a real build | **Unverified** | Run docs/verification-checklist.md |
 
 ## Destructive operations review
 
@@ -36,6 +39,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Commit / unmount | Never cancelled part-way; discard is always available |
 | Output ISO | Refuses an existing path; partial ISO deleted if `oscdimg` fails |
 | Erasing a USB drive | Only USB-bus disks; never system/boot, read-only, offline, under 7 GB, or holding the source/working folder; identity re-checked right before diskpart; typed `ERASE`; cancel honored only before erasing and between files (the stick is then reported incomplete) |
+| Boot test VM | Created only in a new `WinISOPilot-BootTest-<time>` folder; VM has no network; its disk is the VM's own VHDX; removed with its folder only after a pass (unless kept) or on cancel |
 | Leftover sessions | Shown on next launch: discard (unmount without saving) or forget the record; workspace files are never deleted by the app |
 
 ## Security and privacy
