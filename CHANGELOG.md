@@ -2,7 +2,7 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2026-10-30
 
 ### Added
 - **Download Windows from Microsoft** on the Choose ISO page: loads Microsoft's Media Creation Tool catalog for Windows 11 or 10, lets you pick language, architecture and package, downloads the ESD with the built-in `curl.exe` (resumes after interruption), verifies it against the catalog's hash, and turns it into a bootable ISO (setup media, boot.wim with Windows PE + Setup, install.esd with every edition) using DISM and `oscdimg`.
