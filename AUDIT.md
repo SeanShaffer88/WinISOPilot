@@ -1,4 +1,4 @@
-# Audit — WinISOPilot 0.1.0 (pre-release)
+# Audit — WinISOPilot 0.2.0 (pre-release)
 
 Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Verified** (run and observed), **Partially verified**, **Unverified**.
 
@@ -21,6 +21,9 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Each catalog option has the documented effect after installation | **Unverified** | Option texts are based on Microsoft documentation and well-known behavior; per-build effects (especially Copilot, Recall, BypassNRO, OneDrive) change over time |
 | Keyboard-only and screen-reader walkthrough | **Unverified** | AccessKit is enabled; needs a Narrator/NVDA pass on Windows |
 | Windows 10 host | **Unverified** | Supported by design; not run |
+| USB eligibility rules, identity check, diskpart script, FAT32 file plan (split only install.wim, size checks) | Verified | `wip-core::usb` tests |
+| USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
+| Writing a real USB stick; BIOS and UEFI boot from it | **Unverified** | Needs elevated Windows run with a real stick |
 
 ## Destructive operations review
 
@@ -32,6 +35,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Applying changes | Only to the private exported copy; cancel checked between operations; registry hives unloaded on any failure |
 | Commit / unmount | Never cancelled part-way; discard is always available |
 | Output ISO | Refuses an existing path; partial ISO deleted if `oscdimg` fails |
+| Erasing a USB drive | Only USB-bus disks; never system/boot, read-only, offline, under 7 GB, or holding the source/working folder; identity re-checked right before diskpart; typed `ERASE`; cancel honored only before erasing and between files (the stick is then reported incomplete) |
 | Leftover sessions | Shown on next launch: discard (unmount without saving) or forget the record; workspace files are never deleted by the app |
 
 ## Security and privacy

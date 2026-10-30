@@ -736,6 +736,11 @@ pub fn build(app: &mut App, ctx: &egui::Context) {
             }
             ui.add_space(8.0);
             body(ui, "Test the ISO in a virtual machine before installing it on a PC you rely on.");
+            if theme::primary(ui, "Write it to a USB drive", true).clicked() {
+                app.usb.source = None;
+                app.usb.report = None;
+                app.switch_tool(crate::app::Tool::Usb);
+            }
             if theme::secondary(ui, "Save these choices for next time…", true).clicked() {
                 save_recipe(app);
             }

@@ -13,7 +13,7 @@
 | Destructive operations | Mounting/servicing a private copy of the image; never the source ISO |
 | Networking | None |
 | License | MIT |
-| Non-goals (0.1) | USB writing, in-app ISO download, driver/update integration, answer files, Windows 7/8.1 images (see roadmap) |
+| Non-goals (0.2) | NTFS/UEFI:NTFS USB layout, in-app ISO download, driver/update integration, answer files, Windows 7/8.1 images (see roadmap) |
 
 ## Crates
 
@@ -56,4 +56,6 @@ winisopilot (egui app) ──► wip-engine (Windows work) ──► wip-core (p
 | WIP-E050–E054 | Copy, export, free space, workspace, journal |
 | WIP-E060–E062 | App removal, file deletion, component cleanup |
 | WIP-E070–E072 | Output exists, missing boot files, oscdimg failure |
+| WIP-E080–E084 | Drive list, drive gone/changed, no drive letter, drive not allowed |
+| WIP-E085–E093 | USB source not Windows media, read/plan/split failures, diskpart, bootsect, verification mismatch |
 | WIP-E900/E901 | Background task crashed / no result |

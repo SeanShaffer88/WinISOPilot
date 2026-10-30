@@ -19,7 +19,7 @@ fn powershell() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("powershell.exe"))
 }
 
-fn ps(script: &str, job: &Job) -> Result<String> {
+pub(crate) fn ps(script: &str, job: &Job) -> Result<String> {
     let args = vec!["-NoProfile".into(), "-NonInteractive".into(), "-Command".into(), script.to_string()];
     expect_ok(run(&powershell(), &args, job)?, "PowerShell", "WIP-E040")
 }
@@ -44,15 +44,15 @@ fn need_admin(host: &HostInfo) -> Result<()> {
 }
 
 /// An attached ISO. Detached on drop if we attached it.
-struct IsoMount {
+pub(crate) struct IsoMount {
     iso: PathBuf,
-    root: PathBuf,
+    pub(crate) root: PathBuf,
     ours: bool,
     job: Job,
 }
 
 impl IsoMount {
-    fn attach(iso: &Path, job: &Job) -> Result<IsoMount> {
+    pub(crate) fn attach(iso: &Path, job: &Job) -> Result<IsoMount> {
         let script = format!(
             "$ErrorActionPreference='Stop'; $p={}; $i=Get-DiskImage -ImagePath $p; $m=$false; \
              if(-not $i.Attached){{ $i=Mount-DiskImage -ImagePath $p -StorageType ISO -Access ReadOnly -PassThru; $m=$true }}; \
@@ -128,7 +128,7 @@ pub fn inspect_iso(iso: &Path, host: &HostInfo, job: &Job) -> Result<SourceInfo>
 }
 
 /// Recursively lists files under `root` with their sizes.
-fn walk(root: &Path, rel: &Path, out: &mut Vec<(PathBuf, u64)>) -> std::io::Result<()> {
+pub(crate) fn walk(root: &Path, rel: &Path, out: &mut Vec<(PathBuf, u64)>) -> std::io::Result<()> {
     for entry in fs::read_dir(root.join(rel))? {
         let entry = entry?;
         let r = rel.join(entry.file_name());
@@ -142,7 +142,7 @@ fn walk(root: &Path, rel: &Path, out: &mut Vec<(PathBuf, u64)>) -> std::io::Resu
     Ok(())
 }
 
-fn copy_tree(src: &Path, dst: &Path, skip: &[&str], job: &Job) -> Result<u64> {
+pub(crate) fn copy_tree(src: &Path, dst: &Path, skip: &[&str], job: &Job) -> Result<u64> {
     let io = |e: std::io::Error| EngineError::new("WIP-E050", format!("Copying files failed: {e}"));
     let mut files = Vec::new();
     walk(src, Path::new(""), &mut files).map_err(io)?;

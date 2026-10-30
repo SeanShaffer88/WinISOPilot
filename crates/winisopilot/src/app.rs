@@ -45,6 +45,12 @@ impl Step {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tool {
+    Customize,
+    Usb,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum View {
     Cat(Category),
     /// Uncatalogued items (Advanced mode only).
@@ -52,6 +58,8 @@ pub enum View {
 }
 
 pub struct App {
+    pub tool: Tool,
+    pub usb: crate::usb_page::UsbState,
     pub settings: Settings,
     settings_path: PathBuf,
     pub catalog: Catalog,
@@ -116,6 +124,8 @@ impl App {
         };
         let workspace_parent = (!settings.workspace_root.is_empty()).then(|| PathBuf::from(&settings.workspace_root));
         let mut app = App {
+            tool: Tool::Customize,
+            usb: Default::default(),
             settings,
             settings_path,
             catalog,
@@ -329,6 +339,8 @@ impl App {
                 self.goto(Step::Edition);
                 self.notify("The open image was discarded. Your choices are kept.");
             }
+            Outcome::Disks(d) => self.usb.set_disks(d),
+            Outcome::UsbWritten(r) => self.usb.report = Some(r),
             Outcome::LeftoverCleaned(dir) => {
                 self.leftovers.retain(|l| l.mount_dir != dir);
                 self.notify("Cleaned up the earlier session.");
@@ -368,10 +380,18 @@ impl App {
             .frame(Frame::new().fill(theme::RAIL).inner_margin(Margin::symmetric(if advanced { 10 } else { 18 }, 22)))
             .show(ctx, |ui| {
                 if !advanced {
-                    ui.label(RichText::new("WinISOPilot").size(21.0).strong().color(theme::TEXT));
-                    ui.add_space(14.0);
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("WinISOPilot").size(21.0).strong().color(theme::TEXT));
+                        if self.demo {
+                            ui.label(RichText::new("DEMO").strong().color(theme::WARN_TEXT));
+                        }
+                    });
+                    ui.add_space(10.0);
                 }
-                for s in Step::ALL {
+                self.tool_switch(ui, advanced);
+                ui.add_space(12.0);
+                let steps: &[Step] = if self.tool == Tool::Customize { &Step::ALL } else { &[] };
+                for &s in steps {
                     self.rail_step(ui, s, advanced);
                     if s == Step::Customize && self.step == Step::Customize && !advanced {
                         self.rail_categories(ui);
@@ -384,11 +404,82 @@ impl App {
                     if r.clicked() {
                         self.show_settings = true;
                     }
-                    if self.demo {
-                        ui.label(RichText::new("DEMO DATA").strong().color(theme::WARN_TEXT));
+                    if self.demo && advanced {
+                        ui.label(RichText::new("DEMO").strong().color(theme::WARN_TEXT));
                     }
                 });
             });
+    }
+
+    fn tool_switch(&mut self, ui: &mut egui::Ui, compact: bool) {
+        let tools = [(Tool::Customize, "Customize ISO", "ISO"), (Tool::Usb, "Write to USB", "USB")];
+        let mut pick = None;
+        let busy = self.busy();
+        let current = self.tool;
+        let mut button = |ui: &mut egui::Ui, t: Tool, long: &str, short: &str, w: f32| {
+            let on = current == t;
+            let text = RichText::new(if compact { short } else { long }).size(12.5).color(if on {
+                theme::TEXT
+            } else {
+                theme::RAIL_MUTED
+            });
+            let b = egui::Button::new(text)
+                .wrap_mode(egui::TextWrapMode::Extend)
+                .fill(if on { theme::PRIMARY } else { Color32::TRANSPARENT })
+                .stroke(Stroke::NONE)
+                .min_size(Vec2::new(w, 32.0));
+            let r = ui.add_enabled(!busy || on, b).on_hover_text(long);
+            r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::RadioButton, true, on, long));
+            if r.clicked() && !on {
+                pick = Some(t);
+            }
+        };
+        Frame::new()
+            .fill(theme::RAIL_SELECTED.gamma_multiply(0.6))
+            .corner_radius(CornerRadius::same(8))
+            .inner_margin(Margin::same(3))
+            .show(ui, |ui| {
+                ui.spacing_mut().item_spacing = Vec2::splat(3.0);
+                ui.spacing_mut().button_padding = Vec2::new(4.0, 4.0);
+                if compact {
+                    ui.vertical(|ui| {
+                        let w = ui.available_width();
+                        for (t, l, s) in tools {
+                            button(ui, t, l, s, w);
+                        }
+                    });
+                } else {
+                    ui.horizontal(|ui| {
+                        let w = (ui.available_width() - 3.0) / 2.0;
+                        for (t, l, s) in tools {
+                            button(ui, t, l, s, w);
+                        }
+                    });
+                }
+            });
+        if let Some(t) = pick {
+            self.switch_tool(t);
+        }
+    }
+
+    pub fn switch_tool(&mut self, t: Tool) {
+        self.tool = t;
+        self.last_error = None;
+        if t == Tool::Usb {
+            self.usb.default_source(self.report.as_ref(), self.iso_path.as_deref());
+            if !self.usb.listed && !self.busy() {
+                self.refresh_disks();
+            }
+        }
+    }
+
+    pub fn refresh_disks(&mut self) {
+        self.usb.listed = true;
+        if self.demo {
+            self.usb.set_disks(crate::dialogs::demo_disks());
+            return;
+        }
+        self.start(Kind::ListDisks, |job| wip_engine::list_disks(job).map(Outcome::Disks));
     }
 
     fn rail_step(&mut self, ui: &mut egui::Ui, s: Step, compact: bool) {
@@ -401,7 +492,7 @@ impl App {
             (Color32::TRANSPARENT, theme::RAIL_MUTED, theme::RAIL_MUTED)
         };
         let glyph = if done { "✔".to_string() } else { s.number().to_string() };
-        let size = Vec2::new(ui.available_width(), if compact { 44.0 } else { 40.0 });
+        let size = Vec2::new(ui.available_width(), if compact { 44.0 } else { 36.0 });
         let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click());
         let resp = resp.on_hover_text(format!("Step {}: {}", s.number(), s.label()));
         resp.widget_info(|| {
@@ -465,7 +556,7 @@ impl App {
                 }))
                 .fill(if selected { theme::RAIL_SELECTED } else { Color32::TRANSPARENT })
                 .stroke(Stroke::NONE)
-                .min_size(Vec2::new(ui.available_width(), 30.0));
+                .min_size(Vec2::new(ui.available_width(), 27.0));
                 if ui.add(b).clicked() {
                     self.view = View::Cat(c);
                     self.focused = None;
@@ -519,6 +610,12 @@ impl eframe::App for App {
             self.undo();
         }
         self.rail(ctx);
+        if self.tool == Tool::Usb {
+            crate::usb_page::show(self, ctx);
+            crate::dialogs::show(self, ctx);
+            self.toast(ctx);
+            return;
+        }
         match self.step {
             Step::Customize if self.inventory.is_some() || self.demo => crate::customize::show(self, ctx),
             Step::Customize => crate::pages::need_prepare(self, ctx),

@@ -1,0 +1,308 @@
+//! "Write to USB": a single-page, Rufus-style bootable USB writer.
+
+use crate::app::App;
+use crate::jobs::{Kind, Outcome};
+use crate::pages::{central, footer, job_panel, log_tail, Nav};
+use crate::theme::{self, body, check_line, dim, eyebrow, h1, h2};
+use eframe::egui::{self, RichText};
+use std::path::{Path, PathBuf};
+use wip_core::human_bytes;
+use wip_core::usb::{ineligible, sanitize_fat_label, Disk, Scheme};
+use wip_engine::{BuildReport, UsbReport, UsbRequest, UsbSource};
+
+const CONFIRM_WORD: &str = "ERASE";
+
+pub struct UsbState {
+    pub source: Option<UsbSource>,
+    pub disks: Vec<Disk>,
+    pub listed: bool,
+    pub chosen: Option<u32>,
+    pub scheme: Scheme,
+    pub label: String,
+    pub verify: bool,
+    pub confirm: bool,
+    pub confirm_text: String,
+    pub report: Option<UsbReport>,
+}
+
+impl Default for UsbState {
+    fn default() -> Self {
+        UsbState {
+            source: None,
+            disks: Vec::new(),
+            listed: false,
+            chosen: None,
+            scheme: Scheme::Mbr,
+            label: "WINSETUP".into(),
+            verify: true,
+            confirm: false,
+            confirm_text: String::new(),
+            report: None,
+        }
+    }
+}
+
+impl UsbState {
+    /// Picks the newest build (or the chosen ISO) when nothing is set yet.
+    pub fn default_source(&mut self, build: Option<&BuildReport>, iso: Option<&Path>) {
+        if self.source.is_some() {
+            return;
+        }
+        self.source = match build {
+            Some(r) => Some(match &r.iso {
+                Some(p) => UsbSource::Iso(p.clone()),
+                None => UsbSource::Folder(r.media_folder.clone()),
+            }),
+            None => iso.map(|p| UsbSource::Iso(p.to_path_buf())),
+        };
+    }
+
+    pub fn set_disks(&mut self, disks: Vec<Disk>) {
+        if let Some(n) = self.chosen {
+            if !disks.iter().any(|d| d.number == n && ineligible(d, &[]).is_none()) {
+                self.chosen = None;
+            }
+        }
+        self.disks = disks;
+    }
+
+    fn chosen_disk(&self) -> Option<&Disk> {
+        self.chosen.and_then(|n| self.disks.iter().find(|d| d.number == n))
+    }
+}
+
+fn source_path(s: &UsbSource) -> &Path {
+    match s {
+        UsbSource::Iso(p) | UsbSource::Folder(p) => p,
+    }
+}
+
+fn protected_paths(app: &App) -> Vec<PathBuf> {
+    let mut v = Vec::new();
+    if let Some(s) = &app.usb.source {
+        v.push(source_path(s).to_path_buf());
+    }
+    if let Some(p) = &app.workspace_parent {
+        v.push(p.clone());
+    }
+    if let Some(w) = &app.workspace {
+        v.push(w.root.clone());
+    }
+    v
+}
+
+fn letters(paths: &[PathBuf]) -> Vec<char> {
+    paths
+        .iter()
+        .filter_map(|p| {
+            let s = p.to_string_lossy();
+            let mut c = s.chars();
+            match (c.next(), c.next()) {
+                (Some(l), Some(':')) if l.is_ascii_alphabetic() => Some(l.to_ascii_uppercase()),
+                _ => None,
+            }
+        })
+        .collect()
+}
+
+pub fn show(app: &mut App, ctx: &egui::Context) {
+    let protected = protected_paths(app);
+    let prot_letters = letters(&protected);
+    let disk_ok = app.usb.chosen_disk().is_some_and(|d| ineligible(d, &prot_letters).is_none());
+    let can_write = app.usb.source.is_some() && disk_ok && !app.busy();
+    let done = app.usb.report.is_some();
+    let next = if done { ("Write another", !app.busy()) } else { ("Write to USB", can_write) };
+    if let Nav::Next = footer(ctx, "", false, Some(next)) {
+        if done {
+            app.usb.report = None;
+            app.refresh_disks();
+        } else {
+            app.usb.confirm = true;
+            app.usb.confirm_text.clear();
+        }
+    }
+    central(ctx, |ui| {
+        eyebrow(ui, "Write to USB");
+        h1(ui, "Make a bootable USB drive");
+        body(ui, "Puts Windows installation media on a USB stick that boots on BIOS and UEFI PCs. Everything on the stick is erased.");
+        ui.add_space(10.0);
+
+        if let Some(r) = app.usb.report.clone() {
+            done_view(app, ui, &r);
+            return;
+        }
+        if app.busy() {
+            job_panel(app, ui);
+            show_error(app, ui);
+            return;
+        }
+
+        source_card(app, ui);
+        ui.add_space(10.0);
+        drive_card(app, ui, &prot_letters);
+        ui.add_space(10.0);
+        options_card(app, ui);
+        if let Some(d) = app.usb.chosen_disk().filter(|_| disk_ok) {
+            ui.add_space(10.0);
+            theme::warn_box(ui, "Everything on this drive will be erased", &[d.label()]);
+        }
+        show_error(app, ui);
+        log_tail(app, ui, 200);
+    });
+    if app.usb.confirm {
+        confirm(app, ctx, protected);
+    }
+}
+
+fn show_error(app: &App, ui: &mut egui::Ui) {
+    if let Some(e) = &app.last_error {
+        ui.add_space(8.0);
+        if e.is_cancelled() {
+            theme::warn_box(ui, "Stopped", std::slice::from_ref(&e.message));
+        } else {
+            theme::error_box(ui, &format!("Something went wrong ({})", e.code), &e.message);
+        }
+    }
+}
+
+fn source_card(app: &mut App, ui: &mut egui::Ui) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, "What to write");
+        let shown = match &app.usb.source {
+            Some(UsbSource::Iso(p)) => format!("ISO: {}", p.display()),
+            Some(UsbSource::Folder(p)) => format!("Folder: {}", p.display()),
+            None => "Nothing chosen".into(),
+        };
+        ui.label(RichText::new(shown).monospace().size(13.0));
+        ui.horizontal(|ui| {
+            if theme::secondary(ui, "Choose ISO…", true).clicked() {
+                if let Some(p) = rfd::FileDialog::new().add_filter("Disc image", &["iso"]).pick_file() {
+                    app.usb.source = Some(UsbSource::Iso(p));
+                }
+            }
+            if theme::secondary(ui, "Choose folder…", true).clicked() {
+                if let Some(p) = rfd::FileDialog::new().set_title("Choose a Windows media folder").pick_folder() {
+                    app.usb.source = Some(UsbSource::Folder(p));
+                }
+            }
+        });
+        dim(ui, "Use an ISO you built with WinISOPilot, or any official Windows 10/11 ISO.");
+    });
+}
+
+fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.horizontal(|ui| {
+            h2(ui, "USB drive");
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if theme::secondary(ui, "Refresh", !app.busy()).clicked() {
+                    app.refresh_disks();
+                }
+            });
+        });
+        let (ok, bad): (Vec<&Disk>, Vec<&Disk>) = app.usb.disks.iter().partition(|d| ineligible(d, prot).is_none());
+        if ok.is_empty() {
+            body(ui, "No usable USB drive found. Plug in a USB drive of 8 GB or more, then select Refresh.");
+        }
+        let mut pick = app.usb.chosen;
+        for d in &ok {
+            ui.radio_value(&mut pick, Some(d.number), RichText::new(d.label()).size(14.5));
+        }
+        app.usb.chosen = pick;
+        if !bad.is_empty() {
+            egui::CollapsingHeader::new(format!("Other drives ({}) can't be used", bad.len())).show(ui, |ui| {
+                for d in bad {
+                    dim(ui, &format!("{} — {}", d.label(), ineligible(d, prot).unwrap_or_default()));
+                }
+            });
+        }
+        dim(ui, "Internal disks and the disk Windows runs from are never listed as choices.");
+    });
+}
+
+fn options_card(app: &mut App, ui: &mut egui::Ui) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, "Options");
+        ui.radio_value(&mut app.usb.scheme, Scheme::Mbr, Scheme::Mbr.label());
+        ui.radio_value(&mut app.usb.scheme, Scheme::Gpt, Scheme::Gpt.label());
+        dim(ui, "Not sure? Keep MBR. It works on both older and newer PCs.");
+        ui.horizontal(|ui| {
+            ui.label("Drive name:");
+            let r = ui.add(egui::TextEdit::singleline(&mut app.usb.label).char_limit(11).desired_width(160.0));
+            if r.lost_focus() {
+                app.usb.label = sanitize_fat_label(&app.usb.label);
+            }
+        });
+        ui.checkbox(&mut app.usb.verify, "Check every file after copying (slower, recommended)");
+        dim(ui, "The drive is formatted FAT32. A Windows image larger than 4 GB is split automatically.");
+    });
+}
+
+fn confirm(app: &mut App, ctx: &egui::Context, protected: Vec<PathBuf>) {
+    let Some(disk) = app.usb.chosen_disk().cloned() else {
+        app.usb.confirm = false;
+        return;
+    };
+    let mut go = false;
+    egui::Modal::new(egui::Id::new("usb-confirm")).show(ctx, |ui| {
+        ui.set_width(500.0);
+        h2(ui, &format!("Erase Disk {}?", disk.number));
+        body(ui, &disk.label());
+        body(ui, "All files and partitions on this drive will be permanently deleted.");
+        ui.add_space(6.0);
+        ui.label(format!("Type {CONFIRM_WORD} to confirm:"));
+        let r = ui.add(egui::TextEdit::singleline(&mut app.usb.confirm_text).desired_width(200.0));
+        if ui.ctx().memory(|m| m.focused().is_none()) {
+            r.request_focus();
+        }
+        let ready = app.usb.confirm_text.trim() == CONFIRM_WORD;
+        ui.add_space(6.0);
+        ui.horizontal(|ui| {
+            if theme::secondary(ui, "Cancel", true).clicked() {
+                app.usb.confirm = false;
+            }
+            if theme::primary(ui, "Erase and write", ready).clicked() {
+                go = true;
+            }
+        });
+    });
+    if go {
+        app.usb.confirm = false;
+        let Some(source) = app.usb.source.clone() else { return };
+        let req = UsbRequest {
+            source,
+            disk,
+            scheme: app.usb.scheme,
+            label: sanitize_fat_label(&app.usb.label),
+            verify: app.usb.verify,
+            protected_paths: protected,
+        };
+        let host = app.host.clone();
+        app.start(Kind::WriteUsb, move |job| wip_engine::write_usb(&req, &host, job).map(Outcome::UsbWritten));
+    }
+}
+
+fn done_view(app: &mut App, ui: &mut egui::Ui, r: &UsbReport) {
+    theme::card().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        h2(ui, &format!("USB drive {}: is ready", r.letter));
+        check_line(ui, true, &format!("{} copied", human_bytes(r.bytes_written)));
+        if r.split {
+            check_line(ui, true, "Windows image split into install.swm parts for FAT32");
+        }
+        check_line(
+            ui,
+            r.verified,
+            if r.verified { "Every copied file checked" } else { "Files not checked (verification was off)" },
+        );
+        body(ui, "Eject the drive from the taskbar before unplugging it.");
+    });
+    if !r.warnings.is_empty() {
+        ui.add_space(8.0);
+        theme::warn_box(ui, "Notes", &r.warnings);
+    }
+    log_tail(app, ui, 200);
+}

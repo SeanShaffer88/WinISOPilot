@@ -2,7 +2,24 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] - Unreleased
+## [0.2.0] - Unreleased
+
+### Added
+- **Write to USB** tool (switch in the rail): bootable USB from an ISO or media folder.
+  - Lists disks with bus type and drive letters; offers only USB drives of 7 GB or more that aren't the system/boot disk, read-only, offline, or holding the source or working folder.
+  - Re-checks the drive's identity (number, size, name, serial, unique ID) immediately before erasing.
+  - Typed `ERASE` confirmation.
+  - diskpart: clean, MBR or GPT, FAT32 (32 GB partition on larger drives), active (MBR).
+  - Copies the media; splits `install.wim` over 4 GB into `install.swm` parts with DISM.
+  - `bootsect /nt60 /mbr` for BIOS boot on MBR drives; warns when no UEFI boot loader is present.
+  - Optional byte-for-byte read-back verification.
+- "Write it to a USB drive" button after a successful build.
+- `--usb` start-up flag (with `--demo`, shows sample drives).
+
+### Changed
+- Step rail is more compact to fit the tool switch; demo label moved to the header.
+
+## [0.1.0] - 2026-10-30
 
 Complete rewrite in Rust. The earlier C#/WPF prototype is preserved in git history (`main` before this release).
 

@@ -7,6 +7,7 @@ mod dialogs;
 mod jobs;
 mod pages;
 mod theme;
+mod usb_page;
 
 use eframe::egui;
 
@@ -40,6 +41,7 @@ fn main() -> eframe::Result<()> {
         std::process::exit(self_test());
     }
     let demo = args.iter().any(|a| a == "--demo");
+    let usb = args.iter().any(|a| a == "--usb");
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("WinISOPilot")
         .with_inner_size([1200.0, 760.0])
@@ -48,5 +50,15 @@ fn main() -> eframe::Result<()> {
         viewport = viewport.with_icon(i);
     }
     let options = eframe::NativeOptions { viewport, ..Default::default() };
-    eframe::run_native("WinISOPilot", options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, demo)))))
+    eframe::run_native(
+        "WinISOPilot",
+        options,
+        Box::new(move |cc| {
+            let mut app = app::App::new(cc, demo);
+            if usb {
+                app.switch_tool(app::Tool::Usb);
+            }
+            Ok(Box::new(app))
+        }),
+    )
 }

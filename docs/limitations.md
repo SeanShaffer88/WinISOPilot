@@ -13,4 +13,6 @@
 - egui's glow renderer needs OpenGL 2+. Some virtual machines without GPU drivers can't open the window.
 - No system high-contrast theme detection yet; text size is adjustable (75–200%).
 - English only.
+- USB writer: FAT32 only (NTFS/UEFI:NTFS not yet). Drives over 32 GB get a 32 GB partition. Only USB-bus drives are offered (no SD readers on other buses). `install.esd` over 4 GB can't be placed on FAT32.
+- USB writer cancel during copying leaves an incomplete stick; write it again.
 - Leftover-session detection ignores records made by the current process ID.

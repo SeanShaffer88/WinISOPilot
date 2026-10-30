@@ -2,11 +2,9 @@
 
 Planned, not implemented. Order may change.
 
-## 0.2 — USB writer (Rufus-style)
-- Drive list: removable drives only by default; fixed drives behind an explicit expert switch.
-- GPT/UEFI and MBR/BIOS layouts; FAT32 with automatic `install.wim` split (SWM), or NTFS with a UEFI:NTFS boot partition.
-- Write the built ISO or any Windows ISO; verify after writing.
-- Proportional confirmations: drive name, size and contents shown before erasing.
+## 0.2 — USB writer (in progress)
+- Done: USB drive list with safety filters, MBR/GPT FAT32, automatic `install.wim` split, BIOS boot code, read-back verify, typed confirmation.
+- Remaining: NTFS layout with a UEFI:NTFS boot partition; FAT32 beyond 32 GB without diskpart's limit; real-hardware boot tests.
 
 ## 0.3 — Get Windows
 - In-app download of official Windows 10/11 ISOs from Microsoft (release, edition, language, architecture), with hash verification.
