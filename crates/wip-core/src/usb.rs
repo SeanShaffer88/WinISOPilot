@@ -121,19 +121,40 @@ pub fn ineligible(d: &Disk, protected_letters: &[char]) -> Option<String> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum Scheme {
-    /// MBR + FAT32: boots on BIOS and UEFI PCs.
+    /// MBR + FAT32: boots on BIOS and UEFI PCs (Secure Boot included).
     #[default]
     Mbr,
     /// GPT + FAT32: UEFI PCs only.
     Gpt,
+    /// GPT + NTFS: UEFI only, and only on firmware that can read NTFS.
+    /// No 4 GB file limit, so install.wim is copied whole.
+    GptNtfs,
 }
 
 impl Scheme {
+    pub const ALL: [Scheme; 3] = [Scheme::Mbr, Scheme::Gpt, Scheme::GptNtfs];
+
     pub fn label(self) -> &'static str {
         match self {
-            Scheme::Mbr => "MBR — BIOS and UEFI (recommended)",
-            Scheme::Gpt => "GPT — UEFI only",
+            Scheme::Mbr => "MBR + FAT32 — BIOS and UEFI (recommended)",
+            Scheme::Gpt => "GPT + FAT32 — UEFI only",
+            Scheme::GptNtfs => "GPT + NTFS — UEFI only, some PCs can't boot it",
         }
+    }
+
+    pub fn hint(self) -> &'static str {
+        match self {
+            Scheme::Mbr => "Works on old and new PCs. A Windows image over 4 GB is split automatically.",
+            Scheme::Gpt => "For UEFI PCs without legacy (CSM) support. Large images are split.",
+            Scheme::GptNtfs => {
+                "No file splitting, but the PC's UEFI firmware must be able to read NTFS; many can't. Not for BIOS PCs."
+            }
+        }
+    }
+
+    /// FAT32 (with its 4 GB file and 32 GB format limits) or NTFS.
+    pub fn is_fat32(self) -> bool {
+        !matches!(self, Scheme::GptNtfs)
     }
 }
 
@@ -152,35 +173,67 @@ pub fn sanitize_fat_label(s: &str) -> String {
     }
 }
 
-/// Size of the partition to create in MB, or `None` for the whole disk.
-pub fn partition_size_mb(disk_bytes: u64) -> Option<u64> {
+/// Volume label for the chosen file system (NTFS allows 32 characters).
+pub fn sanitize_label(s: &str, scheme: Scheme) -> String {
+    if scheme.is_fat32() {
+        return sanitize_fat_label(s);
+    }
+    let out: String =
+        s.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, ' ' | '_' | '-')).take(32).collect();
+    let out = out.trim().to_string();
+    if out.is_empty() {
+        "WINUSB".into()
+    } else {
+        out
+    }
+}
+
+/// Smallest leftover worth turning into a second (data) partition.
+pub const MIN_DATA_PARTITION_MB: u64 = 1024;
+
+/// Size of the setup partition in MB, or `None` for the whole disk.
+/// diskpart can't format FAT32 above 32 GB, so FAT32 is capped there.
+pub fn partition_size_mb(disk_bytes: u64, scheme: Scheme) -> Option<u64> {
     let mb = disk_bytes / (1024 * 1024);
-    (mb > FAT32_MAX_PARTITION_MB).then_some(FAT32_MAX_PARTITION_MB)
+    (scheme.is_fat32() && mb > FAT32_MAX_PARTITION_MB).then_some(FAT32_MAX_PARTITION_MB)
 }
 
-/// Usable bytes of the partition that will be created.
-pub fn partition_bytes(disk_bytes: u64) -> u64 {
-    partition_size_mb(disk_bytes).map_or(disk_bytes, |mb| mb * 1024 * 1024)
+/// Usable bytes of the setup partition that will be created.
+pub fn partition_bytes(disk_bytes: u64, scheme: Scheme) -> u64 {
+    partition_size_mb(disk_bytes, scheme).map_or(disk_bytes, |mb| mb * 1024 * 1024)
 }
 
-/// The diskpart script that erases and formats the disk.
-pub fn diskpart_script(disk: &Disk, scheme: Scheme, label: &str) -> String {
+/// Space (MB) left after the capped FAT32 setup partition, if it is worth a
+/// second partition.
+pub fn leftover_mb(disk_bytes: u64, scheme: Scheme) -> Option<u64> {
+    let cap = partition_size_mb(disk_bytes, scheme)?;
+    let left = (disk_bytes / (1024 * 1024)).saturating_sub(cap + 8);
+    (left >= MIN_DATA_PARTITION_MB).then_some(left)
+}
+
+/// The diskpart script that erases and formats the disk. With
+/// `data_partition`, space beyond the 32 GB FAT32 cap becomes a second
+/// exFAT partition labelled DATA (Windows 10 1703+ mounts both).
+pub fn diskpart_script(disk: &Disk, scheme: Scheme, label: &str, data_partition: bool) -> String {
     let mut s = String::new();
     s.push_str(&format!("select disk {}\r\n", disk.number));
     s.push_str("clean\r\n");
-    s.push_str(match scheme {
-        Scheme::Mbr => "convert mbr\r\n",
-        Scheme::Gpt => "convert gpt\r\n",
-    });
-    match partition_size_mb(disk.size) {
+    s.push_str(if scheme == Scheme::Mbr { "convert mbr\r\n" } else { "convert gpt\r\n" });
+    match partition_size_mb(disk.size, scheme) {
         Some(mb) => s.push_str(&format!("create partition primary size={mb}\r\n")),
         None => s.push_str("create partition primary\r\n"),
     }
-    s.push_str(&format!("format quick fs=fat32 label=\"{}\"\r\n", sanitize_fat_label(label)));
+    let fs = if scheme.is_fat32() { "fat32" } else { "ntfs" };
+    s.push_str(&format!("format quick fs={fs} label=\"{}\"\r\n", sanitize_label(label, scheme)));
     if scheme == Scheme::Mbr {
         s.push_str("active\r\n");
     }
     s.push_str("assign\r\n");
+    if data_partition && leftover_mb(disk.size, scheme).is_some() {
+        s.push_str("create partition primary\r\n");
+        s.push_str("format quick fs=exfat label=\"DATA\"\r\n");
+        s.push_str("assign\r\n");
+    }
     s.push_str("exit\r\n");
     s
 }
@@ -201,18 +254,18 @@ pub struct FilePlan {
 
 /// Decides how each file is written. Fails if a file is too large for
 /// FAT32 and can't be split, or the media won't fit.
-pub fn plan_files(files: &[(String, u64)], partition_bytes: u64) -> Result<FilePlan, String> {
+pub fn plan_files(files: &[(String, u64)], partition_bytes: u64, fat32: bool) -> Result<FilePlan, String> {
     let mut out = Vec::new();
     let mut total = 0u64;
     for (path, size) in files {
         let norm = path.replace('/', "\\");
-        let place = if *size > FAT32_MAX_FILE {
+        let place = if fat32 && *size > FAT32_MAX_FILE {
             if norm.eq_ignore_ascii_case(r"sources\install.wim") {
                 Placement::SplitWim
             } else {
                 return Err(format!(
                     "{norm} is {} — too large for a FAT32 USB drive and it can't be split. \
-                     Rebuild the ISO with Standard compression, or keep only one edition.",
+                     Rebuild the ISO with Standard compression, keep only one edition, or use GPT + NTFS.",
                     crate::human_bytes(*size)
                 ));
             }
@@ -302,21 +355,44 @@ mod tests {
 
     #[test]
     fn script_mbr_small_and_gpt_large() {
-        let s = diskpart_script(&disk(2, 16 * GB, "USB"), Scheme::Mbr, "my win 11!");
+        let s = diskpart_script(&disk(2, 16 * GB, "USB"), Scheme::Mbr, "my win 11!", true);
         assert!(s.starts_with("select disk 2\r\nclean\r\nconvert mbr\r\n"));
         assert!(s.contains("create partition primary\r\n"));
         assert!(s.contains("label=\"MYWIN11\""));
         assert!(s.contains("active\r\n"));
-        let g = diskpart_script(&disk(5, 128 * GB, "USB"), Scheme::Gpt, "x");
+        assert!(!s.contains("exfat"), "16 GB leaves nothing for a data partition");
+        let g = diskpart_script(&disk(5, 128 * GB, "USB"), Scheme::Gpt, "x", false);
         assert!(g.contains("convert gpt"));
         assert!(g.contains("size=32768"));
         assert!(!g.contains("active"));
+        assert!(!g.contains("exfat"));
+        let d = diskpart_script(&disk(5, 128 * GB, "USB"), Scheme::Mbr, "x", true);
+        let first = d.find("fs=fat32").unwrap();
+        let active = d.find("active").unwrap();
+        let data = d.find("fs=exfat label=\"DATA\"").unwrap();
+        assert!(first < active && active < data, "active must apply to the setup partition");
+        let n = diskpart_script(&disk(5, 128 * GB, "USB"), Scheme::GptNtfs, "Windows 11 Pro", true);
+        assert!(n.contains("fs=ntfs label=\"Windows 11 Pro\""));
+        assert!(!n.contains("size="), "NTFS uses the whole disk");
+        assert!(!n.contains("exfat"));
+    }
+
+    #[test]
+    fn partition_sizes() {
+        assert_eq!(partition_bytes(16 * GB, Scheme::Mbr), 16 * GB);
+        assert_eq!(partition_bytes(128 * GB, Scheme::Mbr), 32 * 1024 * 1024 * 1024);
+        assert_eq!(partition_bytes(128 * GB, Scheme::GptNtfs), 128 * GB);
+        assert!(leftover_mb(128 * GB, Scheme::Mbr).unwrap() > 80_000);
+        assert!(leftover_mb(33 * 1024 * 1024 * 1024, Scheme::Mbr).is_none(), "under 1 GB left over");
+        assert!(leftover_mb(128 * GB, Scheme::GptNtfs).is_none());
     }
 
     #[test]
     fn labels() {
         assert_eq!(sanitize_fat_label("Windows 11 Pro"), "WINDOWS11PR");
         assert_eq!(sanitize_fat_label("!!"), "WINUSB");
+        assert_eq!(sanitize_label("Windows 11 Pro (x64)", Scheme::GptNtfs), "Windows 11 Pro x64");
+        assert_eq!(sanitize_label("Windows 11 Pro", Scheme::Mbr), "WINDOWS11PR");
     }
 
     #[test]
@@ -326,11 +402,15 @@ mod tests {
             ("sources\\boot.wim".to_string(), 700_000_000),
             ("setup.exe".to_string(), 100_000),
         ];
-        let p = plan_files(&files, 16 * GB).unwrap();
+        let p = plan_files(&files, 16 * GB, true).unwrap();
         assert_eq!(p.files[0].2, Placement::SplitWim);
         assert_eq!(p.files[1].2, Placement::Copy);
         let bad = vec![("sources\\install.esd".to_string(), 5_000_000_000)];
-        assert!(plan_files(&bad, 16 * GB).is_err());
-        assert!(plan_files(&files, 5 * GB).is_err());
+        assert!(plan_files(&bad, 16 * GB, true).is_err());
+        assert!(plan_files(&files, 5 * GB, true).is_err());
+        // NTFS: nothing is split and large files are fine.
+        let n = plan_files(&files, 16 * GB, false).unwrap();
+        assert!(n.files.iter().all(|f| f.2 == Placement::Copy));
+        assert!(plan_files(&bad, 16 * GB, false).is_ok());
     }
 }

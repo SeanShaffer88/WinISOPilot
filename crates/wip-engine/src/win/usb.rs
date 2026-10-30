@@ -2,7 +2,7 @@
 //! large install.wim, bootsect for BIOS, optional read-back verification.
 
 use super::proc::{expect_ok, opt, run, run_with_progress};
-use super::workflow::{copy_tree, ps, walk, IsoMount};
+use super::workflow::{ps, walk, IsoMount};
 use crate::{EngineError, HostInfo, Job, Result, UsbReport, UsbRequest, UsbSource};
 use std::fs;
 use std::io::Read;
@@ -35,31 +35,115 @@ fn diskpart() -> PathBuf {
     super::host::system32().map(|s| s.join("diskpart.exe")).unwrap_or_else(|| PathBuf::from("diskpart.exe"))
 }
 
-fn find_letter(number: u32, job: &Job) -> Result<char> {
+/// Drive letters of the new setup partition (FAT32/NTFS) and, if made, the
+/// exFAT data partition. Windows can take a moment to assign them.
+fn find_letters(number: u32, job: &Job) -> Result<(char, Option<char>)> {
     let script = format!(
-        "$l=$null; for($i=0; $i -lt 40 -and -not $l; $i++){{ \
-         $l = Get-Partition -DiskNumber {number} -ErrorAction SilentlyContinue | Where-Object DriveLetter | \
-         Select-Object -First 1 -ExpandProperty DriveLetter; if(-not $l){{ Start-Sleep -Milliseconds 250 }} }}; \
-         Write-Output $l"
+        "$r=@(); for($i=0; $i -lt 40; $i++){{ \
+         $r = @(Get-Partition -DiskNumber {number} -ErrorAction SilentlyContinue | Where-Object DriveLetter | \
+         ForEach-Object {{ $v = Get-Volume -Partition $_ -ErrorAction SilentlyContinue; \
+         '{{0}}={{1}}' -f $_.DriveLetter, $v.FileSystemType }}); \
+         if($r.Count -gt 0 -and @($r -match '=$').Count -eq 0){{ break }}; Start-Sleep -Milliseconds 250 }}; $r -join ';'"
     );
     let out = ps(&script, job)?;
-    out.trim().chars().find(|c| c.is_ascii_alphabetic()).ok_or_else(|| {
+    job.log(format!("Partitions: {}", out.trim()));
+    let mut setup = None;
+    let mut data = None;
+    for part in out.trim().split(';') {
+        let (l, fs) = part.split_once('=').unwrap_or((part, ""));
+        let Some(c) = l.chars().find(|c| c.is_ascii_alphabetic()) else { continue };
+        if fs.eq_ignore_ascii_case("exFAT") {
+            data = Some(c);
+        } else if setup.is_none() {
+            setup = Some(c);
+        }
+    }
+    let setup = setup.ok_or_else(|| {
         EngineError::new("WIP-E083", "The USB drive was formatted but Windows didn't give it a drive letter.")
-    })
+    })?;
+    Ok((setup, data))
 }
 
-fn same_bytes(a: &Path, b: &Path, buf_a: &mut [u8], buf_b: &mut [u8]) -> std::io::Result<bool> {
-    let (mut fa, mut fb) = (fs::File::open(a)?, fs::File::open(b)?);
+const FILE_FLAG_WRITE_THROUGH: u32 = 0x8000_0000;
+const FILE_FLAG_NO_BUFFERING: u32 = 0x2000_0000;
+const ALIGN: usize = 4096;
+
+/// A buffer whose start is aligned for unbuffered (direct) reads.
+struct Aligned {
+    raw: Vec<u8>,
+    off: usize,
+    len: usize,
+}
+
+impl Aligned {
+    fn new(len: usize) -> Aligned {
+        let raw = vec![0u8; len + ALIGN];
+        let off = (ALIGN - (raw.as_ptr() as usize % ALIGN)) % ALIGN;
+        Aligned { raw, off, len }
+    }
+    fn buf(&mut self) -> &mut [u8] {
+        &mut self.raw[self.off..self.off + self.len]
+    }
+}
+
+/// Copies the media to the stick with write-through I/O, so the progress
+/// bar shows data that is really on the drive rather than in the cache.
+fn copy_to_usb(src: &Path, dst: &Path, skip: &[&str], job: &Job) -> Result<u64> {
+    use std::io::Write;
+    use std::os::windows::fs::OpenOptionsExt;
+    let io = |e: std::io::Error| EngineError::new("WIP-E094", format!("Copying to the USB drive failed: {e}"));
+    let mut files = Vec::new();
+    walk(src, Path::new(""), &mut files).map_err(io)?;
+    files.retain(|(p, _)| !skip.iter().any(|s| p.as_os_str().eq_ignore_ascii_case(s)));
+    let total: u64 = files.iter().map(|f| f.1).sum::<u64>().max(1);
+    let mut done = 0u64;
+    let mut buf = vec![0u8; 4 << 20];
+    for (rel, _) in &files {
+        job.check()?;
+        let to = dst.join(rel);
+        if let Some(parent) = to.parent() {
+            fs::create_dir_all(parent).map_err(io)?;
+        }
+        let mut r = fs::File::open(src.join(rel)).map_err(io)?;
+        let mut w = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .custom_flags(FILE_FLAG_WRITE_THROUGH)
+            .open(&to)
+            .map_err(io)?;
+        loop {
+            let n = r.read(&mut buf).map_err(io)?;
+            if n == 0 {
+                break;
+            }
+            w.write_all(&buf[..n]).map_err(io)?;
+            done += n as u64;
+            job.progress(done as f32 / total as f32);
+        }
+        w.sync_all().map_err(io)?;
+    }
+    Ok(done)
+}
+
+/// Compares a source file with its copy on the stick. The copy is read with
+/// unbuffered I/O so the bytes come from the drive, not the file cache.
+fn same_bytes(src: &Path, on_usb: &Path, a: &mut [u8], b: &mut Aligned) -> std::io::Result<bool> {
+    use std::os::windows::fs::OpenOptionsExt;
+    let mut fa = fs::File::open(src)?;
+    let mut fb = fs::OpenOptions::new().read(true).custom_flags(FILE_FLAG_NO_BUFFERING).open(on_usb)?;
     if fa.metadata()?.len() != fb.metadata()?.len() {
         return Ok(false);
     }
     loop {
-        let n = fa.read(buf_a)?;
+        // Unbuffered reads must ask for whole sectors; the last read returns
+        // only what's left of the file.
+        let n = fb.read(b.buf())?;
         if n == 0 {
-            return Ok(true);
+            let mut probe = [0u8; 1];
+            return Ok(fa.read(&mut probe)? == 0);
         }
-        fb.read_exact(&mut buf_b[..n])?;
-        if buf_a[..n] != buf_b[..n] {
+        fa.read_exact(&mut a[..n])?;
+        if a[..n] != b.buf()[..n] {
             return Ok(false);
         }
     }
@@ -116,8 +200,8 @@ pub fn write(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> 
     walk(&root, Path::new(""), &mut files)
         .map_err(|e| EngineError::new("WIP-E086", format!("Can't read the media: {e}")))?;
     let listing: Vec<(String, u64)> = files.iter().map(|(p, s)| (p.display().to_string(), *s)).collect();
-    let plan =
-        usb::plan_files(&listing, usb::partition_bytes(current.size)).map_err(|e| EngineError::new("WIP-E087", e))?;
+    let plan = usb::plan_files(&listing, usb::partition_bytes(current.size, req.scheme), req.scheme.is_fat32())
+        .map_err(|e| EngineError::new("WIP-E087", e))?;
     let split = plan.files.iter().any(|f| f.2 == Placement::SplitWim);
     let dism_exe = if split {
         Some(
@@ -132,7 +216,7 @@ pub fn write(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> 
 
     // 2. Erase and format. Not cancellable once started.
     job.stage(2, stages, format!("Erasing and formatting {}", current.label()));
-    let script = usb::diskpart_script(current, req.scheme, &req.label);
+    let script = usb::diskpart_script(current, req.scheme, &req.label, req.data_partition);
     let script_file = crate::app_data_dir().join(format!("diskpart-{}.txt", std::process::id()));
     wip_core::fsutil::atomic_write(&script_file, script.as_bytes())
         .map_err(|e| EngineError::new("WIP-E088", format!("Couldn't write the diskpart script: {e}")))?;
@@ -141,9 +225,14 @@ pub fn write(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> 
     let _ = fs::remove_file(&script_file);
     let text = expect_ok(out?, "Formatting the USB drive", "WIP-E089")?;
     job.log(text.trim().to_string());
-    let letter = find_letter(current.number, job)?;
+    let (letter, data_letter) = find_letters(current.number, job)?;
     let target = PathBuf::from(format!("{letter}:\\"));
     job.log(format!("USB drive is {letter}:"));
+    if req.data_partition && usb::leftover_mb(current.size, req.scheme).is_some() && data_letter.is_none() {
+        warnings.push(
+            "The extra DATA partition was created but has no drive letter; assign one in Disk Management.".into(),
+        );
+    }
 
     // 3. Copy (and split install.wim if needed).
     job.stage(3, stages, "Copying Windows files");
@@ -155,7 +244,7 @@ pub fn write(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> 
             e
         }
     };
-    let written = copy_tree(&root, &target, &skip, job).map_err(incomplete)?;
+    let written = copy_to_usb(&root, &target, &skip, job).map_err(incomplete)?;
     if let Some(dism) = dism_exe {
         job.log("Splitting install.wim into install.swm parts");
         job.indeterminate();
@@ -170,6 +259,12 @@ pub fn write(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> 
 
     // 4. Boot code.
     job.stage(4, stages, "Making the drive bootable");
+    if req.scheme == Scheme::GptNtfs {
+        warnings.push(
+            "GPT + NTFS boots only on UEFI PCs whose firmware can read NTFS. If a PC doesn't list the drive, write it again with MBR + FAT32."
+                .into(),
+        );
+    }
     if req.scheme == Scheme::Mbr {
         let bootsect = root.join(r"boot\bootsect.exe");
         if bootsect.is_file() {
@@ -196,7 +291,7 @@ pub fn write(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> 
         let to_check: Vec<_> = plan.files.iter().filter(|f| f.2 == Placement::Copy).collect();
         let total: u64 = to_check.iter().map(|f| f.1).sum::<u64>().max(1);
         let mut done = 0u64;
-        let (mut a, mut b) = (vec![0u8; 4 << 20], vec![0u8; 4 << 20]);
+        let (mut a, mut b) = (vec![0u8; 4 << 20], Aligned::new(4 << 20));
         for (rel, size, _) in to_check {
             job.check().map_err(incomplete)?;
             let ok = same_bytes(&root.join(rel), &target.join(rel), &mut a, &mut b)
@@ -215,5 +310,12 @@ pub fn write(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> 
         verified = true;
     }
 
-    Ok(UsbReport { letter: letter.to_string(), bytes_written: written, split, verified, warnings })
+    Ok(UsbReport {
+        letter: letter.to_string(),
+        bytes_written: written,
+        split,
+        verified,
+        data_letter: data_letter.map(|c| c.to_string()),
+        warnings,
+    })
 }

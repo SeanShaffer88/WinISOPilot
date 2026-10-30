@@ -1,4 +1,4 @@
-# Audit — WinISOPilot 0.4.0 (pre-release)
+# Audit — WinISOPilot 1.0.0
 
 Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Verified** (run and observed), **Partially verified**, **Unverified**.
 
@@ -28,7 +28,8 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Live Microsoft catalog parses (Windows 10 and 11) | Verified on Windows | Sean's run after the BOM-less UTF-16 fix listed language/architecture/package for both |
 | Fixed 960×456 window; only the Customize option list scrolls; pages fill the window; Settings closes with Done/Esc | Partially verified | Linux/Mesa `--demo` screenshots of every page in both layouts plus Help, Settings and the launch question. Scale setting resizes the window with its contents (75/100/150% screenshots match pixel-for-pixel in layout); not yet checked on Windows at 125–200% display scaling |
 | Windows 10 host | **Unverified** | Supported by design; not run |
-| USB eligibility rules, identity check, diskpart script, FAT32 file plan (split only install.wim, size checks) | Verified | `wip-core::usb` tests |
+| USB eligibility rules, identity check, diskpart scripts (MBR/GPT FAT32, GPT NTFS, 32 GB cap, DATA partition order), file plan (split only install.wim on FAT32, none on NTFS), labels | Verified | `wip-core::usb` tests |
+| Write-through copy, uncached verify (aligned buffers), drive-letter detection for setup and DATA partitions | **Unverified** | Compiles and passes clippy for Windows; needs a real stick |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
 | Writing a real USB stick; BIOS and UEFI boot from it | **Unverified** | Needs elevated Windows run with a real stick |
 | Footprint diff and report text; recipe port statuses (same / changed / missing / unverified / new / version-only) | Verified | `footprint` and `recipe_port_detects_same_changed_missing_new` tests |
@@ -65,7 +66,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 
 183 crates for the Windows target; all permissive (MIT, Apache-2.0, BSD, Zlib, ISC, Unicode-3.0, BSL-1.0, CC0-1.0). No copyleft code. Release task: ship a generated third-party notices file (e.g. `cargo about`).
 
-## Before a 1.0 release
+## Open verification items
 
 1. Elevated end-to-end runs on Windows 11 24H2/25H2 and Windows 10 22H2 ISOs (single and all editions, WIM and ESD sources), plus cancel and power-loss drills.
 2. VM install test of the output (BIOS and UEFI), with each preset.
