@@ -212,6 +212,40 @@ pub fn boot_test(req: &BootTestRequest, host: &HostInfo, job: &Job) -> Result<Bo
     }
 }
 
+/// Lists official Windows downloads from Microsoft's Media Creation Tool
+/// catalog. Network access happens only when the user asks for it.
+pub fn fetch_catalog(win11: bool, job: &Job) -> Result<Vec<wip_core::download::EsdFile>> {
+    #[cfg(windows)]
+    {
+        win::download::fetch_catalog(win11, job)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (win11, job);
+        Err(EngineError::unsupported())
+    }
+}
+
+/// Downloads the chosen ESD into `dest_dir` (resuming if interrupted),
+/// verifies Microsoft's hash, and builds a bootable ISO at `iso_out`.
+pub fn download_iso(
+    file: &wip_core::download::EsdFile,
+    dest_dir: &Path,
+    iso_out: &Path,
+    host: &HostInfo,
+    job: &Job,
+) -> Result<PathBuf> {
+    #[cfg(windows)]
+    {
+        win::download::download_iso(file, dest_dir, iso_out, host, job)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (file, dest_dir, iso_out, host, job);
+        Err(EngineError::unsupported())
+    }
+}
+
 /// What to put on the USB drive.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UsbSource {

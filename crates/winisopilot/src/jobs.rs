@@ -17,6 +17,9 @@ pub enum Outcome {
     Disks(Vec<wip_core::usb::Disk>),
     UsbWritten(wip_engine::UsbReport),
     BootTested(wip_engine::BootTestReport),
+    /// Catalog entries; `true` when they are for Windows 10.
+    Catalog(Vec<wip_core::download::EsdFile>, bool),
+    Downloaded(std::path::PathBuf),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +32,8 @@ pub enum Kind {
     ListDisks,
     WriteUsb,
     BootTest,
+    Catalog,
+    DownloadIso,
 }
 
 impl Kind {
@@ -42,12 +47,17 @@ impl Kind {
             Kind::ListDisks => "Looking for USB drives",
             Kind::WriteUsb => "Writing the USB drive",
             Kind::BootTest => "Testing in a virtual machine",
+            Kind::Catalog => "Getting Microsoft's download list",
+            Kind::DownloadIso => "Downloading Windows",
         }
     }
 
     /// Whether Cancel is offered. Discards always run to completion.
     pub fn cancellable(self) -> bool {
-        matches!(self, Kind::Inspect | Kind::Prepare | Kind::Build | Kind::WriteUsb | Kind::BootTest)
+        matches!(
+            self,
+            Kind::Inspect | Kind::Prepare | Kind::Build | Kind::WriteUsb | Kind::BootTest | Kind::DownloadIso
+        )
     }
 }
 

@@ -61,6 +61,7 @@ pub struct App {
     pub tool: Tool,
     pub usb: crate::usb_page::UsbState,
     pub extras: crate::extras::ExtrasState,
+    pub dl: crate::download_ui::DownloadState,
     pub settings: Settings,
     settings_path: PathBuf,
     pub catalog: Catalog,
@@ -128,6 +129,7 @@ impl App {
             tool: Tool::Customize,
             usb: Default::default(),
             extras: Default::default(),
+            dl: Default::default(),
             settings,
             settings_path,
             catalog,
@@ -346,6 +348,13 @@ impl App {
             Outcome::Disks(d) => self.usb.set_disks(d),
             Outcome::UsbWritten(r) => self.usb.report = Some(r),
             Outcome::BootTested(r) => self.extras.boot_report = Some(r),
+            Outcome::Catalog(entries, win10) => self.dl.set_entries(entries, win10),
+            Outcome::Downloaded(iso) => {
+                self.notify(format!("Downloaded and saved {}. Select Read ISO to continue.", iso.display()));
+                self.iso_path = Some(iso);
+                self.source = None;
+                self.chosen_index = None;
+            }
             Outcome::LeftoverCleaned(dir) => {
                 self.leftovers.retain(|l| l.mount_dir != dir);
                 self.notify("Cleaned up the earlier session.");

@@ -3568,7 +3568,7 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "winisopilot"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "eframe",
  "rfd",
@@ -3659,7 +3659,7 @@ dependencies = [
 
 [[package]]
 name = "wip-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3668,7 +3668,7 @@ dependencies = [
 
 [[package]]
 name = "wip-engine"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",

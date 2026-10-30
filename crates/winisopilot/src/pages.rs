@@ -274,13 +274,15 @@ pub fn source(app: &mut App, ctx: &egui::Context) {
                 }
             });
             ui.add_space(4.0);
-            dim(ui, "Don't have one? Download the official ISO from Microsoft, then choose it here:");
+            dim(ui, "Or get the ISO from Microsoft's website, then choose it here:");
             ui.horizontal(|ui| {
                 ui.hyperlink_to("Windows 11 download page", "https://www.microsoft.com/software-download/windows11");
                 ui.label("·");
                 ui.hyperlink_to("Windows 10 download page", "https://www.microsoft.com/software-download/windows10ISO");
             });
         });
+        ui.add_space(10.0);
+        crate::download_ui::card(app, ui, locked);
         ui.add_space(10.0);
         theme::card().show(ui, |ui| {
             ui.set_width(ui.available_width());

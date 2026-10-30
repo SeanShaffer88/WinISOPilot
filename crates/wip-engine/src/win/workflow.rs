@@ -627,7 +627,7 @@ pub fn build(
     })
 }
 
-fn make_iso(oscdimg: &Path, media: &Path, out: &Path, label: &str, job: &Job) -> Result<()> {
+pub(crate) fn make_iso(oscdimg: &Path, media: &Path, out: &Path, label: &str, job: &Job) -> Result<()> {
     let etfs = media.join(r"boot\etfsboot.com");
     let efi = media.join(r"efi\microsoft\boot\efisys.bin");
     let bootdata = match (etfs.is_file(), efi.is_file()) {

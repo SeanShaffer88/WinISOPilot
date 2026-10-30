@@ -1,5 +1,6 @@
 pub mod boottest;
 pub mod dism;
+pub mod download;
 pub mod host;
 pub mod journal;
 pub mod proc;

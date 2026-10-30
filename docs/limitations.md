@@ -18,4 +18,6 @@
 - Boot test needs Hyper-V (Pro/Enterprise/Education), `oscdimg.exe`, ~70 GB free and 4 GB spare memory. Editions without a Microsoft-published setup key (Home, Home N, Home Single Language) may stop at the product key page.
 - Boot test checks only what the build changed; it doesn't judge whether the result is pleasant to use.
 - Footprint compares the customized edition; with all editions kept, the image file size covers every edition.
+- Download offers only what Microsoft's Media Creation Tool catalog currently lists (the latest release); older releases aren't available. SHA-1 is used when that's the only hash Microsoft publishes.
+- The downloaded ESD stays in `WinISOPilot-downloads` for resuming; delete it when done.
 - Leftover-session detection ignores records made by the current process ID.

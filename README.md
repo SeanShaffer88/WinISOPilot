@@ -4,7 +4,7 @@
 
 A guided Windows 10/11 installation-media customizer. Pick an official ISO, choose an edition, then remove built-in apps, turn features on or off, change privacy and desktop defaults, and adjust Windows Setup. Each option explains what it does, what could stop working, and how to undo it. WinISOPilot then builds a new ISO. The original ISO is never changed.
 
-> **Status: 0.3.0 pre-release.** The core logic is unit-tested and the Windows build compiles, but no real ISO has been serviced end to end yet. See [AUDIT.md](AUDIT.md). Test any result in a virtual machine before installing it on a PC you rely on.
+> **Status: 0.4.0 pre-release.** The core logic is unit-tested and the Windows build compiles, but no real ISO has been serviced end to end yet. See [AUDIT.md](AUDIT.md). Test any result in a virtual machine before installing it on a PC you rely on.
 
 ## Two tools
 
@@ -53,7 +53,7 @@ WinISOPilot never offers to disable Windows Update, Defender or the firewall, an
 ## Use it
 
 1. **Welcome**: check that the PC is ready (administrator, DISM, ISO tool).
-2. **Choose ISO**: browse to the ISO and a working folder on a fast local NTFS drive.
+2. **Choose ISO**: browse to an ISO, or download the current official Windows 11/10 from Microsoft inside the app (verified against Microsoft's hash), and pick a working folder on a fast local NTFS drive.
 3. **Edition**: pick the edition, then **Open edition**. WinISOPilot copies the media, extracts the edition and reads what's inside (a few minutes).
 4. **Customize**: tick what to change.
 5. **Review**: remove anything you're unsure about, confirm risky changes, choose compression, label and output file.

@@ -1,4 +1,4 @@
-# Audit — WinISOPilot 0.3.0 (pre-release)
+# Audit — WinISOPilot 0.4.0 (pre-release)
 
 Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Verified** (run and observed), **Partially verified**, **Unverified**.
 
@@ -27,6 +27,8 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Footprint diff and report text; recipe port statuses (same / changed / missing / unverified / new / version-only) | Verified | `footprint` and `recipe_port_detects_same_changed_missing_new` tests |
 | Boot test answer file, check generation, in-guest script, scoring, encoded loader size | Verified | `boottest` tests |
 | Boot test end to end on Hyper-V; footprint numbers from a real build | **Unverified** | Run docs/verification-checklist.md |
+| Catalog parsing, host allow-list, file-name safety, ESD image classification | Verified | `download` tests (fixture shaped after the documented `MCT/Catalogs/Catalog/PublishedMedia/Files/File` layout) |
+| Live catalog download, ESD download/resume/hash check, ESD→ISO conversion, booting the result | **Unverified** | Needs a real run; the real products.xml has not been inspected in this environment |
 
 ## Destructive operations review
 
@@ -44,7 +46,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 
 ## Security and privacy
 
-- No network access, telemetry, accounts or auto-update. Microsoft download pages open in the browser only when the user clicks a link.
+- No telemetry, accounts or auto-update. Network use happens only when the user selects Load list or Download: Microsoft hosts only (allow-list), HTTPS preferred, every ESD verified against Microsoft's catalog hash before use; files with no usable hash are refused.
 - Runs elevated because DISM and offline hive loading require it (see [docs/decisions.md](docs/decisions.md)).
 - External tools run from System32 or the chosen ADK folder by full path, without console windows. PowerShell strings use single-quoted literals with `'` doubled; package names passed to DISM come from DISM's own inventory.
 - `dismapi.dll` is loaded with `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS` (no current-directory search).
