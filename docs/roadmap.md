@@ -51,5 +51,5 @@ Items marked ★ come from the October 2026 review of ~130 similar tools (ideas 
 - Split (`.swm`) source media.
 - Localization (★ external translation files).
 - ★ Size budget (DVD / FAT32 / custom) tracked against the measured footprint.
-- ★ Headless command line for automation.
+- ★ Headless command line — done (`--build`). Remaining: driver/update lists and answers password from the command line.
 - ★ Catalog items as separate data files, updatable without a new app version.

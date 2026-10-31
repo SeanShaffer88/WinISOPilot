@@ -67,6 +67,8 @@ WinISOPilot never offers to disable Windows Update, Defender or the firewall, an
 5. **Review**: remove anything you're unsure about, confirm risky changes, choose compression, label and output file.
 6. **Build**: apply, save, rebuild the image and write the ISO (with a `.sha256` file next to it). Cancel stops after the current step without saving.
 
+Automation: `WinISOPilot.exe --build --iso in.iso --out out.iso --recipe choices.json` runs the same steps without the window (see the [user guide](docs/user-guide.md#command-line)).
+
 If WinISOPilot is closed while an edition is open, the next launch offers to clean it up.
 
 ## Build from source

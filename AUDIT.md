@@ -43,6 +43,8 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Diagnostics redaction and tailing | Verified | `wip-core::diagnostics` tests |
 | USB restore script (one MBR exFAT partition) | Verified | `wip-core::usb` test |
 | Restoring a real stick; registry read-back on a real build | **Unverified** | Needs a Windows run |
+| Command-line argument parsing; usage and exit codes on a non-Windows host | Verified | `cli` test; Linux run |
+| Full command-line build on Windows | **Unverified** | Needs an elevated Windows run |
 | Drivers page renders (Guided and Advanced) | Partially verified | Linux/Mesa `--demo --drivers` screenshots |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
 | Writing a real USB stick; BIOS and UEFI boot from it | **Unverified** | Needs elevated Windows run with a real stick |

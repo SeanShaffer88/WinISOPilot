@@ -3,6 +3,7 @@
 
 mod answers_ui;
 mod app;
+mod cli;
 mod customize;
 mod dialogs;
 mod download_ui;
@@ -44,7 +45,16 @@ fn icon() -> Option<egui::IconData> {
 
 fn main() -> eframe::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--build") {
+        std::process::exit(cli::run(&args));
+    }
+    if args.iter().any(|a| a == "--help" || a == "/?") {
+        wip_engine::attach_parent_console();
+        println!("{}", cli::USAGE);
+        std::process::exit(0);
+    }
     if args.iter().any(|a| a == "--self-test") {
+        wip_engine::attach_parent_console();
         std::process::exit(self_test());
     }
     let demo = args.iter().any(|a| a == "--demo");
