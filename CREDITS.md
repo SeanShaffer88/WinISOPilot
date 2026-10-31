@@ -33,6 +33,8 @@ The icon and logo were made for this project and are covered by the project lice
 
 ## Ideas from other projects (no code used)
 
+- [microsoft/secureboot_objects](https://github.com/microsoft/secureboot_objects) `Make2023BootableMedia.ps1`: the list of files to copy for the 2023-signed boot manager (reimplemented in Rust, no code copied).
+
 - [windows2usb](https://github.com/ValdikSS/windows2usb) (Apache-2.0): USB layout modes and write-through progress.
 - [JLIVECD](https://github.com/neurobin/JLIVECD) (GPL-2.0): project workflow and caching extracted media.
 - October 2026 review of ~130 similar tools; ideas only, registry values taken from Microsoft Learn. Main sources: [NTLite](https://ntlite.com) (removal levels, reach cards, protect toggles), [tiny11builder](https://github.com/ntdevlabs/tiny11builder) (signed-tool check, `.sha256` sidecars, resume), [WinUtil](https://github.com/ChrisTitusTech/winutil) (driver failure tolerance), [W10UI](https://github.com/abbodi1406/BatUtil) (update order, ResetBase caution), [O&O ShutUp10++](https://www.oo-software.com/en/shutup10) (risk tiers), [Bloatynosy](https://github.com/builtbybel/Bloatynosy) (read-back checks), [Sophia Script](https://github.com/farag2/Sophia-Script-for-Windows) and [privacy.sexy](https://github.com/undergroundwires/privacy.sexy) (paired reverts), [Schneegans unattend generator](https://github.com/cschneegans/unattend-generator) (disk guard, answer-file accounts), [Rufus](https://github.com/pbatard/rufus) (Secure Boot readiness, locked-drive report), Macrium Reflect and AOMEI Backupper (progress and diagnostics).

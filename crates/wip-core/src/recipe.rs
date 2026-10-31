@@ -28,11 +28,20 @@ pub struct OutputSettings {
     pub compression: Compression,
     /// ISO volume label (max 32 characters, ISO-safe characters only).
     pub volume_label: String,
+    /// Put the boot manager signed with the "Windows UEFI CA 2023"
+    /// certificate on the media (Microsoft's Make2023BootableMedia steps).
+    #[serde(default)]
+    pub boot_2023: bool,
 }
 
 impl Default for OutputSettings {
     fn default() -> Self {
-        OutputSettings { single_edition: true, compression: Compression::Maximum, volume_label: "WINISOPILOT".into() }
+        OutputSettings {
+            single_edition: true,
+            compression: Compression::Maximum,
+            volume_label: "WINISOPILOT".into(),
+            boot_2023: false,
+        }
     }
 }
 

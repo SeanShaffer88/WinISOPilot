@@ -23,6 +23,7 @@ type HResult = i32;
 type ProgressFn = unsafe extern "system" fn(u32, u32, *mut c_void);
 
 const DISM_MOUNT_READWRITE: u32 = 0;
+const DISM_MOUNT_READONLY: u32 = 1;
 const DISM_COMMIT_IMAGE: u32 = 0;
 const DISM_DISCARD_IMAGE: u32 = 1;
 const DISM_LOG_ERRORS_WARNINGS: i32 = 1;
@@ -327,6 +328,15 @@ impl Dism {
     }
 
     pub fn mount(&self, file: &Path, index: u32, dir: &Path, job: &Job) -> Result<()> {
+        self.mount_with(file, index, dir, DISM_MOUNT_READWRITE, job)
+    }
+
+    /// Mounts read-only (nothing can be saved back; unmount with discard).
+    pub fn mount_read_only(&self, file: &Path, index: u32, dir: &Path, job: &Job) -> Result<()> {
+        self.mount_with(file, index, dir, DISM_MOUNT_READONLY, job)
+    }
+
+    fn mount_with(&self, file: &Path, index: u32, dir: &Path, flags: u32, job: &Job) -> Result<()> {
         let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let (f, d) = (wide(file), wide(dir));
         let mut p = Progress::new(job);
@@ -338,7 +348,7 @@ impl Dism {
                 index,
                 ptr::null(),
                 DISM_IMAGE_INDEX,
-                DISM_MOUNT_READWRITE,
+                flags,
                 p.event,
                 Some(on_progress),
                 (&mut p as *mut Progress).cast(),

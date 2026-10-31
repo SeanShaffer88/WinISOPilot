@@ -17,6 +17,7 @@ pub mod plan;
 pub mod port;
 pub mod raw;
 pub mod recipe;
+pub mod secureboot;
 pub mod settings;
 pub mod usb;
 

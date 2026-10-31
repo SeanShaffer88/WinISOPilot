@@ -158,6 +158,9 @@ pub struct BuildReport {
     /// SHA-256 of the ISO (also written next to it as `.sha256`).
     #[serde(default)]
     pub iso_sha256: Option<String>,
+    /// Issuer of the certificate that signed the media's UEFI boot manager.
+    #[serde(default)]
+    pub boot_signer: Option<String>,
     pub applied: usize,
     /// Measured before/after footprint; `None` if measuring failed.
     pub footprint: Option<wip_core::footprint::Footprint>,

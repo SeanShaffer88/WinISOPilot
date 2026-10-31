@@ -1041,6 +1041,11 @@ fn output_card(app: &mut App, ui: &mut Ui) {
                 app.output.volume_label = sanitize_label(&app.output.volume_label);
             }
             ui.end_row();
+            ui.label("Secure Boot");
+            ui.checkbox(&mut app.output.boot_2023, "Use the 2023-signed boot manager").on_hover_text(
+                "Microsoft's newer boot manager (Windows UEFI CA 2023), taken from this ISO's own files (April 2024 updates or later). Needed on PCs that have applied Microsoft's boot manager revocation. PCs whose firmware doesn't trust the 2023 certificate then need Secure Boot off to start this media.",
+            );
+            ui.end_row();
             if app.host.oscdimg.is_some() {
                 ui.label("ISO path");
                 ui.horizontal(|ui| {
@@ -1187,6 +1192,7 @@ pub fn load_recipe(app: &mut App) {
             app.replace_selection(r.selection.clone());
             app.output.compression = r.output.compression;
             app.output.volume_label = r.output.volume_label.clone();
+            app.output.boot_2023 = r.output.boot_2023;
             app.extras.pending_recipe = Some(r.clone());
             crate::extras::check_pending_recipe(app);
             let extra = if r.unknown.is_empty() {
@@ -1313,8 +1319,16 @@ fn result_card(ui: &mut Ui, r: &wip_engine::BuildReport) {
                     if theme::secondary(ui, "Show in folder", true).clicked() {
                         open_folder(p.parent().map(PathBuf::from).unwrap_or_default());
                     }
-                    let size = r.iso_bytes.map(|b| format!("{} · ", human_bytes(b))).unwrap_or_default();
-                    dim(ui, &format!("{size}{} operations applied", r.applied));
+                    let size = r.iso_bytes.map(human_bytes).unwrap_or_default();
+                    ui.label(RichText::new(size).size(12.0).color(theme::TEXT_DIM))
+                        .on_hover_text(format!("{} operations applied", r.applied));
+                    if let Some(cn) = &r.boot_signer {
+                        let ca = wip_core::secureboot::BootCa::from_issuer(cn);
+                        let color =
+                            if ca == wip_core::secureboot::BootCa::Other { theme::WARN_TEXT } else { theme::TEXT_DIM };
+                        ui.label(RichText::new(format!("Boot: {}", ca.label())).size(12.0).color(color))
+                            .on_hover_text(format!("Signed by {cn}.\n{}", ca.advice()));
+                    }
                     if let Some(h) = &r.iso_sha256 {
                         if ui
                             .link("Copy SHA-256")

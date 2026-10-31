@@ -468,6 +468,74 @@ impl<'a> Applier<'a> {
     }
 }
 
+/// Microsoft's Make2023BootableMedia.ps1 steps (microsoft/secureboot_objects):
+/// from boot.wim's `Windows\Boot\{EFI_EX,FONTS_EX,DVD_EX}` copy
+/// bootmgfw_EX.efi → efi\boot\bootx64.efi (bootaa64.efi on ARM64),
+/// bootmgr_EX.efi → bootmgr.efi (if present), efisys_EX.bin →
+/// efi\microsoft\boot\efisys_ex.bin (used by `make_iso`), fonts *_EX.ttf →
+/// efi\microsoft\boot\fonts\*.ttf, and boot.stl. boot.wim is mounted
+/// read-only. Returns `Ok(false)` when the image has no EFI_EX files.
+fn use_2023_boot_files(dism: &Dism, ws: &Workspace, job: &Job) -> Result<bool> {
+    let boot_wim = ws.media.join(r"sources\boot.wim");
+    let mnt = &ws.boot_mount_dir;
+    journal::record_mount(
+        &boot_wim.display().to_string(),
+        1,
+        &mnt.display().to_string(),
+        &ws.root.display().to_string(),
+    )
+    .map_err(|e| EngineError::new("WIP-E054", format!("Couldn't write the recovery journal: {e}")))?;
+    dism.mount_read_only(&boot_wim, 1, mnt, job)?;
+    let result = copy_2023_files(mnt, &ws.media);
+    let unmounted = dism.unmount(mnt, false, job);
+    journal::clear_mount(&mnt.display().to_string());
+    unmounted?;
+    result
+}
+
+fn copy_2023_files(mnt: &Path, media: &Path) -> Result<bool> {
+    let ex = mnt.join(r"Windows\Boot\EFI_EX");
+    let fonts = mnt.join(r"Windows\Boot\FONTS_EX");
+    let efisys = mnt.join(r"Windows\Boot\DVD_EX\EFI\en-US\efisys_EX.bin");
+    if !ex.join("bootmgfw_EX.efi").is_file() || !efisys.is_file() {
+        return Ok(false);
+    }
+    let err = |what: &str, e: std::io::Error| EngineError::new("WIP-E074", format!("Couldn't copy {what}: {e}"));
+    let arch_name = if media.join(r"efi\boot\bootaa64.efi").is_file() { "bootaa64.efi" } else { "bootx64.efi" };
+    let ms_boot = media.join(r"efi\microsoft\boot");
+    fs::create_dir_all(media.join(r"efi\boot")).map_err(|e| err("efi\\boot", e))?;
+    fs::create_dir_all(ms_boot.join("fonts")).map_err(|e| err("fonts", e))?;
+    fs::copy(ex.join("bootmgfw_EX.efi"), media.join(r"efi\boot").join(arch_name)).map_err(|e| err(arch_name, e))?;
+    if ex.join("bootmgr_EX.efi").is_file() {
+        fs::copy(ex.join("bootmgr_EX.efi"), media.join("bootmgr.efi")).map_err(|e| err("bootmgr.efi", e))?;
+    }
+    fs::copy(&efisys, ms_boot.join("efisys_ex.bin")).map_err(|e| err("efisys_ex.bin", e))?;
+    if let Ok(entries) = fs::read_dir(&fonts) {
+        for f in entries.flatten() {
+            let name = f.file_name().to_string_lossy().into_owned();
+            let target = name.replace("_EX", "");
+            fs::copy(f.path(), ms_boot.join("fonts").join(&target)).map_err(|e| err(&name, e))?;
+        }
+    }
+    let stl = mnt.join(r"Windows\Boot\EFI\boot.stl");
+    if stl.is_file() {
+        fs::copy(&stl, ms_boot.join("boot.stl")).map_err(|e| err("boot.stl", e))?;
+    }
+    Ok(true)
+}
+
+/// Issuer of the certificate that signed the media's UEFI boot manager
+/// (e.g. "Microsoft Windows Production PCA 2011" or "Windows UEFI CA 2023").
+fn boot_signer(media: &Path, job: &Job) -> Option<String> {
+    let efi = ["bootx64.efi", "bootaa64.efi"].iter().map(|n| media.join(r"efi\boot").join(n)).find(|p| p.is_file())?;
+    let script = format!(
+        "$s = Get-AuthenticodeSignature -LiteralPath {}; $s.SignerCertificate.Issuer",
+        wip_core::boottest::ps_lit(&efi.display().to_string())
+    );
+    let out = ps(&script, job).ok()?;
+    wip_core::secureboot::issuer_cn(out.trim())
+}
+
 /// Refuses tools that aren't validly signed by Microsoft (catalog or
 /// embedded signature). If PowerShell itself can't run the check, the build
 /// continues and the log says why.
@@ -520,7 +588,7 @@ pub fn build(
         ));
     }
     let boot = !plan.boot.is_empty();
-    let stages = if boot { 5 } else { 4 };
+    let stages = 4 + boot as u32 + output.boot_2023 as u32;
     let mut stage = 0;
     let mut next = |label: &str| {
         stage += 1;
@@ -594,6 +662,17 @@ pub fn build(
         journal::clear_mount(&ws.boot_mount_dir.display().to_string());
     }
 
+    if output.boot_2023 {
+        next("Switching to the 2023-signed boot manager");
+        match use_2023_boot_files(&dism, ws, job) {
+            Ok(true) => job.log("Media now uses the boot manager signed with Windows UEFI CA 2023."),
+            Ok(false) => warnings.push(
+                "This ISO doesn't contain the 2023-signed boot files (they come with the April 2024 updates or later), so the boot manager wasn't changed.".into(),
+            ),
+            Err(e) => return Err(e),
+        }
+    }
+
     next("Rebuilding the installation image");
     let sources = ws.media.join("sources");
     for old in ["install.wim", "install.esd", "install.swm"] {
@@ -665,6 +744,7 @@ pub fn build(
         }
     };
     let iso_bytes = iso.as_ref().and_then(|p| fs::metadata(p).ok()).map(|m| m.len());
+    let boot_signer = boot_signer(&ws.media, job);
     // SHA-256 sidecar (`name.iso.sha256`, sha256sum format) so copies can be checked.
     let iso_sha256 = iso.as_ref().and_then(|p| match super::download::file_hash(p, "SHA256", job) {
         Ok(h) if h.len() == 64 => {
@@ -696,6 +776,7 @@ pub fn build(
         media_folder: ws.media.clone(),
         iso_bytes,
         iso_sha256,
+        boot_signer,
         applied,
         footprint,
         test_target,
@@ -706,7 +787,12 @@ pub fn build(
 
 pub(crate) fn make_iso(oscdimg: &Path, media: &Path, out: &Path, label: &str, job: &Job) -> Result<()> {
     let etfs = media.join(r"boot\etfsboot.com");
-    let efi = media.join(r"efi\microsoft\boot\efisys.bin");
+    // efisys_ex.bin is present when the 2023-signed boot manager was applied.
+    let efi = ["efisys_ex.bin", "efisys.bin"]
+        .iter()
+        .map(|n| media.join(r"efi\microsoft\boot").join(n))
+        .find(|p| p.is_file())
+        .unwrap_or_else(|| media.join(r"efi\microsoft\boot\efisys.bin"));
     let bootdata = match (etfs.is_file(), efi.is_file()) {
         (true, true) => format!("RAW:-bootdata:2#p0,e,b\"{}\"#pEF,e,b\"{}\"", etfs.display(), efi.display()),
         (false, true) => format!("RAW:-bootdata:1#pEF,e,b\"{}\"", efi.display()),
