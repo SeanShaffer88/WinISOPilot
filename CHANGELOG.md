@@ -4,6 +4,10 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## [Unreleased]
 
+### Added
+- `THIRD-PARTY-NOTICES.md` (generated with `cargo about`) in the repository and attached to every release.
+- Release workflow signs the exe with `signtool` when `SIGNING_PFX_BASE64` / `SIGNING_PFX_PASSWORD` secrets are set.
+
 ### Fixed
 - Welcome (Guided): installing the Deployment Tools showed its progress below the window edge; progress now replaces the "Before you start" card, and the status bar says what's running.
 - Progress cards no longer repeat the job title as the stage text (e.g. "Looking for USB drives" twice).

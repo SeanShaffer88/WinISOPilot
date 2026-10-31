@@ -76,7 +76,9 @@ If WinISOPilot is closed while an edition is open, the next launch offers to cle
 Rust 1.82+. No Visual Studio is needed.
 
 - **GitHub Actions**: every push builds and tests on `windows-latest` and uploads `WinISOPilot.exe` as an artifact.
-- **Releases**: pushing a `v*` tag (or a `release/v*` branch) builds, tests and publishes `WinISOPilot-<version>-x64.exe` with `SHA256SUMS.txt` on the Releases page.
+- **Releases**: pushing a `v*` tag (or a `release/v*` branch) builds, tests and publishes `WinISOPilot-<version>-x64.exe` with `SHA256SUMS.txt` and `THIRD-PARTY-NOTICES.md` on the Releases page.
+- **Code signing**: add repository secrets `SIGNING_PFX_BASE64` (the .pfx, Base64) and `SIGNING_PFX_PASSWORD`; the release workflow then signs the exe with `signtool` (SHA-256, DigiCert timestamp) before hashing it. Without them the exe is published unsigned.
+- **Third-party notices**: after changing dependencies, run `cargo install cargo-about --features cli` once, then `cargo about generate about.hbs -o THIRD-PARTY-NOTICES.md`.
 - **Windows with the GNU toolchain**: `rustup toolchain install stable-x86_64-pc-windows-gnu`, then `cargo +stable-x86_64-pc-windows-gnu build --release`. Without MSYS2's `windres` the icon and administrator manifest aren't embedded; run the exe with **Run as administrator**.
 - **Linux cross-build**: install `mingw-w64`, `rustup target add x86_64-pc-windows-gnu`, then `cargo build --release --target x86_64-pc-windows-gnu`.
 
@@ -97,4 +99,4 @@ Run the tests with `cargo test --workspace`. `WinISOPilot.exe --demo` opens the 
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Third-party licenses: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
