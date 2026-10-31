@@ -11,18 +11,6 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Privacy options from Microsoft's documented policies: **Make Recall unavailable** (AllowRecallEnablement, Windows 11 24H2+) and **Turn off AI features in Paint** (Image Creator, Cocreator, Generative fill). Both are in the Privacy preset.
 - Review explains that feature updates can bring back some removed apps and that per-user settings apply to new accounts.
 - `--drivers` demo flag.
-- **Updates and languages** page (Customize step): add Windows updates (`.msu`/`.cab`), language packs and Features on Demand to the install image with DISM, in Microsoft's documented order (servicing stack, language packs, FoD, cumulative update, then .NET after cleanup). Kind is guessed from Microsoft's file names (changeable in Advanced); packages named for another architecture are skipped. The boot test checks `Get-HotFix` for each KB.
-- `--updates` demo flag.
-- **Undo script** (`undo.ps1` in the working folder, linked on the result screen): before each registry or service change the image's original value is recorded; the script restores those values on an installed PC, turns optional features back, re-adds capabilities, and lists removed apps and other changes that can't be scripted.
-- **Command line**: `WinISOPilot.exe --build --iso <in.iso> --out <out.iso> [--recipe choices.json] [--edition N | --edition-id ID] [--workspace DIR] [--drivers DIR]... [--updates DIR]... [--all-editions]` runs the same inspect, prepare, plan and build steps without the window (exit codes 0/1/2; the open image is discarded on failure). `--help` prints usage.
-- Every offline registry and service write is **read back**; a value that doesn't match becomes a warning on the result screen.
-- Write to USB: **Restore to a normal drive…** erases the chosen stick (same checks and typed `ERASE`) and makes it one ordinary exFAT drive.
-- **Save diagnostics…** (error box and Settings): one local text file with version, host facts, settings, the plan and log tails; the account name, PC name and profile path are replaced. Nothing is uploaded.
-- Progress shows a rough **time left in this stage**; the taskbar button flashes when a long job finishes while the window is in the background.
-- Advanced: **Export…** saves the open image's full inventory (apps, capabilities, features, services) as JSON.
-- Advanced: **Select tier…** adds every available Safe (or Safe + Low) option in the current category in one undoable step.
-- **Setup answers** page (Customize step): optional `autounattend.xml` with language/region, keyboard, time zone, license acceptance and a local administrator account (skips the Microsoft account screens). Setup always still asks which disk to use; no product keys or Express-settings changes are written. The password is never saved in recipes, and Windows' cached copy of the answer file is deleted at first sign-in. The VM boot test explains why it can't run on media with an answer file. `--answers` demo flag.
-- **Secure Boot**: the result screen shows which certificate signed the boot manager (2011 or 2023) and what that means. Review has **Use the 2023-signed boot manager**, which follows Microsoft's Make2023BootableMedia steps with the ISO's own boot files (boot.wim mounted read-only) and builds the ISO with `efisys_ex.bin`. Off by default; skipped with a warning when the ISO predates the April 2024 updates.
 
 ### Changed
 - Before building, dism.exe and oscdimg.exe must be validly signed by Microsoft (WIP-E073).
