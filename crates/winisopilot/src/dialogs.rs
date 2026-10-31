@@ -110,6 +110,7 @@ fn first_run(app: &mut App, ctx: &egui::Context) {
 
 fn settings(app: &mut App, ctx: &egui::Context) {
     let mut changed = false;
+    let mut diag = false;
     let mut close = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
     // A modal keeps the whole window in view (title, Done button) and closes
     // with Done, Esc or a click outside.
@@ -213,8 +214,18 @@ fn settings(app: &mut App, ctx: &egui::Context) {
             if ui.link("Open log folder").clicked() {
                 crate::pages::open_folder(wip_engine::app_data_dir().join("logs"));
             }
+            if ui
+                .link("Save diagnostics…")
+                .on_hover_text("One redacted text file for support; nothing is sent anywhere.")
+                .clicked()
+            {
+                diag = true;
+            }
         });
     });
+    if diag {
+        app.save_diagnostics();
+    }
     if changed {
         crate::theme::apply(ctx, &app.settings);
         app.save_settings();

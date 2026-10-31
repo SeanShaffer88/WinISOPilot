@@ -281,6 +281,68 @@ impl App {
         self.toast = Some((msg.into(), Instant::now()));
     }
 
+    /// Saves one redacted diagnostics text file where the user chooses.
+    pub fn save_diagnostics(&mut self) {
+        use wip_core::diagnostics::{bundle, redact, tail};
+        let name = format!("WinISOPilot-diagnostics-{}.txt", wip_core::APP_VERSION);
+        let Some(dest) = rfd::FileDialog::new()
+            .set_title("Save diagnostics")
+            .set_file_name(&name)
+            .add_filter("Text", &["txt"])
+            .save_file()
+        else {
+            return;
+        };
+        let mut sections: Vec<(String, String)> = Vec::new();
+        sections.push(("Host".into(), serde_json::to_string_pretty(&self.host).unwrap_or_default()));
+        sections.push(("Settings".into(), serde_json::to_string_pretty(&self.settings).unwrap_or_default()));
+        if let Some(e) = &self.last_error {
+            sections.push(("Last error".into(), format!("{}: {}", e.code, e.message)));
+        }
+        if let Some(e) = self.edition() {
+            sections.push(("Edition".into(), format!("{} {} {}", e.name, e.version_string(), e.architecture)));
+        }
+        if let Some(ctx) = self.plan_ctx().filter(|c| c.inventory.is_some()) {
+            if let Ok(p) = self.compile_plan(&ctx) {
+                let lines: Vec<String> = p
+                    .install
+                    .iter()
+                    .map(|o| format!("[install] {}", o.op.describe()))
+                    .chain(p.boot.iter().map(|o| format!("[boot] {}", o.op.describe())))
+                    .collect();
+                sections.push(("Plan".into(), lines.join("\n")));
+            }
+        }
+        sections.push(("Session log".into(), self.log[self.log.len().saturating_sub(400)..].join("\n")));
+        let logs = wip_engine::app_data_dir().join("logs");
+        if let Ok(entries) = std::fs::read_dir(&logs) {
+            let mut files: Vec<_> = entries.flatten().map(|e| e.path()).filter(|p| p.is_file()).collect();
+            files.sort();
+            for f in files.iter().rev().take(6) {
+                if let Ok(bytes) = std::fs::read(f) {
+                    let text = String::from_utf8_lossy(&bytes);
+                    let name = f.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                    sections.push((format!("File {name}"), tail(&text, 256 * 1024).to_string()));
+                }
+            }
+        }
+        let mut pairs: Vec<(String, &str)> = Vec::new();
+        if let Some(p) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) {
+            pairs.push((p.to_string_lossy().into_owned(), "%USERPROFILE%"));
+        }
+        if let Some(u) = std::env::var_os("USERNAME").or_else(|| std::env::var_os("USER")) {
+            pairs.push((u.to_string_lossy().into_owned(), "<user>"));
+        }
+        if let Some(c) = std::env::var_os("COMPUTERNAME") {
+            pairs.push((c.to_string_lossy().into_owned(), "<pc>"));
+        }
+        let text = redact(&bundle(&sections), &pairs);
+        match wip_core::fsutil::atomic_write(&dest, text.as_bytes()) {
+            Ok(()) => self.notify(format!("Saved {}. Review it before sharing.", dest.display())),
+            Err(e) => self.notify(format!("Couldn't save diagnostics: {e}")),
+        }
+    }
+
     pub fn log_line(&mut self, line: String) {
         if let Some(f) = self.log_file.as_mut() {
             let _ = writeln!(f, "{line}");
@@ -414,6 +476,10 @@ impl App {
             self.log_line(l);
         }
         let kind = job.kind;
+        // Long jobs: flash the taskbar button if the window isn't in front.
+        if job.started.elapsed().as_secs() > 20 && !ctx.input(|i| i.viewport().focused.unwrap_or(true)) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Informational));
+        }
         match job.take_result() {
             Ok(out) => self.on_outcome(out),
             Err(e) => {

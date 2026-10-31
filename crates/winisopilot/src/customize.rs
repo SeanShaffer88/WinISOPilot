@@ -505,6 +505,13 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                     if ui.button("Load…").clicked() {
                         crate::pages::load_recipe(app);
                     }
+                    if ui
+                        .add_enabled(app.inventory.is_some(), egui::Button::new("Export…"))
+                        .on_hover_text("Save everything this image contains (apps, capabilities, features, services) as JSON")
+                        .clicked()
+                    {
+                        export_inventory(app);
+                    }
                     if ui.add_enabled(app.history.can_undo(), egui::Button::new("Undo")).on_hover_text("Ctrl+Z").clicked() {
                         app.undo();
                     }

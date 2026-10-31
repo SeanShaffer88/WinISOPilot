@@ -72,6 +72,8 @@ pub struct Running {
     pub stage: (u32, u32, String),
     pub progress: Option<f32>,
     pub started: Instant,
+    /// When the current stage began (for the time-left estimate).
+    pub stage_started: Instant,
     pub cancel_requested: bool,
 }
 
@@ -92,6 +94,7 @@ impl Running {
             stage: (0, 0, kind.title().to_string()),
             progress: None,
             started: Instant::now(),
+            stage_started: Instant::now(),
             cancel_requested: false,
         }
     }
@@ -109,12 +112,24 @@ impl Running {
                 Event::Stage(n, t, label) => {
                     self.stage = (n, t, label);
                     self.progress = None;
+                    self.stage_started = Instant::now();
                 }
                 Event::Progress(p) => self.progress = p,
                 Event::Log(l) => lines.push(l),
             }
         }
         lines
+    }
+
+    /// Rough time left in the current stage, once there's enough progress
+    /// to extrapolate from.
+    pub fn stage_left_secs(&self) -> Option<u64> {
+        let p = self.progress?;
+        let spent = self.stage_started.elapsed().as_secs_f32();
+        if !(0.03..1.0).contains(&p) || spent < 10.0 {
+            return None;
+        }
+        Some((spent * (1.0 - p) / p) as u64)
     }
 
     pub fn finished(&self) -> bool {
