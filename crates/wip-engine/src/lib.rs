@@ -155,6 +155,9 @@ pub struct BuildReport {
     pub iso: Option<PathBuf>,
     pub media_folder: PathBuf,
     pub iso_bytes: Option<u64>,
+    /// SHA-256 of the ISO (also written next to it as `.sha256`).
+    #[serde(default)]
+    pub iso_sha256: Option<String>,
     pub applied: usize,
     /// Measured before/after footprint; `None` if measuring failed.
     pub footprint: Option<wip_core::footprint::Footprint>,

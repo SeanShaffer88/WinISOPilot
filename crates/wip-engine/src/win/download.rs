@@ -186,7 +186,7 @@ pub fn install_adk(job: &Job) -> Result<()> {
     Ok(())
 }
 
-fn file_hash(path: &Path, algo: &str, job: &Job) -> Result<String> {
+pub(crate) fn file_hash(path: &Path, algo: &str, job: &Job) -> Result<String> {
     let script = format!(
         "(Get-FileHash -Algorithm {algo} -LiteralPath {}).Hash",
         wip_core::boottest::ps_lit(&path.display().to_string())

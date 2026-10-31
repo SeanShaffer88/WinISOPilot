@@ -55,6 +55,14 @@ Pick the edition you'll install (Home, Pro…). Keeping only that edition makes 
 
 Only options that apply to the opened edition are shown. Options the image already has are marked "Already set".
 
+**Drivers (optional)** comes after the last section (Guided) or under **Drivers** in the category list (Advanced). Most PCs don't need it. Use it when Windows Setup can't find your disk (common on laptops with Intel RST or VMD) or Wi-Fi doesn't work right after installing:
+1. Download the driver from your PC maker's support page and unzip it. Installers (`.exe`) can't be added.
+2. **Add driver folder…** and pick the folder. Sub-folders are searched.
+3. WinISOPilot adds the signed drivers made for this edition (x64, ARM64, …) and skips the rest; hover the summary (Guided) or the STATUS column (Advanced) to see why. Unsigned drivers are never forced in.
+4. **Also give Windows Setup the disk drivers** (on by default) adds storage-controller drivers to Windows Setup too.
+
+Driver folders aren't saved in recipes, because folder paths differ between PCs.
+
 ### 5. Review
 Every change in one list. Remove any item with ✖. Risky and unrated changes need their **Confirm** box ticked. The **What happens when you select Build** box lists each step in plain words.
 
@@ -63,7 +71,10 @@ Choose compression (Standard is best for USB sticks), a disc label, and where to
 ### 6. Build
 Each stage is shown with progress and elapsed time. **Cancel** stops after the current step and saves nothing to the image.
 
+If one driver can't be added, the build carries on and lists it as a warning. Before building, WinISOPilot checks that DISM and the ISO tool are signed by Microsoft.
+
 When it's done you see:
+- **The ISO**, with **Copy SHA-256** (the same hash is saved next to the ISO as `name.iso.sha256`).
 - **Measured result**: installed size, image size, and app/feature counts before and after.
 - **Test it in a virtual machine**: installs your ISO in a temporary Hyper-V VM and checks from inside Windows that every change landed (needs Windows Pro/Enterprise/Education with Hyper-V).
 - **Write it to a USB drive**.

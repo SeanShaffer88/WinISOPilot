@@ -69,6 +69,7 @@ pub fn panel(app: &mut App, ui: &mut Ui, guided: bool) {
         return;
     }
     let mut remove = None;
+    let setup = app.drivers.setup_storage;
     egui::ScrollArea::vertical().auto_shrink([false, true]).show(ui, |ui| {
         for (n, f) in app.drivers.folders.iter().enumerate() {
             theme::card().show(ui, |ui| {
@@ -90,31 +91,43 @@ pub fn panel(app: &mut App, ui: &mut Ui, guided: bool) {
                 if f.truncated {
                     summary.push_str(&format!(" · only the first {} .inf files were read", drivers::MAX_INFS));
                 }
-                let skipped: Vec<String> = f
-                    .infs
-                    .iter()
-                    .filter_map(|i| i.unusable(&a).map(|why| format!("{}: {why}", i.file_name())))
-                    .collect();
+                let skipped: Vec<String> =
+                    f.infs.iter().filter_map(|i| i.unusable(&a).map(|why| format!("{}: {why}", inf_name(i)))).collect();
                 let r = ui.label(RichText::new(summary).size(12.0).color(theme::TEXT_DIM));
                 if !skipped.is_empty() {
                     r.on_hover_text(format!("Skipped:\n{}", skipped.join("\n")));
                 }
                 if !guided {
                     ui.add_space(2.0);
-                    for i in &f.infs {
-                        let status = i.unusable(&a).unwrap_or_else(|| "add".into());
-                        let color = if i.unusable(&a).is_none() { theme::OK_TEXT } else { theme::TEXT_DIM };
-                        let line = format!(
-                            "{:<28} {:<12} {:<20} {:<24} {}",
-                            i.file_name(),
-                            i.class,
-                            i.provider,
-                            i.version,
-                            status
-                        );
-                        ui.add(egui::Label::new(RichText::new(line).monospace().size(11.0).color(color)).truncate())
-                            .on_hover_text(i.path.display().to_string());
-                    }
+                    egui::Grid::new(("infs", n)).striped(true).spacing([10.0, 2.0]).show(ui, |ui| {
+                        for h in ["INF", "CLASS", "VERSION", "STATUS"] {
+                            ui.label(RichText::new(h).monospace().size(10.5).color(theme::TEXT_DIM));
+                        }
+                        ui.end_row();
+                        for i in &f.infs {
+                            let why = i.unusable(&a);
+                            let color = if why.is_none() { theme::OK_TEXT } else { theme::TEXT_DIM };
+                            let small = |t: &str| RichText::new(t.to_string()).monospace().size(11.0).color(color);
+                            ui.label(small(&inf_name(i))).on_hover_text(format!(
+                                "{}\nProvider: {}\nArchitectures: {}",
+                                i.path.display(),
+                                i.provider,
+                                i.archs.join(", ")
+                            ));
+                            ui.label(small(&i.class));
+                            ui.label(small(i.version.split(',').nth(1).unwrap_or(&i.version)))
+                                .on_hover_text(&i.version);
+                            let (status, tip) = match &why {
+                                None if setup && i.is_storage() => {
+                                    ("add + Setup", "Added to Windows and to Windows Setup")
+                                }
+                                None => ("add", "Added to Windows"),
+                                Some(w) => ("skip", w.as_str()),
+                            };
+                            ui.label(small(status)).on_hover_text(tip);
+                            ui.end_row();
+                        }
+                    });
                 }
             });
             ui.add_space(4.0);
@@ -129,4 +142,10 @@ pub fn panel(app: &mut App, ui: &mut Ui, guided: bool) {
 /// Short line for footers and the rail.
 pub fn count(app: &App) -> usize {
     app.drivers.counts(&arch(app)).0
+}
+
+/// File name of an INF, also for Windows-style paths seen on other hosts.
+fn inf_name(i: &wip_core::drivers::InfInfo) -> String {
+    let full = i.path.display().to_string();
+    full.rsplit(['\\', '/']).next().unwrap_or(&full).to_string()
 }

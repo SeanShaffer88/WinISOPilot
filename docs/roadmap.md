@@ -13,13 +13,37 @@ Planned, not implemented. Order may change.
 ## Get Windows (shipped in 1.0)
 - Done in code: Media Creation Tool catalog, hash-verified ESD download, ESD→ISO. Remaining: real-run verification; optional older releases.
 
+Items marked ★ come from the October 2026 review of ~130 similar tools (ideas only; values are taken from Microsoft documentation).
+
 ## 1.1 — Integrate
-- Drivers (INF folders) into install, boot and WinRE images.
-- Updates (SSU/LCU/.NET CAB/MSU) with order and applicability checks.
-- Windows language packs and Features on Demand.
+- Done in code: driver folders (signed INFs for the edition's architecture) into install.wim, storage drivers also into Windows Setup; one failing package is skipped, not fatal ★; dism.exe/oscdimg Microsoft-signature check before building ★; `.sha256` next to the ISO ★; Recall-off and Paint-AI policies ★.
+- ★ Secure Boot readiness: show whether the media's boot manager is signed by the 2011 or 2023 Microsoft CA, warn when revoked, offer 2023-signed boot files when the ISO carries them. Never revoke 2011 certificates, set anti-rollback (SVN) or copy SkuSiPolicy.
+- ★ Updates (SSU/LCU/.NET CAB/MSU) in Microsoft's Dynamic Update order (WinRE → install.wim → boot.wim → media), stored as a per-build rule table; checkpoint-CU folder for 24H2+; ResetBase stays off by default.
+- Windows language packs and Features on Demand; ★ a language pack queues the updates it needs.
+- WinRE driver sync.
 
 ## 1.2 — Unattended setup
-- `autounattend.xml` builder: region, keyboard, local account, privacy pages, disk layout (never a default wipe), first-logon commands.
+- `autounattend.xml` builder: region, keyboard, local account, privacy pages, disk layout, first-logon commands.
+- ★ Disk guard: interactive partitioning by default; automatic wipe only when exactly one disk matches the user's criteria, otherwise Setup stops; optional `notautounattend.xml` file name.
+- ★ Local account through the answer file (LocalAccounts + HideOnlineAccountScreens), never BypassNRO; remove the Panther copy afterwards.
+- ★ Edition consistency: ei.cfg and pinned image index; never insert product keys.
+- ★ Answer-file driver paths (`PnpCustomizationsWinPE`) as a second route.
+
+## 1.3 — Risk model v2
+- ★ Serviceability level (Native / Default / Default+) linked to the options; deeper levels shown disabled with the reason. "Native operations only" filter.
+- ★ Reach card per option: measured size, linked services/tasks/drivers, exact registry change.
+- ★ Protect toggles (anti-cheat, recommended); Windows Update, Defender and recovery are always protected.
+- ★ Tier definitions that name what breaks; bulk "Safe" / "Safe + Low" selection.
+- ★ Read-back check after writing (Applied / Already set / Failed) and a paired revert for every option, exported as a revert recipe.
+- ★ Lint for tweaks known to break Store, Update or Defender.
+
+## 1.4 — Workflow
+- ★ Resume a build from its last checkpoint; mount-recovery wizard (remount or clean up leftover mounts).
+- ★ Per-stage speed and time remaining, taskbar progress, completion notification.
+- ★ One-click local diagnostics bundle (logs, plan, journal; user paths removed; nothing uploaded).
+- ★ USB: name processes locking the drive; exclusion list; restore a stick to a normal drive; optional fake-capacity test.
+- ★ Download: resume, find an already-downloaded file by hash, specific failure messages.
+- ★ Recipe import shows a diff and risk summary; inventory export.
 
 ## Later
 - Reusable projects (from [JLIVECD](https://github.com/neurobin/JLIVECD), ideas only): keep the extracted, unmodified ISO media in a cache keyed by the ISO's hash so "Start another" and later builds of the same ISO skip the copy step; optional named project folder that can be rebuilt with the same choices.
@@ -27,5 +51,7 @@ Planned, not implemented. Order may change.
 - Native ISO writer (no ADK needed).
 - WinRE servicing and boot/install/WinRE driver sync.
 - Split (`.swm`) source media.
-- Before/after footprint report from measured sizes.
-- Localization.
+- Localization (★ external translation files).
+- ★ Size budget (DVD / FAT32 / custom) tracked against the measured footprint.
+- ★ Headless command line for automation.
+- ★ Catalog items as separate data files, updatable without a new app version.

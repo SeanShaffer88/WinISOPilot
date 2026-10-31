@@ -300,6 +300,7 @@ pub fn load_demo_done(app: &mut App) {
         iso: Some(PathBuf::from(r"D:\ISO\Windows-11-Pro-custom.iso")),
         media_folder: PathBuf::from(r"D:\ISO\WinISOPilot-demo\media"),
         iso_bytes: Some(5_300_000_000),
+        iso_sha256: Some("3F9C0E5B7A1D2C4E6F8091A2B3C4D5E6F708192A3B4C5D6E7F8091A2B3C4D5E6".into()),
         applied: 14,
         footprint: Some(fp),
         test_target: wip_core::boottest::TestTarget {
@@ -439,4 +440,28 @@ pub fn load_demo(app: &mut App) {
     app.focused = Some("apps.xbox".into());
     app.max_step = Step::Review;
     app.step = Step::Customize;
+}
+
+/// `--demo --drivers`: a sample driver folder.
+pub fn demo_drivers() -> wip_core::drivers::DriverFolder {
+    use wip_core::drivers::InfInfo;
+    let inf = |name: &str, class: &str, provider: &str, ver: &str, archs: &[&str], signed: bool| InfInfo {
+        path: std::path::PathBuf::from(format!(r"D:\Drivers\Laptop\{name}")),
+        class: class.into(),
+        provider: provider.into(),
+        version: ver.into(),
+        archs: archs.iter().map(|a| a.to_string()).collect(),
+        signed,
+    };
+    wip_core::drivers::DriverFolder {
+        path: std::path::PathBuf::from(r"D:\Drivers\Laptop"),
+        truncated: false,
+        infs: vec![
+            inf("iaStorVD.inf", "SCSIAdapter", "Intel Corporation", "05/02/2025,20.2.1.1016", &["x64"], true),
+            inf("netwtw14.inf", "Net", "Intel", "08/12/2025,23.110.0.5", &["x64"], true),
+            inf("rtkaudio.inf", "MEDIA", "Realtek", "03/14/2025,6.0.9790.1", &["x64"], true),
+            inf("oldtouch.inf", "HIDClass", "Vendor", "01/01/2012,1.0.0.1", &["x86"], true),
+            inf("tool.inf", "System", "Vendor", "", &["x64"], false),
+        ],
+    }
 }

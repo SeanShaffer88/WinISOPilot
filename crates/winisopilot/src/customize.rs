@@ -394,7 +394,11 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
     let total = app.selection.len();
     let (list, _) = rows(app, app.view, false);
     let shown_selected = list.iter().filter(|r| r.checked).count();
-    let status = format!("{shown_selected} of {} selected here · {total} changes total", list.len());
+    let status = if app.view == View::Drivers {
+        format!("{} drivers · {total} changes total", crate::drivers_ui::count(app))
+    } else {
+        format!("{shown_selected} of {} selected here · {total} changes total", list.len())
+    };
     match footer(ctx, &status, true, Some(("Review", !app.busy()))) {
         Nav::Back => app.goto(Step::Edition),
         Nav::Next => app.goto(Step::Review),
@@ -443,15 +447,20 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
             }
         });
 
-    egui::SidePanel::right("inspector")
-        .exact_width(220.0)
-        .resizable(false)
-        .frame(
-            Frame::new().fill(theme::CARD).inner_margin(Margin::same(18)).stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
-        )
-        .show(ctx, |ui| {
-            explainer(app, ui, true);
-        });
+    if app.view != View::Drivers {
+        egui::SidePanel::right("inspector")
+            .exact_width(220.0)
+            .resizable(false)
+            .frame(
+                Frame::new()
+                    .fill(theme::CARD)
+                    .inner_margin(Margin::same(18))
+                    .stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
+            )
+            .show(ctx, |ui| {
+                explainer(app, ui, true);
+            });
+    }
 
     egui::CentralPanel::default()
         .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin::same(0)))

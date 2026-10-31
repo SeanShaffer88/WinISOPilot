@@ -30,6 +30,10 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Windows 10 host | **Unverified** | Supported by design; not run |
 | USB eligibility rules, identity check, diskpart scripts (MBR/GPT FAT32, GPT NTFS, 32 GB cap, DATA partition order), file plan (split only install.wim on FAT32, none on NTFS), labels | Verified | `wip-core::usb` tests |
 | Write-through copy, uncached verify (aligned buffers), drive-letter detection for setup and DATA partitions | **Unverified** | Compiles and passes clippy for Windows; needs a real stick |
+| Driver INF parsing (encodings, [Version], architecture decorations, signed = CatalogFile), folder scan, plan placement and skips | Verified | `wip-core::drivers` tests |
+| Adding drivers with DismAddDriver to install.wim and boot.wim #2; one failure skipped | **Unverified** | Needs an elevated Windows run; signature from mingw-w64 dismapi.h |
+| dism.exe / oscdimg Microsoft-signature check; `.sha256` sidecar | **Unverified** | Same Get-AuthenticodeSignature / Get-FileHash pattern as the verified-in-code ADK and ESD checks; needs a Windows run |
+| Drivers page renders (Guided and Advanced) | Partially verified | Linux/Mesa `--demo --drivers` screenshots |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
 | Writing a real USB stick; BIOS and UEFI boot from it | **Unverified** | Needs elevated Windows run with a real stick |
 | Footprint diff and report text; recipe port statuses (same / changed / missing / unverified / new / version-only) | Verified | `footprint` and `recipe_port_detects_same_changed_missing_new` tests |
@@ -60,6 +64,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 - `dismapi.dll` is loaded with `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS` (no current-directory search).
 - Recipes contain option IDs and output settings only; they can't carry commands, paths or credentials. Unknown IDs are dropped and reported.
 - Windows Update, Defender, firewall and recovery aren't disabled by any preset; Windows Security UI and app frameworks can't be removed.
+- Drivers: only packages with a CatalogFile (signed) are added, never with ForceUnsigned; dism.exe and oscdimg.exe must be validly signed by Microsoft before a build runs.
 - `unsafe` is confined to `wip-engine/src/win/*` (FFI). Every block has a SAFETY comment.
 
 ## Dependencies
