@@ -56,19 +56,7 @@ Pick the edition you'll install (Home, Pro…). Keeping only that edition makes 
 
 Only options that apply to the opened edition are shown. Options the image already has are marked "Already set".
 
-**Updates and languages (optional)** comes after the last section (Guided) or under **Updates & languages** (Advanced):
-1. Download updates from the Microsoft Update Catalog (`.msu`) or language packs / Features on Demand (`.cab`).
-2. **Add files…** or **Add folder…**. On Windows 11 24H2 and later, keep every file the catalog lists for an update (the "checkpoint" updates) in the same folder.
-3. WinISOPilot adds them in Microsoft's order and skips files named for another architecture. Advanced lets you correct the guessed kind.
-Language packs add display languages to the installed Windows; Windows Setup itself stays in the ISO's language. Updates aren't added to Windows Setup or the recovery environment yet. Adding a cumulative update can take a long time and makes the image larger.
-
-**Setup answers (optional)** comes after Drivers (Guided) or under **Setup answers** (Advanced). Tick **Answer Setup's questions for me**, then choose:
-- **Language and region** and **Time zone** (or leave "Ask during Setup").
-- **Local account**: creates this administrator and skips the Microsoft account screens. The optional **password** is stored in plain text on the media, so keep the stick safe; Windows deletes its own copy at first sign-in. Recipes never contain the password.
-- **Accept the license terms**.
-Setup still asks which disk to install to, so nothing is erased unless you choose it. The VM boot test can't run on an ISO with Setup answers (Setup would use yours instead of the test's).
-
-**Drivers (optional)** comes after Updates (Guided) or under **Drivers** in the category list (Advanced). Most PCs don't need it. Use it when Windows Setup can't find your disk (common on laptops with Intel RST or VMD) or Wi-Fi doesn't work right after installing:
+**Drivers (optional)** comes after the last section (Guided) or under **Drivers** in the category list (Advanced). Most PCs don't need it. Use it when Windows Setup can't find your disk (common on laptops with Intel RST or VMD) or Wi-Fi doesn't work right after installing:
 1. Download the driver from your PC maker's support page and unzip it. Installers (`.exe`) can't be added.
 2. **Add driver folder…** and pick the folder. Sub-folders are searched.
 3. WinISOPilot adds the signed drivers made for this edition (x64, ARM64, …) and skips the rest; hover the summary (Guided) or the STATUS column (Advanced) to see why. Unsigned drivers are never forced in.
@@ -87,8 +75,7 @@ Each stage is shown with progress and elapsed time. **Cancel** stops after the c
 If one driver can't be added, the build carries on and lists it as a warning. Before building, WinISOPilot checks that DISM and the ISO tool are signed by Microsoft.
 
 When it's done you see:
-- **Undo script**: `undo.ps1` reverses this build's changes on a PC installed from it (registry and service values back to what the image had, features turned back, capabilities re-added; removed apps are listed for the Store). Keep a copy before deleting the working folder.
-- **The ISO**, which certificate signed its boot manager (hover for what that means), and **Copy SHA-256** (the same hash is saved next to the ISO as `name.iso.sha256`).
+- **The ISO**, with **Copy SHA-256** (the same hash is saved next to the ISO as `name.iso.sha256`).
 - **Measured result**: installed size, image size, and app/feature counts before and after.
 - **Test it in a virtual machine**: installs your ISO in a temporary Hyper-V VM and checks from inside Windows that every change landed (needs Windows Pro/Enterprise/Education with Hyper-V).
 - **Write it to a USB drive**.

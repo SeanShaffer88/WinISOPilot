@@ -1193,9 +1193,6 @@ pub fn load_recipe(app: &mut App) {
             app.output.compression = r.output.compression;
             app.output.volume_label = r.output.volume_label.clone();
             app.output.boot_2023 = r.output.boot_2023;
-            let password = std::mem::take(&mut app.output.answers.account_password);
-            app.output.answers = r.output.answers.clone();
-            app.output.answers.account_password = password;
             app.extras.pending_recipe = Some(r.clone());
             crate::extras::check_pending_recipe(app);
             let extra = if r.unknown.is_empty() {
@@ -1325,16 +1322,8 @@ fn result_card(ui: &mut Ui, r: &wip_engine::BuildReport) {
                     if theme::secondary(ui, "Show in folder", true).clicked() {
                         open_folder(p.parent().map(PathBuf::from).unwrap_or_default());
                     }
-                    let size = r.iso_bytes.map(human_bytes).unwrap_or_default();
-                    ui.label(RichText::new(size).size(12.0).color(theme::TEXT_DIM))
-                        .on_hover_text(format!("{} operations applied", r.applied));
-                    if let Some(cn) = &r.boot_signer {
-                        let ca = wip_core::secureboot::BootCa::from_issuer(cn);
-                        let color =
-                            if ca == wip_core::secureboot::BootCa::Other { theme::WARN_TEXT } else { theme::TEXT_DIM };
-                        ui.label(RichText::new(format!("Boot: {}", ca.label())).size(12.0).color(color))
-                            .on_hover_text(format!("Signed by {cn}.\n{}", ca.advice()));
-                    }
+                    let size = r.iso_bytes.map(|b| format!("{} · ", human_bytes(b))).unwrap_or_default();
+                    dim(ui, &format!("{size}{} operations applied", r.applied));
                     if let Some(h) = &r.iso_sha256 {
                         if ui
                             .link("Copy SHA-256")
@@ -1412,7 +1401,6 @@ fn what_happens(app: &App, ui: &mut Ui) {
     let files = count(&|o| matches!(o, Op::DeleteFile { .. }));
     let cleanup = count(&|o| matches!(o, Op::ComponentCleanup { .. }));
     let drivers = p.install.iter().filter(|o| matches!(o.op, Op::AddDriver { .. })).count();
-    let packages = p.install.iter().filter(|o| matches!(o.op, Op::AddPackage { .. })).count();
     theme::card().show(ui, |ui| {
         theme::card_body(ui);
         h2(ui, "What happens when you select Build");
@@ -1427,6 +1415,9 @@ fn what_happens(app: &App, ui: &mut Ui) {
             ));
         } else {
             lines.push(format!("{}. No apps, capabilities or features change", lines.len() + 1));
+        }
+        if drivers > 0 {
+            lines.push(format!("{}. Add {drivers} drivers", lines.len() + 1));
         }
         if drivers > 0 {
             lines.push(format!("{}. Add {drivers} drivers", lines.len() + 1));

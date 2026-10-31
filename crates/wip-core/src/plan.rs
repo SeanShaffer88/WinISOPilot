@@ -252,11 +252,6 @@ pub enum Op {
     AddDriver {
         inf: String,
     },
-    /// Absolute host path of an update / language pack / FoD package.
-    AddPackage {
-        path: String,
-        kind: crate::packages::PackageKind,
-    },
 }
 
 impl Op {
@@ -277,7 +272,6 @@ impl Op {
             Op::ComponentCleanup { reset_base: true } => "Cleaning component store (ResetBase)".into(),
             Op::ComponentCleanup { reset_base: false } => "Cleaning component store".into(),
             Op::AddDriver { inf } => format!("Adding driver {inf}"),
-            Op::AddPackage { path, kind } => format!("Adding {} {path}", kind.label().to_lowercase()),
         }
     }
 
@@ -287,7 +281,6 @@ impl Op {
             Op::ComponentCleanup { .. } => 40,
             Op::EnableFeature { .. } => 15,
             Op::AddDriver { .. } => 4,
-            Op::AddPackage { .. } => 30,
             Op::RemoveCapability { .. } | Op::DisableFeature { .. } => 6,
             Op::RemoveAppx { .. } => 3,
             _ => 1,
