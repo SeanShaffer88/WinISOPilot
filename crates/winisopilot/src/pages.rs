@@ -1193,6 +1193,9 @@ pub fn load_recipe(app: &mut App) {
             app.output.compression = r.output.compression;
             app.output.volume_label = r.output.volume_label.clone();
             app.output.boot_2023 = r.output.boot_2023;
+            let password = std::mem::take(&mut app.output.answers.account_password);
+            app.output.answers = r.output.answers.clone();
+            app.output.answers.account_password = password;
             app.extras.pending_recipe = Some(r.clone());
             crate::extras::check_pending_recipe(app);
             let extra = if r.unknown.is_empty() {
@@ -1207,6 +1210,9 @@ pub fn load_recipe(app: &mut App) {
 }
 
 fn start_build(app: &mut App) {
+    if let Some(problem) = app.output.answers.validate().into_iter().next() {
+        return app.notify(format!("Setup answers: {problem}"));
+    }
     let Some(ctx) = app.plan_ctx() else { return };
     let compiled = match app.compile_plan(&ctx) {
         Ok(p) => p,
@@ -1420,6 +1426,13 @@ fn what_happens(app: &App, ui: &mut Ui) {
             (None, Some(_)) => "write the ISO (choose where below)".into(),
             _ => "leave the finished files in the working folder".into(),
         };
+        if app.output.answers.enabled {
+            lines.push(format!(
+                "{}. Add Setup answers ({})",
+                lines.len() + 1,
+                app.output.answers.summary().join(", ")
+            ));
+        }
         lines.push(format!("{}. Then {out}", lines.len() + 1));
         for l in lines {
             body(ui, &l);

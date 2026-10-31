@@ -61,6 +61,12 @@ Only options that apply to the opened edition are shown. Options the image alrea
 3. WinISOPilot adds them in Microsoft's order and skips files named for another architecture. Advanced lets you correct the guessed kind.
 Language packs add display languages to the installed Windows; Windows Setup itself stays in the ISO's language. Updates aren't added to Windows Setup or the recovery environment yet. Adding a cumulative update can take a long time and makes the image larger.
 
+**Setup answers (optional)** comes after Drivers (Guided) or under **Setup answers** (Advanced). Tick **Answer Setup's questions for me**, then choose:
+- **Language and region** and **Time zone** (or leave "Ask during Setup").
+- **Local account**: creates this administrator and skips the Microsoft account screens. The optional **password** is stored in plain text on the media, so keep the stick safe; Windows deletes its own copy at first sign-in. Recipes never contain the password.
+- **Accept the license terms**.
+Setup still asks which disk to install to, so nothing is erased unless you choose it. The VM boot test can't run on an ISO with Setup answers (Setup would use yours instead of the test's).
+
 **Drivers (optional)** comes after Updates (Guided) or under **Drivers** in the category list (Advanced). Most PCs don't need it. Use it when Windows Setup can't find your disk (common on laptops with Intel RST or VMD) or Wi-Fi doesn't work right after installing:
 1. Download the driver from your PC maker's support page and unzip it. Installers (`.exe`) can't be added.
 2. **Add driver folder…** and pick the folder. Sub-folders are searched.

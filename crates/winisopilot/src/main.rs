@@ -1,6 +1,7 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 //! WinISOPilot: a guided Windows 10/11 installation media customizer.
 
+mod answers_ui;
 mod app;
 mod customize;
 mod dialogs;
@@ -96,6 +97,15 @@ fn main() -> eframe::Result<()> {
                 }
                 app.show_settings = flag("--settings");
                 // --drivers: the Drivers page with a sample folder.
+                if flag("--answers") {
+                    app.step = app::Step::Customize;
+                    app.view = app::View::Answers;
+                    let a = &mut app.output.answers;
+                    a.enabled = true;
+                    a.language = "en-US".into();
+                    a.time_zone = "Pacific Standard Time".into();
+                    a.account_name = "Sam".into();
+                }
                 if flag("--updates") {
                     app.step = app::Step::Customize;
                     app.view = app::View::Packages;

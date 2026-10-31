@@ -59,6 +59,8 @@ pub enum View {
     Drivers,
     /// Updates, language packs and Features on Demand.
     Packages,
+    /// Answers for Windows Setup (autounattend.xml).
+    Answers,
 }
 
 /// Window size in points at 100% scale. The Scale setting multiplies it.
@@ -728,6 +730,7 @@ impl App {
             let extras = [
                 (View::Packages, "Updates", crate::packages_ui::count(self)),
                 (View::Drivers, "Drivers", crate::drivers_ui::count(self)),
+                (View::Answers, "Setup answers", crate::answers_ui::count(self)),
             ];
             for (view, label, n) in extras {
                 let selected = self.view == view;

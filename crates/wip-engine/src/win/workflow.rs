@@ -747,6 +747,18 @@ pub fn build(
         }
     }
 
+    let answer_file = output.answers.enabled;
+    if answer_file {
+        let path = ws.media.join("autounattend.xml");
+        if path.exists() {
+            warnings.push("The ISO already had an autounattend.xml; it was replaced with your Setup answers.".into());
+        }
+        let xml = output.answers.to_xml(&ws.edition.architecture);
+        wip_core::fsutil::atomic_write(&path, xml.as_bytes())
+            .map_err(|e| EngineError::new("WIP-E075", format!("Couldn't write autounattend.xml: {e}")))?;
+        job.log("Wrote autounattend.xml (Setup still asks which disk to use).");
+    }
+
     next("Creating the ISO");
     let iso = match &host.oscdimg {
         Some(oscdimg) => {
@@ -795,6 +807,7 @@ pub fn build(
         iso_bytes,
         iso_sha256,
         boot_signer,
+        answer_file,
         applied,
         footprint,
         test_target,

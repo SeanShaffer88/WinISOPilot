@@ -161,6 +161,9 @@ pub struct BuildReport {
     /// Issuer of the certificate that signed the media's UEFI boot manager.
     #[serde(default)]
     pub boot_signer: Option<String>,
+    /// The media has an `autounattend.xml` from the user's Setup answers.
+    #[serde(default)]
+    pub answer_file: bool,
     pub applied: usize,
     /// Measured before/after footprint; `None` if measuring failed.
     pub footprint: Option<wip_core::footprint::Footprint>,

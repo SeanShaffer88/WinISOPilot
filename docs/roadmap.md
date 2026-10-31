@@ -22,9 +22,8 @@ Items marked ★ come from the October 2026 review of ~130 similar tools (ideas 
 - WinRE driver sync.
 
 ## 1.2 — Unattended setup
-- `autounattend.xml` builder: region, keyboard, local account, privacy pages, disk layout, first-logon commands.
-- ★ Disk guard: interactive partitioning by default; automatic wipe only when exactly one disk matches the user's criteria, otherwise Setup stops; optional `notautounattend.xml` file name.
-- ★ Local account through the answer file (LocalAccounts + HideOnlineAccountScreens), never BypassNRO; remove the Panther copy afterwards.
+- `autounattend.xml` builder — done in code: language/region, keyboard, time zone, EULA, ★ local account via LocalAccounts + HideOnlineAccountScreens (never BypassNRO), ★ Panther copy removed at first logon, interactive partitioning always.
+- Remaining: ★ guarded automatic disk wipe (only when exactly one disk matches the user's criteria, otherwise Setup stops); optional `notautounattend.xml` file name; first-logon commands; boot test that works alongside a user answer file.
 - ★ Edition consistency: ei.cfg and pinned image index; never insert product keys.
 - ★ Answer-file driver paths (`PnpCustomizationsWinPE`) as a second route.
 

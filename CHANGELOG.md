@@ -13,6 +13,7 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - `--drivers` demo flag.
 - **Updates and languages** page (Customize step): add Windows updates (`.msu`/`.cab`), language packs and Features on Demand to the install image with DISM, in Microsoft's documented order (servicing stack, language packs, FoD, cumulative update, then .NET after cleanup). Kind is guessed from Microsoft's file names (changeable in Advanced); packages named for another architecture are skipped. The boot test checks `Get-HotFix` for each KB.
 - `--updates` demo flag.
+- **Setup answers** page (Customize step): optional `autounattend.xml` with language/region, keyboard, time zone, license acceptance and a local administrator account (skips the Microsoft account screens). Setup always still asks which disk to use; no product keys or Express-settings changes are written. The password is never saved in recipes, and Windows' cached copy of the answer file is deleted at first sign-in. The VM boot test explains why it can't run on media with an answer file. `--answers` demo flag.
 - **Secure Boot**: the result screen shows which certificate signed the boot manager (2011 or 2023) and what that means. Review has **Use the 2023-signed boot manager**, which follows Microsoft's Make2023BootableMedia steps with the ISO's own boot files (boot.wim mounted read-only) and builds the ISO with `efisys_ex.bin`. Off by default; skipped with a warning when the ISO predates the April 2024 updates.
 
 ### Changed
