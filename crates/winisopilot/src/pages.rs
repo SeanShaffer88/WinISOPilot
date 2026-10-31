@@ -1319,16 +1319,8 @@ fn result_card(ui: &mut Ui, r: &wip_engine::BuildReport) {
                     if theme::secondary(ui, "Show in folder", true).clicked() {
                         open_folder(p.parent().map(PathBuf::from).unwrap_or_default());
                     }
-                    let size = r.iso_bytes.map(human_bytes).unwrap_or_default();
-                    ui.label(RichText::new(size).size(12.0).color(theme::TEXT_DIM))
-                        .on_hover_text(format!("{} operations applied", r.applied));
-                    if let Some(cn) = &r.boot_signer {
-                        let ca = wip_core::secureboot::BootCa::from_issuer(cn);
-                        let color =
-                            if ca == wip_core::secureboot::BootCa::Other { theme::WARN_TEXT } else { theme::TEXT_DIM };
-                        ui.label(RichText::new(format!("Boot: {}", ca.label())).size(12.0).color(color))
-                            .on_hover_text(format!("Signed by {cn}.\n{}", ca.advice()));
-                    }
+                    let size = r.iso_bytes.map(|b| format!("{} · ", human_bytes(b))).unwrap_or_default();
+                    dim(ui, &format!("{size}{} operations applied", r.applied));
                     if let Some(h) = &r.iso_sha256 {
                         if ui
                             .link("Copy SHA-256")

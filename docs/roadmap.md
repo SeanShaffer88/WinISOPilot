@@ -17,7 +17,7 @@ Items marked ★ come from the October 2026 review of ~130 similar tools (ideas 
 
 ## 1.1 — Integrate
 - Done in code: driver folders (signed INFs for the edition's architecture) into install.wim, storage drivers also into Windows Setup; one failing package is skipped, not fatal ★; dism.exe/oscdimg Microsoft-signature check before building ★; `.sha256` next to the ISO ★; Recall-off and Paint-AI policies ★.
-- ★ Secure Boot readiness — done in code: boot manager signer shown after building; optional 2023-signed boot manager from the ISO's own files. Remaining: signer shown for any ISO on the USB page; DBX revocation check. Never revoke 2011 certificates, set anti-rollback (SVN) or copy SkuSiPolicy.
+- ★ Secure Boot readiness: show whether the media's boot manager is signed by the 2011 or 2023 Microsoft CA, warn when revoked, offer 2023-signed boot files when the ISO carries them. Never revoke 2011 certificates, set anti-rollback (SVN) or copy SkuSiPolicy.
 - ★ Updates (SSU/LCU/.NET CAB/MSU) in Microsoft's Dynamic Update order (WinRE → install.wim → boot.wim → media), stored as a per-build rule table; checkpoint-CU folder for 24H2+; ResetBase stays off by default.
 - Windows language packs and Features on Demand; ★ a language pack queues the updates it needs.
 - WinRE driver sync.

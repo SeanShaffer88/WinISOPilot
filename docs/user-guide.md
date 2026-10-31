@@ -74,7 +74,7 @@ Each stage is shown with progress and elapsed time. **Cancel** stops after the c
 If one driver can't be added, the build carries on and lists it as a warning. Before building, WinISOPilot checks that DISM and the ISO tool are signed by Microsoft.
 
 When it's done you see:
-- **The ISO**, which certificate signed its boot manager (hover for what that means), and **Copy SHA-256** (the same hash is saved next to the ISO as `name.iso.sha256`).
+- **The ISO**, with **Copy SHA-256** (the same hash is saved next to the ISO as `name.iso.sha256`).
 - **Measured result**: installed size, image size, and app/feature counts before and after.
 - **Test it in a virtual machine**: installs your ISO in a temporary Hyper-V VM and checks from inside Windows that every change landed (needs Windows Pro/Enterprise/Education with Hyper-V).
 - **Write it to a USB drive**.
