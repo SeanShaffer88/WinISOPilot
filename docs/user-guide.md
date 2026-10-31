@@ -66,7 +66,7 @@ Driver folders aren't saved in recipes, because folder paths differ between PCs.
 ### 5. Review
 Every change in one list. Remove any item with ✖. Risky and unrated changes need their **Confirm** box ticked. The **What happens when you select Build** box lists each step in plain words.
 
-Choose compression (Standard is best for USB sticks), a disc label, and where to save the ISO. **Save choices…** keeps your list in a small file you can load later, even on a newer Windows release; WinISOPilot then shows what still matches and what changed.
+Choose compression (Standard is best for USB sticks), a disc label, and where to save the ISO. **Use the 2023-signed boot manager** (off by default) switches the media to Microsoft's newer boot manager from the ISO's own files: tick it if the target PC has applied Microsoft's boot manager revocation (it then refuses 2011-signed media with Secure Boot on). PCs whose firmware doesn't trust the 2023 certificate need Secure Boot off to start such media. **Save choices…** keeps your list in a small file you can load later, even on a newer Windows release; WinISOPilot then shows what still matches and what changed.
 
 ### 6. Build
 Each stage is shown with progress and elapsed time. **Cancel** stops after the current step and saves nothing to the image.

@@ -520,7 +520,7 @@ pub fn build(
         ));
     }
     let boot = !plan.boot.is_empty();
-    let stages = if boot { 5 } else { 4 };
+    let stages = 4 + boot as u32 + output.boot_2023 as u32;
     let mut stage = 0;
     let mut next = |label: &str| {
         stage += 1;
@@ -592,6 +592,17 @@ pub fn build(
             }
         }
         journal::clear_mount(&ws.boot_mount_dir.display().to_string());
+    }
+
+    if output.boot_2023 {
+        next("Switching to the 2023-signed boot manager");
+        match use_2023_boot_files(&dism, ws, job) {
+            Ok(true) => job.log("Media now uses the boot manager signed with Windows UEFI CA 2023."),
+            Ok(false) => warnings.push(
+                "This ISO doesn't contain the 2023-signed boot files (they come with the April 2024 updates or later), so the boot manager wasn't changed.".into(),
+            ),
+            Err(e) => return Err(e),
+        }
     }
 
     next("Rebuilding the installation image");
@@ -706,7 +717,12 @@ pub fn build(
 
 pub(crate) fn make_iso(oscdimg: &Path, media: &Path, out: &Path, label: &str, job: &Job) -> Result<()> {
     let etfs = media.join(r"boot\etfsboot.com");
-    let efi = media.join(r"efi\microsoft\boot\efisys.bin");
+    // efisys_ex.bin is present when the 2023-signed boot manager was applied.
+    let efi = ["efisys_ex.bin", "efisys.bin"]
+        .iter()
+        .map(|n| media.join(r"efi\microsoft\boot").join(n))
+        .find(|p| p.is_file())
+        .unwrap_or_else(|| media.join(r"efi\microsoft\boot\efisys.bin"));
     let bootdata = match (etfs.is_file(), efi.is_file()) {
         (true, true) => format!("RAW:-bootdata:2#p0,e,b\"{}\"#pEF,e,b\"{}\"", etfs.display(), efi.display()),
         (false, true) => format!("RAW:-bootdata:1#pEF,e,b\"{}\"", efi.display()),
