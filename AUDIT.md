@@ -1,4 +1,4 @@
-# Audit — WinISOPilot 1.0.0
+# Audit — WinISOPilot 1.1.0
 
 Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Verified** (run and observed), **Partially verified**, **Unverified**.
 

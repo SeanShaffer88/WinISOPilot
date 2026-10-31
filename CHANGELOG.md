@@ -2,7 +2,7 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.1.0] - 2026-10-31
 
 ### Added
 - **Drivers** page (Customize step, both layouts): add folders of unzipped drivers. Signed `.inf` packages for the edition's architecture are added to Windows; disk (storage-controller) drivers also go into Windows Setup so it can see the disk. Unsigned and other-architecture packages are skipped with the reason. A package that fails to install is skipped with a warning instead of failing the build.
