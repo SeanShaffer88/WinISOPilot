@@ -288,6 +288,18 @@ pub fn checks(plan: &CompiledPlan) -> Vec<Check> {
                     p = ps_lit(&format!("C:\\{path}"))
                 ),
             }),
+            Op::AddDriver { inf } => {
+                let leaf = inf.rsplit(['\\', '/']).next().unwrap_or(inf).to_string();
+                Some(Check {
+                    id: format!("drv:{leaf}"),
+                    origin,
+                    what: format!("Driver {leaf} is in the driver store"),
+                    script: format!(
+                        "$d = @(Get-WindowsDriver -Online | Where-Object {{ (Split-Path $_.OriginalFileName -Leaf) -eq {n} }}); $ok = ($d.Count -gt 0); $detail = $(if ($ok) {{ $d[0].Driver }} else {{ 'not found' }})",
+                        n = ps_lit(&leaf)
+                    ),
+                })
+            }
             Op::LoadHive { .. } | Op::UnloadHive { .. } | Op::ComponentCleanup { .. } => None,
         };
         if let Some(c) = c {

@@ -1079,7 +1079,7 @@ fn operation_plan(app: &mut App, ui: &mut Ui) {
         ui.add_space(4.0);
         return;
     };
-    let p = match plan::compile(&app.selection, &ctx) {
+    let p = match app.compile_plan(&ctx) {
         Ok(p) => p,
         Err(e) => {
             theme::error_box(ui, "Plan doesn't compile", &e);
@@ -1202,7 +1202,7 @@ pub fn load_recipe(app: &mut App) {
 
 fn start_build(app: &mut App) {
     let Some(ctx) = app.plan_ctx() else { return };
-    let compiled = match plan::compile(&app.selection, &ctx) {
+    let compiled = match app.compile_plan(&ctx) {
         Ok(p) => p,
         Err(e) => return app.notify(e),
     };
@@ -1350,7 +1350,7 @@ pub fn open_folder(p: PathBuf) {
 /// Plain-language summary of what Build will do, from the compiled plan.
 fn what_happens(app: &App, ui: &mut Ui) {
     let Some(ctx) = app.plan_ctx().filter(|c| c.inventory.is_some()) else { return };
-    let Ok(p) = plan::compile(&app.selection, &ctx) else { return };
+    let Ok(p) = app.compile_plan(&ctx) else { return };
     use wip_core::plan::Op;
     let count = |f: &dyn Fn(&Op) -> bool| p.install.iter().chain(p.boot.iter()).filter(|o| f(&o.op)).count();
     let apps = count(&|o| matches!(o, Op::RemoveAppx { .. }));

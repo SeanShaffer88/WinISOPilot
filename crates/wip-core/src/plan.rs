@@ -210,16 +210,48 @@ pub fn needs_ack(sel: &Selection, catalog: &Catalog) -> Vec<(String, String)> {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum Op {
-    RemoveAppx { package_name: String, display_name: String },
-    RemoveCapability { name: String },
-    DisableFeature { name: String, remove_payload: bool },
-    EnableFeature { name: String, source_sxs: bool },
-    DeleteFile { path: String },
-    LoadHive { hive: Hive },
-    RegSet { hive: Hive, key: String, value: String, data: RegData },
-    RegDelete { hive: Hive, key: String, value: String },
-    UnloadHive { hive: Hive },
-    ComponentCleanup { reset_base: bool },
+    RemoveAppx {
+        package_name: String,
+        display_name: String,
+    },
+    RemoveCapability {
+        name: String,
+    },
+    DisableFeature {
+        name: String,
+        remove_payload: bool,
+    },
+    EnableFeature {
+        name: String,
+        source_sxs: bool,
+    },
+    DeleteFile {
+        path: String,
+    },
+    LoadHive {
+        hive: Hive,
+    },
+    RegSet {
+        hive: Hive,
+        key: String,
+        value: String,
+        data: RegData,
+    },
+    RegDelete {
+        hive: Hive,
+        key: String,
+        value: String,
+    },
+    UnloadHive {
+        hive: Hive,
+    },
+    ComponentCleanup {
+        reset_base: bool,
+    },
+    /// Absolute host path of one signed driver `.inf`.
+    AddDriver {
+        inf: String,
+    },
 }
 
 impl Op {
@@ -239,6 +271,7 @@ impl Op {
             Op::UnloadHive { hive } => format!("Closing registry hive {hive:?}"),
             Op::ComponentCleanup { reset_base: true } => "Cleaning component store (ResetBase)".into(),
             Op::ComponentCleanup { reset_base: false } => "Cleaning component store".into(),
+            Op::AddDriver { inf } => format!("Adding driver {inf}"),
         }
     }
 
@@ -247,6 +280,7 @@ impl Op {
         match self {
             Op::ComponentCleanup { .. } => 40,
             Op::EnableFeature { .. } => 15,
+            Op::AddDriver { .. } => 4,
             Op::RemoveCapability { .. } | Op::DisableFeature { .. } => 6,
             Op::RemoveAppx { .. } => 3,
             _ => 1,

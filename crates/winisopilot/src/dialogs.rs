@@ -277,7 +277,7 @@ pub fn load_demo_done(app: &mut App) {
     use wip_core::footprint::{Changes, Footprint, Measure};
     let Some(inv) = app.inventory.clone() else { return };
     let Some(ctx) = app.plan_ctx() else { return };
-    let Ok(plan) = wip_core::plan::compile(&app.selection, &ctx) else { return };
+    let Ok(plan) = app.compile_plan(&ctx) else { return };
     let mut after = inv.clone();
     after.appx.retain(|a| {
         !a.display_name.starts_with("Clipchamp")

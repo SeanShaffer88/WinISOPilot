@@ -55,6 +55,8 @@ pub enum View {
     Cat(Category),
     /// Uncatalogued items (Advanced mode only).
     Raw,
+    /// Driver folders to add.
+    Drivers,
 }
 
 /// Window size in points at 100% scale. The Scale setting multiplies it.
@@ -87,6 +89,7 @@ pub struct App {
     pub selection: Selection,
     pub history: wip_core::history::History<Selection>,
     pub view: View,
+    pub drivers: wip_core::drivers::DriverChoice,
     pub focused: Option<String>,
     pub search: String,
     pub risk_filter: Option<Risk>,
@@ -206,6 +209,7 @@ impl App {
             selection: Selection::new(),
             history: wip_core::history::History::new(200),
             view: View::Cat(Category::Apps),
+            drivers: wip_core::drivers::DriverChoice::new(),
             focused: None,
             search: String::new(),
             risk_filter: None,
@@ -305,6 +309,13 @@ impl App {
         let e = self.edition()?;
         let family = e.family().unwrap_or(WindowsFamily::Win11);
         Some(Context { catalog: &self.catalog, family, build: e.build, inventory: self.inventory.as_ref() })
+    }
+
+    /// The selection compiled for the open image, plus driver operations.
+    pub fn compile_plan(&self, ctx: &Context) -> Result<wip_core::plan::CompiledPlan, String> {
+        let mut p = wip_core::plan::compile(&self.selection, ctx)?;
+        self.drivers.extend_plan(&mut p, &crate::drivers_ui::arch(self));
+        Ok(p)
     }
 
     pub fn busy(&self) -> bool {
@@ -707,6 +718,21 @@ impl App {
                     self.view = View::Cat(c);
                     self.focused = None;
                 }
+            }
+            let selected = self.view == View::Drivers;
+            let n = crate::drivers_ui::count(self);
+            let text = if n > 0 { format!("Drivers  · {n}") } else { "Drivers".to_string() };
+            let b = egui::Button::new(RichText::new(text).size(12.5).color(if selected {
+                theme::TEXT
+            } else {
+                theme::RAIL_MUTED
+            }))
+            .fill(if selected { theme::RAIL_SELECTED } else { Color32::TRANSPARENT })
+            .stroke(Stroke::NONE)
+            .min_size(Vec2::new(ui.available_width(), 27.0));
+            if ui.add(b).clicked() {
+                self.view = View::Drivers;
+                self.focused = None;
             }
         });
         ui.add_space(6.0);

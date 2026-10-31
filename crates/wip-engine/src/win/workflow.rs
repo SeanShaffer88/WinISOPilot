@@ -383,6 +383,16 @@ impl<'a> Applier<'a> {
                 let src = (*source_sxs && sxs.is_dir()).then_some(sxs);
                 self.session()?.enable_feature(name, src.as_deref(), job)?
             }
+            Op::AddDriver { inf } => {
+                let p = Path::new(inf);
+                if !p.is_file() {
+                    return Err(EngineError::new(
+                        "WIP-E063",
+                        format!("Driver file {inf} is gone. Add the driver folder again, or remove it."),
+                    ));
+                }
+                self.session()?.add_driver(p, job)?
+            }
             Op::DeleteFile { path } => {
                 self.close_session();
                 let p = self.mount.join(path);

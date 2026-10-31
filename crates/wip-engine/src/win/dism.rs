@@ -116,6 +116,8 @@ struct Api {
     ) -> HResult,
     RemoveCapability:
         unsafe extern "system" fn(DismSession, *const u16, HANDLE, Option<ProgressFn>, *mut c_void) -> HResult,
+    /// DismAddDriver(Session, DriverPath, ForceUnsigned)
+    AddDriver: unsafe extern "system" fn(DismSession, *const u16, i32) -> HResult,
 }
 
 struct Module(HMODULE);
@@ -176,6 +178,7 @@ fn load(dll: &Path, log_file: &Path) -> std::result::Result<Api, String> {
         EnableFeature: sym!(m, "DismEnableFeature"),
         DisableFeature: sym!(m, "DismDisableFeature"),
         RemoveCapability: sym!(m, "DismRemoveCapability"),
+        AddDriver: sym!(m, "DismAddDriver"),
         _module: module,
     };
     if let Some(dir) = log_file.parent() {
@@ -507,6 +510,21 @@ impl Session<'_> {
         };
         if hr < 0 {
             return Err(self.dism.cancel_or(hr, job, &format!("Removing {name}")));
+        }
+        Ok(())
+    }
+}
+
+impl Session<'_> {
+    /// Adds one signed driver package. Unsigned drivers are never forced.
+    /// DismAddDriver has no progress callback or cancel event.
+    pub fn add_driver(&self, inf: &Path, job: &Job) -> Result<()> {
+        let w = wide(inf);
+        // SAFETY: valid NUL-terminated path; ForceUnsigned = FALSE.
+        let hr = unsafe { (self.dism.api.AddDriver)(self.handle, w.as_ptr(), 0) };
+        if hr < 0 {
+            let name = inf.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            return Err(self.dism.cancel_or(hr, job, &format!("Adding driver {name}")));
         }
         Ok(())
     }

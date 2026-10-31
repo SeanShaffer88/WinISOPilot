@@ -5,6 +5,7 @@ mod app;
 mod customize;
 mod dialogs;
 mod download_ui;
+mod drivers_ui;
 mod extras;
 mod help;
 mod jobs;
