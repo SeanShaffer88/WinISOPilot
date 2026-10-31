@@ -1379,10 +1379,19 @@ fn what_happens(app: &App, ui: &mut Ui) {
         theme::card_body(ui);
         h2(ui, "What happens when you select Build");
         let mut lines = Vec::new();
+        if packages > 0 {
+            lines.push(format!("1. Add {packages} updates and language packs (can take a long time)"));
+        }
         if apps + caps + feats > 0 {
-            lines.push(format!("1. Remove {apps} app packages and {caps} capabilities, and switch {feats} features"));
+            lines.push(format!(
+                "{}. Remove {apps} app packages and {caps} capabilities, and switch {feats} features",
+                lines.len() + 1
+            ));
         } else {
-            lines.push("1. No apps, capabilities or features change".to_string());
+            lines.push(format!("{}. No apps, capabilities or features change", lines.len() + 1));
+        }
+        if drivers > 0 {
+            lines.push(format!("{}. Add {drivers} drivers", lines.len() + 1));
         }
         if drivers > 0 {
             lines.push(format!("{}. Add {drivers} drivers", lines.len() + 1));

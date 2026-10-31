@@ -9,6 +9,7 @@ mod drivers_ui;
 mod extras;
 mod help;
 mod jobs;
+mod packages_ui;
 mod pager;
 mod pages;
 mod theme;

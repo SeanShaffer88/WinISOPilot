@@ -13,6 +13,7 @@ pub mod fsutil;
 pub mod history;
 pub mod inventory;
 pub mod journal;
+pub mod packages;
 pub mod plan;
 pub mod port;
 pub mod raw;
