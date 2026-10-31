@@ -153,6 +153,30 @@ fn explainer(app: &App, ui: &mut Ui, compact: bool) {
     }
 }
 
+/// Bulk-select by risk tier in the current Advanced view (undoable).
+fn tier_menu(app: &mut App, ui: &mut Ui) {
+    let View::Cat(cat) = app.view else { return };
+    ui.menu_button("Select tier…", |ui| {
+        for (label, max) in [("All Safe here", Risk::Safe), ("Safe + Low here", Risk::Low)] {
+            if ui.button(label).clicked() {
+                let (list, _) = rows(app, View::Cat(cat), false);
+                let add: Vec<String> = list
+                    .iter()
+                    .filter(|r| r.status.is_available() && r.risk.is_some_and(|k| k <= max))
+                    .map(|r| r.id.clone())
+                    .collect();
+                let mut sel = app.selection.clone();
+                let before = sel.len();
+                sel.extend(add);
+                let n = sel.len() - before;
+                app.replace_selection(sel);
+                app.notify(format!("Selected {n} more in {}. Ctrl+Z undoes.", cat.label()));
+                ui.close();
+            }
+        }
+    });
+}
+
 fn presets_menu(app: &mut App, ui: &mut Ui) {
     let presets = app.catalog.presets.clone();
     let label = if app.mode() == Mode::Guided { "Quick picks…" } else { "Presets…" };
@@ -477,6 +501,7 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                     });
                     ui.checkbox(&mut app.hide_missing, "Hide items not in image");
                     presets_menu(app, ui);
+                    tier_menu(app, ui);
                     if ui.button("Load…").clicked() {
                         crate::pages::load_recipe(app);
                     }

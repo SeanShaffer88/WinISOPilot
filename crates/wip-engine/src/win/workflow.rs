@@ -416,8 +416,14 @@ impl<'a> Applier<'a> {
                 registry::load(*hive, self.mount, job)?;
                 self.loaded.push(*hive);
             }
-            Op::RegSet { hive, key, value, data } => registry::set(*hive, key, value, data, job)?,
-            Op::RegDelete { hive, key, value } => registry::delete(*hive, key, value, job)?,
+            Op::RegSet { hive, key, value, data } => {
+                self.remember(*hive, key, value, job);
+                registry::set(*hive, key, value, data, job)?
+            }
+            Op::RegDelete { hive, key, value } => {
+                self.remember(*hive, key, value, job);
+                registry::delete(*hive, key, value, job)?
+            }
             Op::UnloadHive { hive } => {
                 registry::unload(*hive, job)?;
                 self.loaded.retain(|h| h != hive);
@@ -433,6 +439,26 @@ impl<'a> Applier<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Records a value's current state once, for the undo script.
+    fn remember(&mut self, hive: Hive, key: &str, value: &str, job: &Job) {
+        if self
+            .priors
+            .iter()
+            .any(|p| p.hive == hive && p.key.eq_ignore_ascii_case(key) && p.value.eq_ignore_ascii_case(value))
+        {
+            return;
+        }
+        match registry::query(hive, key, value, job) {
+            Ok(prior) => self.priors.push(wip_core::revert::PriorValue {
+                hive,
+                key: key.to_string(),
+                value: value.to_string(),
+                prior,
+            }),
+            Err(e) => job.log(format!("Undo script: couldn't read {key}\\{value} first: {e}")),
+        }
     }
 
     /// Best-effort release of everything still open.

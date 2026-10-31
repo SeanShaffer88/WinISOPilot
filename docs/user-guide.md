@@ -51,6 +51,7 @@ Pick the edition you'll install (Home, Pro…). Keeping only that edition makes 
 - Risk badges: **Safe**, **Low**, **Moderate**, **High**. Beginner level shows only Safe and Low; use the **Level** menu to see more.
 - **Presets** add a common set (Light cleanup, Privacy, Gaming).
 - **Untick all here** unticks everything on the current page.
+- Advanced: **Select tier…** ticks every available Safe (or Safe + Low) option in the current category.
 - Mistakes are easy to fix: **Ctrl+Z** undoes, **Ctrl+Y** redoes.
 
 Only options that apply to the opened edition are shown. Options the image already has are marked "Already set".
