@@ -32,6 +32,10 @@ pub struct OutputSettings {
     /// certificate on the media (Microsoft's Make2023BootableMedia steps).
     #[serde(default)]
     pub boot_2023: bool,
+    /// Answers for Windows Setup (`autounattend.xml`). The password is
+    /// never saved in recipes.
+    #[serde(default)]
+    pub answers: crate::unattend::Answers,
 }
 
 impl Default for OutputSettings {
@@ -41,6 +45,7 @@ impl Default for OutputSettings {
             compression: Compression::Maximum,
             volume_label: "WINISOPILOT".into(),
             boot_2023: false,
+            answers: crate::unattend::Answers::default(),
         }
     }
 }
