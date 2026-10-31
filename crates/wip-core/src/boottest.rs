@@ -468,6 +468,8 @@ mod tests {
             ],
             boot: vec![],
             skipped: vec![],
+            winre: vec![],
+            media: vec![],
         }
     }
 

@@ -43,7 +43,7 @@ pub fn panel(app: &mut App, ui: &mut Ui, guided: bool) {
         body(ui, "Optional. Add Windows updates so the new Windows starts up to date, or language packs for other display languages.");
         dim(ui, "Get updates from the Microsoft Update Catalog (.msu files). On Windows 11 24H2 and later, keep every file the catalog lists for an update in one folder.");
     } else {
-        dim(ui, &format!("Added to install.wim with DISM /Add-Package in Microsoft's order: servicing stack, language packs, FoD, updates, (cleanup), .NET. 24H2+: keep checkpoint MSUs in the same folder. Image architecture: {arch}."));
+        dim(ui, &format!("Microsoft's Dynamic Update order: install.wim gets SSU, LP, FoD, LCU, (cleanup), .NET; boot.wim #2 gets SSU + LCU; Winre.wim gets SSU + Safe OS; Setup updates are expanded into sources. Set the kind for Safe OS / Setup updates (catalog names don't show it). 24H2+: keep checkpoint MSUs together. Arch: {arch}."));
     }
     ui.add_space(4.0);
     ui.horizontal(|ui| {
@@ -69,7 +69,7 @@ pub fn panel(app: &mut App, ui: &mut Ui, guided: bool) {
         theme::card().show(ui, |ui| {
             ui.set_width(ui.available_width());
             egui::Grid::new("packages").striped(true).spacing([10.0, 3.0]).show(ui, |ui| {
-                for h in ["#", "FILE", "KIND", "STATUS", ""] {
+                for h in ["#", "FILE", "KIND", "INTO", "STATUS", ""] {
                     ui.label(RichText::new(h).monospace().size(10.5).color(theme::TEXT_DIM));
                 }
                 ui.end_row();
@@ -103,6 +103,8 @@ pub fn panel(app: &mut App, ui: &mut Ui, guided: bool) {
                             retype = Some((i, k));
                         }
                     }
+                    let kind_now = retype.filter(|(j, _)| *j == i).map_or(p.kind, |(_, k)| k);
+                    ui.label(RichText::new(kind_now.targets()).size(11.0).color(theme::TEXT_DIM));
                     match &why {
                         None => ui.label(RichText::new("add").size(12.0).color(theme::OK_TEXT)),
                         Some(w) => ui.label(RichText::new("skip").size(12.0).color(theme::TEXT_DIM)).on_hover_text(w),

@@ -1124,7 +1124,9 @@ fn operation_plan(app: &mut App, ui: &mut Ui) {
         .install
         .iter()
         .map(|o| ("install", o))
+        .chain(p.winre.iter().map(|o| ("winre.wim", o)))
         .chain(p.boot.iter().map(|o| ("boot.wim#2", o)))
+        .chain(p.media.iter().map(|o| ("media", o)))
         .enumerate()
         .map(|(n, (target, o))| format!("{:>3} [{target}] {}  ← {}", n + 1, o.op.describe(), o.origin))
         .collect();
@@ -1446,7 +1448,13 @@ fn what_happens(app: &App, ui: &mut Ui) {
         h2(ui, "What happens when you select Build");
         let mut lines = Vec::new();
         if packages > 0 {
-            lines.push(format!("1. Add {packages} updates and language packs (can take a long time)"));
+            let extra = match (p.winre.is_empty(), p.boot.iter().any(|o| matches!(o.op, Op::AddPackage { .. }))) {
+                (false, true) => " and update the recovery environment and Windows Setup",
+                (false, false) => " and update the recovery environment",
+                (true, true) => " and update Windows Setup",
+                (true, false) => "",
+            };
+            lines.push(format!("1. Add {packages} updates and language packs{extra} (can take a long time)"));
         }
         if apps + caps + feats > 0 {
             lines.push(format!(
