@@ -24,6 +24,8 @@ pub struct UsbState {
     pub data_partition: bool,
     pub confirm: bool,
     pub confirm_text: String,
+    /// The confirmation is for "restore to a normal drive", not writing.
+    pub restore: bool,
     pub report: Option<UsbReport>,
 }
 
@@ -40,6 +42,7 @@ impl Default for UsbState {
             data_partition: false,
             confirm: false,
             confirm_text: String::new(),
+            restore: false,
             report: None,
         }
     }
@@ -122,6 +125,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
             app.refresh_disks();
         } else {
             app.usb.confirm = true;
+            app.usb.restore = false;
             app.usb.confirm_text.clear();
         }
     }
@@ -255,6 +259,16 @@ fn drive_card(app: &mut App, ui: &mut egui::Ui, prot: &[char]) {
             });
         }
         dim(ui, "Internal disks and the disk Windows runs from are never listed as choices.");
+        let chosen_ok = app.usb.chosen_disk().is_some_and(|d| ineligible_for(d, prot, strict).is_none());
+        if ui
+            .add_enabled(chosen_ok && !app.busy(), egui::Button::new("Restore to a normal drive…").small())
+            .on_hover_text("Erase the chosen stick and make it one ordinary exFAT drive again (for files, not for installing Windows).")
+            .clicked()
+        {
+            app.usb.confirm = true;
+            app.usb.restore = true;
+            app.usb.confirm_text.clear();
+        }
     });
 }
 
@@ -312,7 +326,14 @@ fn confirm(app: &mut App, ctx: &egui::Context, protected: Vec<PathBuf>) {
         ui.set_width(500.0);
         h2(ui, &format!("Erase Disk {}?", disk.number));
         body(ui, &disk.label());
-        body(ui, "All files and partitions on this drive will be permanently deleted.");
+        body(
+            ui,
+            if app.usb.restore {
+                "All files and partitions on this drive will be permanently deleted, and it becomes one empty exFAT drive."
+            } else {
+                "All files and partitions on this drive will be permanently deleted."
+            },
+        );
         if likely_backup_drive(&disk) {
             ui.label(
                 RichText::new(format!(
@@ -335,11 +356,20 @@ fn confirm(app: &mut App, ctx: &egui::Context, protected: Vec<PathBuf>) {
             if theme::secondary(ui, "Cancel", true).clicked() {
                 app.usb.confirm = false;
             }
-            if theme::primary(ui, "Erase and write", ready).clicked() {
+            if theme::primary(ui, if app.usb.restore { "Erase and restore" } else { "Erase and write" }, ready).clicked() {
                 go = true;
             }
         });
     });
+    if go && app.usb.restore {
+        app.usb.confirm = false;
+        app.usb.restore = false;
+        let host = app.host.clone();
+        app.start(Kind::RestoreUsb, move |job| {
+            wip_engine::restore_usb(&disk, &protected, &host, job).map(Outcome::UsbRestored)
+        });
+        return;
+    }
     if go {
         app.usb.confirm = false;
         let Some(source) = app.usb.source.clone() else { return };
