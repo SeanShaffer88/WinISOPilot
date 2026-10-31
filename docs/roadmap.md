@@ -17,13 +17,15 @@ Items marked ★ come from the October 2026 review of ~130 similar tools (ideas 
 
 ## 1.1 — Integrate
 - Done in code: driver folders (signed INFs for the edition's architecture) into install.wim, storage drivers also into Windows Setup; one failing package is skipped, not fatal ★; dism.exe/oscdimg Microsoft-signature check before building ★; `.sha256` next to the ISO ★; Recall-off and Paint-AI policies ★.
-- ★ Secure Boot readiness — done in code: boot manager signer shown after building; optional 2023-signed boot manager from the ISO's own files. Remaining: signer shown for any ISO on the USB page; DBX revocation check. Never revoke 2011 certificates, set anti-rollback (SVN) or copy SkuSiPolicy.
-- ★ Updates, language packs and FoD into install.wim in Microsoft's order — done in code. Remaining: WinRE (SSU + Safe OS DU) and boot.wim (SSU + LCU) servicing, Setup Dynamic Update onto the media, language packs for Setup/WinRE and lang.ini; a language pack queuing the updates it needs.
+- ★ Secure Boot readiness: show whether the media's boot manager is signed by the 2011 or 2023 Microsoft CA, warn when revoked, offer 2023-signed boot files when the ISO carries them. Never revoke 2011 certificates, set anti-rollback (SVN) or copy SkuSiPolicy.
+- ★ Updates (SSU/LCU/.NET CAB/MSU) in Microsoft's Dynamic Update order (WinRE → install.wim → boot.wim → media), stored as a per-build rule table; checkpoint-CU folder for 24H2+; ResetBase stays off by default.
+- Windows language packs and Features on Demand; ★ a language pack queues the updates it needs.
 - WinRE driver sync.
 
 ## 1.2 — Unattended setup
-- `autounattend.xml` builder — done in code: language/region, keyboard, time zone, EULA, ★ local account via LocalAccounts + HideOnlineAccountScreens (never BypassNRO), ★ Panther copy removed at first logon, interactive partitioning always.
-- Remaining: ★ guarded automatic disk wipe (only when exactly one disk matches the user's criteria, otherwise Setup stops); optional `notautounattend.xml` file name; first-logon commands; boot test that works alongside a user answer file.
+- `autounattend.xml` builder: region, keyboard, local account, privacy pages, disk layout, first-logon commands.
+- ★ Disk guard: interactive partitioning by default; automatic wipe only when exactly one disk matches the user's criteria, otherwise Setup stops; optional `notautounattend.xml` file name.
+- ★ Local account through the answer file (LocalAccounts + HideOnlineAccountScreens), never BypassNRO; remove the Panther copy afterwards.
 - ★ Edition consistency: ei.cfg and pinned image index; never insert product keys.
 - ★ Answer-file driver paths (`PnpCustomizationsWinPE`) as a second route.
 

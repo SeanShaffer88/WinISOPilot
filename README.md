@@ -63,7 +63,7 @@ WinISOPilot never offers to disable Windows Update, Defender or the firewall, an
 1. **Welcome**: check that the PC is ready (administrator, DISM, ISO tool).
 2. **Choose ISO**: browse to an ISO, or download the current official Windows 11/10 from Microsoft inside the app (verified against Microsoft's hash), and pick a working folder on a fast local NTFS drive.
 3. **Edition**: pick the edition, then **Open edition**. WinISOPilot copies the media, extracts the edition and reads what's inside (a few minutes).
-4. **Customize**: tick what to change. Optionally add **Updates and languages** (`.msu`/`.cab`), **Drivers** and **Setup answers** (an `autounattend.xml` for language, time zone and a local account; Setup still asks which disk) (folders of unzipped `.inf` drivers, e.g. Intel RST/VMD so Setup can see the disk).
+4. **Customize**: tick what to change. Optionally add **Drivers** (folders of unzipped `.inf` drivers, e.g. Intel RST/VMD so Setup can see the disk).
 5. **Review**: remove anything you're unsure about, confirm risky changes, choose compression, label and output file.
 6. **Build**: apply, save, rebuild the image and write the ISO (with a `.sha256` file next to it). Cancel stops after the current step without saving.
 
