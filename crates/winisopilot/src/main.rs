@@ -106,6 +106,15 @@ fn main() -> eframe::Result<()> {
                     });
                 }
                 app.show_settings = flag("--settings");
+                // --busy: a long-running sample job (screenshots of progress).
+                if flag("--busy") {
+                    app.start(jobs::Kind::InstallAdk, |job| {
+                        job.stage(3, 3, "Installing the Deployment Tools (several minutes)");
+                        job.progress(0.4);
+                        std::thread::sleep(std::time::Duration::from_secs(30));
+                        Ok(jobs::Outcome::AdkInstalled)
+                    });
+                }
                 // --drivers: the Drivers page with a sample folder.
                 if flag("--answers") {
                     app.step = app::Step::Customize;

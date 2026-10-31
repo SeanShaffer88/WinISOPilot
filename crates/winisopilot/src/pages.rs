@@ -93,7 +93,9 @@ pub fn job_panel(app: &mut App, ui: &mut Ui) {
         if t > 0 {
             eyebrow(ui, &format!("Stage {n} of {t}"));
         }
-        body(ui, &label);
+        if label != job.kind.title() {
+            body(ui, &label);
+        }
         let bar = match job.progress {
             Some(p) => egui::ProgressBar::new(p).show_percentage(),
             None if reduce_motion => egui::ProgressBar::new(0.0).text("Working…"),
@@ -222,6 +224,8 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
         (true, false) => "Ready; oscdimg missing (output will be a media folder).",
         _ => "Some checks need attention.",
     };
+    let busy_status = app.job.as_ref().map(|j| format!("{}…", j.kind.title()));
+    let status = busy_status.as_deref().unwrap_or(status);
     let g = guided(app);
     // Guided has its own Start button on the page; only Advanced needs one in the footer.
     let next = if g { None } else { Some(("Get started", !app.busy())) };
@@ -288,8 +292,14 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
                 });
             });
             ui.add_space(4.0);
-            theme::fill_next(ui, tail_reserve(app));
-            simple_ready(app, ui);
+            if app.busy() {
+                // Progress replaces the readiness card so it isn't pushed
+                // below the window edge.
+                job_panel(app, ui);
+            } else {
+                theme::fill_next(ui, tail_reserve(app));
+                simple_ready(app, ui);
+            }
         } else {
             header(
                 app,
@@ -312,7 +322,9 @@ pub fn welcome(app: &mut App, ctx: &egui::Context) {
             leftovers(app, ui);
         }
         ui.add_space(4.0);
-        job_panel(app, ui);
+        if !guided(app) {
+            job_panel(app, ui);
+        }
         show_error(app, ui);
     });
 }
