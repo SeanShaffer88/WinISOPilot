@@ -59,8 +59,9 @@ Only options that apply to the opened edition are shown. Options the image alrea
 **Updates and languages (optional)** comes after the last section (Guided) or under **Updates & languages** (Advanced):
 1. Download updates from the Microsoft Update Catalog (`.msu`) or language packs / Features on Demand (`.cab`).
 2. **Add files…** or **Add folder…**. On Windows 11 24H2 and later, keep every file the catalog lists for an update (the "checkpoint" updates) in the same folder.
-3. WinISOPilot adds them in Microsoft's order and skips files named for another architecture. Advanced lets you correct the guessed kind.
-Language packs add display languages to the installed Windows; Windows Setup itself stays in the ISO's language. Updates aren't added to Windows Setup or the recovery environment yet. Adding a cumulative update can take a long time and makes the image larger.
+3. WinISOPilot adds them in Microsoft's order and skips files named for another architecture. Cumulative and servicing-stack updates also go into Windows Setup. The **INTO** column shows where each file goes.
+4. Advanced: set **Safe OS update (WinRE)** for the catalog's "Safe OS Dynamic Update" (updates the recovery environment) and **Setup update** for "Setup Dynamic Update" (added to the media). The file names don't say which they are, so check the catalog title.
+Language packs add display languages to the installed Windows; Windows Setup itself stays in the ISO's language. Adding a cumulative update can take a long time and makes the image larger.
 
 **Setup answers (optional)** comes after Drivers (Guided) or under **Setup answers** (Advanced). Tick **Answer Setup's questions for me**, then choose:
 - **Language and region** and **Time zone** (or leave "Ask during Setup").

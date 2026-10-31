@@ -27,15 +27,21 @@ pub enum PackageKind {
     Update,
     /// .NET Framework cumulative update; added after component cleanup.
     DotNet,
+    /// "Safe OS Dynamic Update": goes into the recovery environment (WinRE).
+    SafeOs,
+    /// "Setup Dynamic Update": files expanded onto the media's sources folder.
+    SetupUpdate,
 }
 
 impl PackageKind {
-    pub const ALL: [PackageKind; 5] = [
+    pub const ALL: [PackageKind; 7] = [
         PackageKind::ServicingStack,
         PackageKind::LanguagePack,
         PackageKind::FeatureOnDemand,
         PackageKind::Update,
         PackageKind::DotNet,
+        PackageKind::SafeOs,
+        PackageKind::SetupUpdate,
     ];
 
     pub fn label(self) -> &'static str {
@@ -45,13 +51,30 @@ impl PackageKind {
             PackageKind::FeatureOnDemand => "Feature on Demand",
             PackageKind::Update => "Windows update",
             PackageKind::DotNet => ".NET update",
+            PackageKind::SafeOs => "Safe OS update (WinRE)",
+            PackageKind::SetupUpdate => "Setup update",
+        }
+    }
+
+    /// Where Microsoft's Dynamic Update guidance applies this kind.
+    pub fn targets(self) -> &'static str {
+        match self {
+            PackageKind::ServicingStack => "Windows, recovery, Setup",
+            PackageKind::Update => "Windows, Setup",
+            PackageKind::SafeOs => "recovery",
+            PackageKind::SetupUpdate => "media",
+            _ => "Windows",
         }
     }
 
     /// Guess from Microsoft's file names.
     pub fn guess(file_name: &str) -> PackageKind {
         let n = file_name.to_ascii_lowercase();
-        if n.contains("ssu-") || n.contains("servicingstack") {
+        if n.contains("safeos") {
+            PackageKind::SafeOs
+        } else if n.contains("setupdu") || n.contains("setup-du") {
+            PackageKind::SetupUpdate
+        } else if n.contains("ssu-") || n.contains("servicingstack") {
             PackageKind::ServicingStack
         } else if n.contains("language-pack") || n.starts_with("lp.") || n.contains("languagepack") {
             PackageKind::LanguagePack
@@ -135,12 +158,15 @@ impl PackageChoice {
         v
     }
 
-    /// Adds the packages to the plan: everything except .NET goes before all
-    /// other install-image work (so later changes apply to the updated
-    /// image); .NET goes after component cleanup, at the end.
+    /// Adds the packages to the plan following Microsoft's Dynamic Update
+    /// order. Install image: SSU, language packs, FoD and updates before all
+    /// other work; .NET last (after component cleanup). Windows Setup
+    /// (boot.wim #2): SSU and cumulative updates. Recovery (WinRE): SSU and
+    /// Safe OS updates. Media: Setup updates.
     pub fn extend_plan(&self, plan: &mut CompiledPlan, arch: &str) {
         let mut first = Vec::new();
         let mut last = Vec::new();
+        let mut boot = Vec::new();
         for p in self.ordered() {
             if let Some(why) = p.arch_mismatch(arch) {
                 plan.skipped.push((format!("{ORIGIN}: {}", p.file_name()), why));
@@ -150,14 +176,29 @@ impl PackageChoice {
                 origin: ORIGIN.into(),
                 op: Op::AddPackage { path: p.path.display().to_string(), kind: p.kind },
             };
-            if p.kind == PackageKind::DotNet {
-                last.push(op);
-            } else {
-                first.push(op);
+            match p.kind {
+                PackageKind::DotNet => last.push(op),
+                PackageKind::SafeOs => plan.winre.push(op),
+                PackageKind::SetupUpdate => plan.media.push(op),
+                PackageKind::ServicingStack => {
+                    plan.winre.push(op.clone());
+                    boot.push(op.clone());
+                    first.push(op);
+                }
+                PackageKind::Update => {
+                    boot.push(op.clone());
+                    first.push(op);
+                }
+                _ => first.push(op),
             }
         }
         plan.install.splice(0..0, first);
         plan.install.extend(last);
+        plan.boot.splice(0..0, boot);
+        // A recovery update only makes sense with something besides the SSU.
+        if !plan.winre.iter().any(|o| matches!(o.op, Op::AddPackage { kind: PackageKind::SafeOs, .. })) {
+            plan.winre.clear();
+        }
     }
 }
 
