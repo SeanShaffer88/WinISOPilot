@@ -216,6 +216,15 @@ fn value_name(v: &str) -> String {
     }
 }
 
+/// `KB5043080` from a Microsoft update file name, if it has one.
+fn kb_number(path: &str) -> Option<String> {
+    let lower = path.to_ascii_lowercase();
+    let name = lower.rsplit(['\\', '/']).next()?;
+    let i = name.find("kb")?;
+    let digits: String = name[i + 2..].chars().take_while(|c| c.is_ascii_digit()).collect();
+    (digits.len() >= 6).then(|| format!("KB{digits}"))
+}
+
 /// Builds the list of checks from what the build actually did.
 pub fn checks(plan: &CompiledPlan) -> Vec<Check> {
     let mut out = Vec::new();
@@ -300,6 +309,15 @@ pub fn checks(plan: &CompiledPlan) -> Vec<Check> {
                     ),
                 })
             }
+            Op::AddPackage { path, .. } => kb_number(path).map(|kb| Check {
+                id: format!("kb:{kb}"),
+                origin,
+                what: format!("Update {kb} is installed"),
+                script: format!(
+                    "$h = Get-HotFix -Id {n} -ErrorAction SilentlyContinue; $ok = [bool]$h; $detail = $(if ($ok) {{ '' }} else {{ 'not listed by Get-HotFix' }})",
+                    n = ps_lit(&kb)
+                ),
+            }),
             Op::LoadHive { .. } | Op::UnloadHive { .. } | Op::ComponentCleanup { .. } => None,
         };
         if let Some(c) = c {
@@ -402,6 +420,15 @@ pub fn score(json: &str, checks: &[Check]) -> Result<Scored, String> {
         }
     }
     Ok(Scored { build: raw.build, caption: raw.caption, passed, failed, missing })
+}
+
+#[cfg(test)]
+mod kb_tests {
+    #[test]
+    fn kb_from_name() {
+        assert_eq!(super::kb_number(r"D:\u\windows11.0-kb5043080-x64_ab.msu").as_deref(), Some("KB5043080"));
+        assert_eq!(super::kb_number("lp.cab"), None);
+    }
 }
 
 #[cfg(test)]

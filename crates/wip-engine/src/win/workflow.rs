@@ -402,6 +402,24 @@ impl<'a> Applier<'a> {
                     self.warnings.push(format!("A driver couldn't be added and was skipped: {e}"));
                 }
             }
+            Op::AddPackage { path, kind } => {
+                self.close_session();
+                let p = Path::new(path);
+                if !p.is_file() {
+                    return Err(EngineError::new(
+                        "WIP-E064",
+                        format!("Package {path} is gone. Add it again, or remove it from Updates."),
+                    ));
+                }
+                let args = vec![
+                    opt("Image", self.mount),
+                    "/Add-Package".into(),
+                    opt("PackagePath", p),
+                    opt("ScratchDir", self.scratch),
+                ];
+                let what = format!("Adding {} {}", kind.label().to_lowercase(), wip_core::packages::file_name(p));
+                expect_ok(run_with_progress(self.dism_exe, &args, job)?, &what, "WIP-E064")?;
+            }
             Op::DeleteFile { path } => {
                 self.close_session();
                 let p = self.mount.join(path);

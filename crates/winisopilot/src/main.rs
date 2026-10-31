@@ -9,6 +9,7 @@ mod drivers_ui;
 mod extras;
 mod help;
 mod jobs;
+mod packages_ui;
 mod pager;
 mod pages;
 mod theme;
@@ -95,6 +96,19 @@ fn main() -> eframe::Result<()> {
                 }
                 app.show_settings = flag("--settings");
                 // --drivers: the Drivers page with a sample folder.
+                if flag("--updates") {
+                    app.step = app::Step::Customize;
+                    app.view = app::View::Packages;
+                    app.packages.add(
+                        [
+                            r"D:\Updates\windows11.0-kb5043080-x64_953449672073f8fb99badb4cc6d5d7849b9c83e8.msu",
+                            r"D:\Updates\windows11.0-kb5065789-x64_ndp481.msu",
+                            r"D:\Updates\Microsoft-Windows-Client-Language-Pack_x64_de-de.cab",
+                            r"D:\Updates\windows11.0-kb5065426-arm64.msu",
+                        ]
+                        .map(std::path::PathBuf::from),
+                    );
+                }
                 if flag("--drivers") {
                     app.step = app::Step::Customize;
                     app.view = app::View::Drivers;

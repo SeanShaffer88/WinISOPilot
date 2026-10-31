@@ -1383,14 +1383,21 @@ fn what_happens(app: &App, ui: &mut Ui) {
     let files = count(&|o| matches!(o, Op::DeleteFile { .. }));
     let cleanup = count(&|o| matches!(o, Op::ComponentCleanup { .. }));
     let drivers = p.install.iter().filter(|o| matches!(o.op, Op::AddDriver { .. })).count();
+    let packages = p.install.iter().filter(|o| matches!(o.op, Op::AddPackage { .. })).count();
     theme::card().show(ui, |ui| {
         theme::card_body(ui);
         h2(ui, "What happens when you select Build");
         let mut lines = Vec::new();
+        if packages > 0 {
+            lines.push(format!("1. Add {packages} updates and language packs (can take a long time)"));
+        }
         if apps + caps + feats > 0 {
-            lines.push(format!("1. Remove {apps} app packages and {caps} capabilities, and switch {feats} features"));
+            lines.push(format!(
+                "{}. Remove {apps} app packages and {caps} capabilities, and switch {feats} features",
+                lines.len() + 1
+            ));
         } else {
-            lines.push("1. No apps, capabilities or features change".to_string());
+            lines.push(format!("{}. No apps, capabilities or features change", lines.len() + 1));
         }
         if drivers > 0 {
             lines.push(format!("{}. Add {drivers} drivers", lines.len() + 1));
