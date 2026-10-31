@@ -2,6 +2,12 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- Welcome (Guided): installing the Deployment Tools showed its progress below the window edge; progress now replaces the "Before you start" card, and the status bar says what's running.
+- Progress cards no longer repeat the job title as the stage text (e.g. "Looking for USB drives" twice).
+
 ## [1.1.0] - 2026-10-31
 
 ### Added
