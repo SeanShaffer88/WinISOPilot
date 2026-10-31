@@ -38,6 +38,8 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | `dism /Add-Package` of MSU/CAB into install.wim, 24H2 checkpoint lookup | **Unverified** | Needs an elevated Windows run with real catalog files |
 | autounattend.xml content (only documented elements, no partitioning/keys/ProtectYourPC, escaping, validation) | Verified | `wip-core::unattend` tests |
 | Windows Setup honoring the answer file on 24H2/25H2 (local account, skipped pages) | **Unverified** | Needs real installs; reports say some windowsPE settings are ignored on 24H2 |
+| reg query parsing, undo script content (restore/remove, feature/capability reversal, Setup-only values excluded) | Verified | `wip-core::revert` tests |
+| Prior values read from offline hives before writing; undo.ps1 run on an installed PC | **Unverified** | Needs a Windows build and install |
 | Drivers page renders (Guided and Advanced) | Partially verified | Linux/Mesa `--demo --drivers` screenshots |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
 | Writing a real USB stick; BIOS and UEFI boot from it | **Unverified** | Needs elevated Windows run with a real stick |

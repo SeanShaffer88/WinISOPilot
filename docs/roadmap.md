@@ -31,8 +31,8 @@ Items marked ★ come from the October 2026 review of ~130 similar tools (ideas 
 - ★ Serviceability level (Native / Default / Default+) linked to the options; deeper levels shown disabled with the reason. "Native operations only" filter.
 - ★ Reach card per option: measured size, linked services/tasks/drivers, exact registry change.
 - ★ Protect toggles (anti-cheat, recommended); Windows Update, Defender and recovery are always protected.
-- ★ Tier definitions that name what breaks; bulk "Safe" / "Safe + Low" selection.
-- ★ Read-back check after writing (Applied / Already set / Failed) and a paired revert for every option, exported as a revert recipe.
+- ★ Tier definitions that name what breaks; bulk "Safe" / "Safe + Low" selection — bulk selection done (Advanced).
+- ★ Paired revert — done in code: `undo.ps1` from values recorded before each change. Remaining: read-back check after writing (Applied / Already set / Failed).
 - ★ Lint for tweaks known to break Store, Update or Defender.
 
 ## 1.4 — Workflow

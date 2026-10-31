@@ -351,6 +351,8 @@ struct Applier<'a> {
     loaded: Vec<Hive>,
     /// Problems that didn't stop the build (e.g. one driver failing).
     warnings: Vec<String>,
+    /// Registry values as they were before the first change to each.
+    priors: Vec<wip_core::revert::PriorValue>,
 }
 
 impl<'a> Applier<'a> {
@@ -434,8 +436,14 @@ impl<'a> Applier<'a> {
                 registry::load(*hive, self.mount, job)?;
                 self.loaded.push(*hive);
             }
-            Op::RegSet { hive, key, value, data } => registry::set(*hive, key, value, data, job)?,
-            Op::RegDelete { hive, key, value } => registry::delete(*hive, key, value, job)?,
+            Op::RegSet { hive, key, value, data } => {
+                self.remember(*hive, key, value, job);
+                registry::set(*hive, key, value, data, job)?
+            }
+            Op::RegDelete { hive, key, value } => {
+                self.remember(*hive, key, value, job);
+                registry::delete(*hive, key, value, job)?
+            }
             Op::UnloadHive { hive } => {
                 registry::unload(*hive, job)?;
                 self.loaded.retain(|h| h != hive);
@@ -451,6 +459,26 @@ impl<'a> Applier<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Records a value's current state once, for the undo script.
+    fn remember(&mut self, hive: Hive, key: &str, value: &str, job: &Job) {
+        if self
+            .priors
+            .iter()
+            .any(|p| p.hive == hive && p.key.eq_ignore_ascii_case(key) && p.value.eq_ignore_ascii_case(value))
+        {
+            return;
+        }
+        match registry::query(hive, key, value, job) {
+            Ok(prior) => self.priors.push(wip_core::revert::PriorValue {
+                hive,
+                key: key.to_string(),
+                value: value.to_string(),
+                prior,
+            }),
+            Err(e) => job.log(format!("Undo script: couldn't read {key}\\{value} first: {e}")),
+        }
     }
 
     /// Best-effort release of everything still open.
@@ -624,9 +652,11 @@ pub fn build(
         session: None,
         loaded: Vec::new(),
         warnings: Vec::new(),
+        priors: Vec::new(),
     };
     let mut applied = applier.run_all(&plan.install, job)?;
     warnings.append(&mut applier.warnings);
+    let mut priors = std::mem::take(&mut applier.priors);
     drop(applier);
 
     // Measure what's left, for the footprint report. Never fails the build.
@@ -662,9 +692,11 @@ pub fn build(
             session: None,
             loaded: Vec::new(),
             warnings: Vec::new(),
+            priors: Vec::new(),
         };
         let result = a.run_all(&plan.boot, job);
         warnings.append(&mut a.warnings);
+        priors.append(&mut a.priors);
         drop(a);
         match result {
             Ok(n) => {
@@ -747,6 +779,16 @@ pub fn build(
         }
     }
 
+    let undo_script = ws.root.join("undo.ps1");
+    let script = wip_core::revert::script(plan, &priors, &ws.edition.name);
+    let undo_script = match wip_core::fsutil::atomic_write(&undo_script, script.as_bytes()) {
+        Ok(()) => Some(undo_script),
+        Err(e) => {
+            job.log(format!("Couldn't write undo.ps1: {e}"));
+            None
+        }
+    };
+
     let answer_file = output.answers.enabled;
     if answer_file {
         let path = ws.media.join("autounattend.xml");
@@ -808,6 +850,7 @@ pub fn build(
         iso_sha256,
         boot_signer,
         answer_file,
+        undo_script,
         applied,
         footprint,
         test_target,

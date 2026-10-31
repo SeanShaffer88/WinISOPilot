@@ -1357,12 +1357,35 @@ fn result_card(ui: &mut Ui, r: &wip_engine::BuildReport) {
                 });
             }
         }
-        if let Some(root) = r.media_folder.parent() {
-            let text = format!("You can delete the working folder when you're done: {}", root.display());
-            ui.add(egui::Label::new(RichText::new(&text).size(12.0).color(theme::TEXT_DIM)).truncate())
-                .on_hover_text(&text);
-        }
+        ui.horizontal(|ui| {
+            if let Some(u) = &r.undo_script {
+                if ui
+                    .link("Undo script")
+                    .on_hover_text("undo.ps1 reverses this build's changes on an installed PC: restores every registry and service value, turns features back, and lists removed apps. Copy it somewhere safe before deleting the working folder.")
+                    .clicked()
+                {
+                    reveal(u);
+                }
+            }
+            if let Some(root) = r.media_folder.parent() {
+                let text = format!("Working folder (delete when done): {}", root.display());
+                ui.add(egui::Label::new(RichText::new(&text).size(12.0).color(theme::TEXT_DIM)).truncate())
+                    .on_hover_text(&text);
+            }
+        });
     });
+}
+
+/// Opens Explorer with `p` selected.
+pub fn reveal(p: &std::path::Path) {
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("explorer.exe").arg(format!("/select,{}", p.display())).spawn();
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = p;
+    }
 }
 
 pub fn open_folder(p: PathBuf) {

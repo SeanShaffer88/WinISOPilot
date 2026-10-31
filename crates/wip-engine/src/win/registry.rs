@@ -76,6 +76,23 @@ pub fn set(hive: Hive, key: &str, value: &str, data: &RegData, job: &Job) -> Res
     expect_ok(run(&reg_exe(), &args, job)?, "Writing a registry value", "WIP-E033").map(|_| ())
 }
 
+/// The value currently stored (offline hive must be loaded). Errors are
+/// treated as "unknown" by the caller.
+pub fn query(hive: Hive, key: &str, value: &str, job: &Job) -> Result<wip_core::revert::Prior> {
+    let full = format!(r"{}\{key}", root(hive));
+    let mut args = vec!["query".to_string(), full];
+    if value.is_empty() {
+        args.push("/ve".into());
+    } else {
+        args.extend(["/v".into(), value.into()]);
+    }
+    let out = run(&reg_exe(), &args, job)?;
+    if out.code != 0 {
+        return Ok(wip_core::revert::Prior::Absent);
+    }
+    Ok(wip_core::revert::parse_reg_query(&out.text, value).unwrap_or(wip_core::revert::Prior::Absent))
+}
+
 pub fn delete(hive: Hive, key: &str, value: &str, job: &Job) -> Result<()> {
     let full = format!(r"{}\{key}", root(hive));
     let q = run(&reg_exe(), &["query".into(), full.clone(), "/v".into(), value.into()], job)?;

@@ -51,6 +51,7 @@ Pick the edition you'll install (Home, Pro…). Keeping only that edition makes 
 - Risk badges: **Safe**, **Low**, **Moderate**, **High**. Beginner level shows only Safe and Low; use the **Level** menu to see more.
 - **Presets** add a common set (Light cleanup, Privacy, Gaming).
 - **Untick all here** unticks everything on the current page.
+- Advanced: **Select tier…** ticks every available Safe (or Safe + Low) option in the current category.
 - Mistakes are easy to fix: **Ctrl+Z** undoes, **Ctrl+Y** redoes.
 
 Only options that apply to the opened edition are shown. Options the image already has are marked "Already set".
@@ -86,6 +87,7 @@ Each stage is shown with progress and elapsed time. **Cancel** stops after the c
 If one driver can't be added, the build carries on and lists it as a warning. Before building, WinISOPilot checks that DISM and the ISO tool are signed by Microsoft.
 
 When it's done you see:
+- **Undo script**: `undo.ps1` reverses this build's changes on a PC installed from it (registry and service values back to what the image had, features turned back, capabilities re-added; removed apps are listed for the Store). Keep a copy before deleting the working folder.
 - **The ISO**, which certificate signed its boot manager (hover for what that means), and **Copy SHA-256** (the same hash is saved next to the ISO as `name.iso.sha256`).
 - **Measured result**: installed size, image size, and app/feature counts before and after.
 - **Test it in a virtual machine**: installs your ISO in a temporary Hyper-V VM and checks from inside Windows that every change landed (needs Windows Pro/Enterprise/Education with Hyper-V).
