@@ -57,10 +57,6 @@ pub enum View {
     Raw,
     /// Driver folders to add.
     Drivers,
-    /// Updates, language packs and Features on Demand.
-    Packages,
-    /// Answers for Windows Setup (autounattend.xml).
-    Answers,
 }
 
 /// Window size in points at 100% scale. The Scale setting multiplies it.
@@ -94,7 +90,6 @@ pub struct App {
     pub history: wip_core::history::History<Selection>,
     pub view: View,
     pub drivers: wip_core::drivers::DriverChoice,
-    pub packages: wip_core::packages::PackageChoice,
     pub focused: Option<String>,
     pub search: String,
     pub risk_filter: Option<Risk>,
@@ -215,7 +210,6 @@ impl App {
             history: wip_core::history::History::new(200),
             view: View::Cat(Category::Apps),
             drivers: wip_core::drivers::DriverChoice::new(),
-            packages: wip_core::packages::PackageChoice::default(),
             focused: None,
             search: String::new(),
             risk_filter: None,
@@ -382,9 +376,7 @@ impl App {
     /// The selection compiled for the open image, plus driver operations.
     pub fn compile_plan(&self, ctx: &Context) -> Result<wip_core::plan::CompiledPlan, String> {
         let mut p = wip_core::plan::compile(&self.selection, ctx)?;
-        let arch = crate::drivers_ui::arch(self);
-        self.drivers.extend_plan(&mut p, &arch);
-        self.packages.extend_plan(&mut p, &arch);
+        self.drivers.extend_plan(&mut p, &crate::drivers_ui::arch(self));
         Ok(p)
     }
 
@@ -793,26 +785,20 @@ impl App {
                     self.focused = None;
                 }
             }
-            let extras = [
-                (View::Packages, "Updates", crate::packages_ui::count(self)),
-                (View::Drivers, "Drivers", crate::drivers_ui::count(self)),
-                (View::Answers, "Setup answers", crate::answers_ui::count(self)),
-            ];
-            for (view, label, n) in extras {
-                let selected = self.view == view;
-                let text = if n > 0 { format!("{label}  · {n}") } else { label.to_string() };
-                let b = egui::Button::new(RichText::new(text).size(12.5).color(if selected {
-                    theme::TEXT
-                } else {
-                    theme::RAIL_MUTED
-                }))
-                .fill(if selected { theme::RAIL_SELECTED } else { Color32::TRANSPARENT })
-                .stroke(Stroke::NONE)
-                .min_size(Vec2::new(ui.available_width(), 27.0));
-                if ui.add(b).clicked() {
-                    self.view = view;
-                    self.focused = None;
-                }
+            let selected = self.view == View::Drivers;
+            let n = crate::drivers_ui::count(self);
+            let text = if n > 0 { format!("Drivers  · {n}") } else { "Drivers".to_string() };
+            let b = egui::Button::new(RichText::new(text).size(12.5).color(if selected {
+                theme::TEXT
+            } else {
+                theme::RAIL_MUTED
+            }))
+            .fill(if selected { theme::RAIL_SELECTED } else { Color32::TRANSPARENT })
+            .stroke(Stroke::NONE)
+            .min_size(Vec2::new(ui.available_width(), 27.0));
+            if ui.add(b).clicked() {
+                self.view = View::Drivers;
+                self.focused = None;
             }
         });
         ui.add_space(6.0);

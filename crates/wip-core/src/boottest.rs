@@ -309,15 +309,6 @@ pub fn checks(plan: &CompiledPlan) -> Vec<Check> {
                     ),
                 })
             }
-            Op::AddPackage { path, .. } => kb_number(path).map(|kb| Check {
-                id: format!("kb:{kb}"),
-                origin,
-                what: format!("Update {kb} is installed"),
-                script: format!(
-                    "$h = Get-HotFix -Id {n} -ErrorAction SilentlyContinue; $ok = [bool]$h; $detail = $(if ($ok) {{ '' }} else {{ 'not listed by Get-HotFix' }})",
-                    n = ps_lit(&kb)
-                ),
-            }),
             Op::LoadHive { .. } | Op::UnloadHive { .. } | Op::ComponentCleanup { .. } => None,
         };
         if let Some(c) = c {
