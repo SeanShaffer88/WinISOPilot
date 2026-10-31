@@ -349,6 +349,8 @@ struct Applier<'a> {
     scratch: &'a Path,
     session: Option<Session<'a>>,
     loaded: Vec<Hive>,
+    /// Problems that didn't stop the build (e.g. one driver failing).
+    warnings: Vec<String>,
 }
 
 impl<'a> Applier<'a> {
@@ -382,6 +384,23 @@ impl<'a> Applier<'a> {
                 let sxs = self.media.join(r"sources\sxs");
                 let src = (*source_sxs && sxs.is_dir()).then_some(sxs);
                 self.session()?.enable_feature(name, src.as_deref(), job)?
+            }
+            Op::AddDriver { inf } => {
+                let p = Path::new(inf);
+                if !p.is_file() {
+                    return Err(EngineError::new(
+                        "WIP-E063",
+                        format!("Driver file {inf} is gone. Add the driver folder again, or remove it."),
+                    ));
+                }
+                // One bad driver package must not fail the whole build.
+                if let Err(e) = self.session()?.add_driver(p, job) {
+                    if e.is_cancelled() {
+                        return Err(e);
+                    }
+                    job.log(format!("Driver skipped: {e}"));
+                    self.warnings.push(format!("A driver couldn't be added and was skipped: {e}"));
+                }
             }
             Op::DeleteFile { path } => {
                 self.close_session();
@@ -449,6 +468,35 @@ impl<'a> Applier<'a> {
     }
 }
 
+/// Refuses tools that aren't validly signed by Microsoft (catalog or
+/// embedded signature). If PowerShell itself can't run the check, the build
+/// continues and the log says why.
+fn check_microsoft_signed(path: &Path, job: &Job) -> Result<()> {
+    let script = format!(
+        "$s = Get-AuthenticodeSignature -LiteralPath {}; \"$($s.Status)|$($s.SignerCertificate.Subject)\"",
+        wip_core::boottest::ps_lit(&path.display().to_string())
+    );
+    let out = match ps(&script, job) {
+        Ok(o) => o.trim().to_string(),
+        Err(e) => {
+            job.log(format!("Signature check skipped for {}: {e}", path.display()));
+            return Ok(());
+        }
+    };
+    let (status, subject) = out.split_once('|').unwrap_or((out.as_str(), ""));
+    if status == "Valid" && subject.contains("O=Microsoft Corporation") {
+        job.log(format!("Signed by Microsoft: {}", path.display()));
+        return Ok(());
+    }
+    Err(EngineError::new(
+        "WIP-E073",
+        format!(
+            "{} isn't validly signed by Microsoft (status: {status}). It may be damaged or replaced. Reinstall the Windows ADK, or pick a different DISM folder in Settings.",
+            path.display()
+        ),
+    ))
+}
+
 pub fn build(
     ws: &Workspace,
     plan: &CompiledPlan,
@@ -460,6 +508,10 @@ pub fn build(
 ) -> Result<BuildReport> {
     need_admin(host)?;
     let (dism, dism_exe) = need_dism(host)?;
+    check_microsoft_signed(&dism_exe, job)?;
+    if let Some(o) = &host.oscdimg {
+        check_microsoft_signed(o, job)?;
+    }
     let work_wim_bytes = fs::metadata(&ws.work_wim).map(|m| m.len()).unwrap_or(0);
     if iso_out.exists() {
         return Err(EngineError::new(
@@ -485,8 +537,10 @@ pub fn build(
         scratch: &ws.scratch,
         session: None,
         loaded: Vec::new(),
+        warnings: Vec::new(),
     };
     let mut applied = applier.run_all(&plan.install, job)?;
+    warnings.append(&mut applier.warnings);
     drop(applier);
 
     // Measure what's left, for the footprint report. Never fails the build.
@@ -521,8 +575,10 @@ pub fn build(
             scratch: &ws.scratch,
             session: None,
             loaded: Vec::new(),
+            warnings: Vec::new(),
         };
         let result = a.run_all(&plan.boot, job);
+        warnings.append(&mut a.warnings);
         drop(a);
         match result {
             Ok(n) => {
@@ -609,6 +665,26 @@ pub fn build(
         }
     };
     let iso_bytes = iso.as_ref().and_then(|p| fs::metadata(p).ok()).map(|m| m.len());
+    // SHA-256 sidecar (`name.iso.sha256`, sha256sum format) so copies can be checked.
+    let iso_sha256 = iso.as_ref().and_then(|p| match super::download::file_hash(p, "SHA256", job) {
+        Ok(h) if h.len() == 64 => {
+            let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            let mut side = p.as_os_str().to_owned();
+            side.push(".sha256");
+            if let Err(e) = fs::write(&side, format!("{} *{name}\n", h.to_ascii_lowercase())) {
+                job.log(format!("Couldn't write the .sha256 file: {e}"));
+            }
+            Some(h)
+        }
+        Ok(h) => {
+            job.log(format!("Unexpected hash output: {h}"));
+            None
+        }
+        Err(e) => {
+            job.log(format!("Couldn't hash the ISO: {e}"));
+            None
+        }
+    });
     let test_target = TestTarget {
         language: ws.edition.languages.first().cloned().unwrap_or_else(|| "en-US".into()),
         index: kept_index,
@@ -619,6 +695,7 @@ pub fn build(
         iso,
         media_folder: ws.media.clone(),
         iso_bytes,
+        iso_sha256,
         applied,
         footprint,
         test_target,

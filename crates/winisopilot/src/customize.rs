@@ -60,6 +60,7 @@ fn rows(app: &App, view: View, guided: bool) -> (Vec<Row>, usize) {
                 });
             }
         }
+        View::Drivers => {}
         View::Raw => {
             for r in &app.raw_items {
                 if !matches(&[&r.name]) {
@@ -209,6 +210,9 @@ fn search_box(app: &mut App, ui: &mut Ui, width: f32) {
 
 fn guided(app: &mut App, ctx: &egui::Context) {
     let cats = app.visible_categories();
+    if app.view == View::Drivers {
+        return guided_drivers(app, ctx, &cats);
+    }
     let View::Cat(cat) = app.view else {
         app.view = View::Cat(cats.first().copied().unwrap_or(Category::Apps));
         return;
@@ -216,7 +220,7 @@ fn guided(app: &mut App, ctx: &egui::Context) {
     let pos = cats.iter().position(|c| *c == cat).unwrap_or(0);
     let next_label = match cats.get(pos + 1) {
         Some(n) => format!("Next: {}", n.label()),
-        None => "Review".into(),
+        None => "Next: Drivers".into(),
     };
     let status = format!("{} changes selected", app.selection.len());
     match footer(ctx, &status, true, Some((&next_label, !app.busy()))) {
@@ -233,7 +237,11 @@ fn guided(app: &mut App, ctx: &egui::Context) {
                 app.focused = None;
                 app.search.clear();
             }
-            None => app.goto(Step::Review),
+            None => {
+                app.view = View::Drivers;
+                app.focused = None;
+                app.search.clear();
+            }
         },
         Nav::None => {}
     }
@@ -311,6 +319,27 @@ fn guided(app: &mut App, ctx: &egui::Context) {
         });
 }
 
+/// Guided: the Drivers page after the last category.
+fn guided_drivers(app: &mut App, ctx: &egui::Context, cats: &[Category]) {
+    let n = crate::drivers_ui::count(app);
+    let status = format!("{} changes selected · {n} drivers", app.selection.len());
+    match footer(ctx, &status, true, Some(("Review", !app.busy()))) {
+        Nav::Back => match cats.last() {
+            Some(c) => app.view = View::Cat(*c),
+            None => app.goto(Step::Edition),
+        },
+        Nav::Next => app.goto(Step::Review),
+        Nav::None => {}
+    }
+    egui::CentralPanel::default()
+        .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin { left: 10, right: 8, top: 8, bottom: 6 }))
+        .show(ctx, |ui| {
+            eyebrow(ui, "Step 4 of 6 · Customize");
+            h1(ui, "Drivers (optional)");
+            crate::drivers_ui::panel(app, ui, true);
+        });
+}
+
 /// Height of one Guided option row (frame margins included).
 const GUIDED_ROW: f32 = 24.0;
 
@@ -365,7 +394,11 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
     let total = app.selection.len();
     let (list, _) = rows(app, app.view, false);
     let shown_selected = list.iter().filter(|r| r.checked).count();
-    let status = format!("{shown_selected} of {} selected here · {total} changes total", list.len());
+    let status = if app.view == View::Drivers {
+        format!("{} drivers · {total} changes total", crate::drivers_ui::count(app))
+    } else {
+        format!("{shown_selected} of {} selected here · {total} changes total", list.len())
+    };
     match footer(ctx, &status, true, Some(("Review", !app.busy()))) {
         Nav::Back => app.goto(Step::Edition),
         Nav::Next => app.goto(Step::Review),
@@ -395,6 +428,7 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                 })
                 .collect();
             views.push((View::Raw, "Unrated items".into(), app.raw_items.len()));
+            views.push((View::Drivers, "Drivers".into(), crate::drivers_ui::count(app)));
             for (v, label, n) in views {
                 let sel = app.view == v;
                 let b = egui::Button::new(RichText::new(label).size(12.0).color(if sel {
@@ -413,15 +447,20 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
             }
         });
 
-    egui::SidePanel::right("inspector")
-        .exact_width(220.0)
-        .resizable(false)
-        .frame(
-            Frame::new().fill(theme::CARD).inner_margin(Margin::same(18)).stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
-        )
-        .show(ctx, |ui| {
-            explainer(app, ui, true);
-        });
+    if app.view != View::Drivers {
+        egui::SidePanel::right("inspector")
+            .exact_width(220.0)
+            .resizable(false)
+            .frame(
+                Frame::new()
+                    .fill(theme::CARD)
+                    .inner_margin(Margin::same(18))
+                    .stroke(Stroke::new(1.0_f32, theme::DIVIDER)),
+            )
+            .show(ctx, |ui| {
+                explainer(app, ui, true);
+            });
+    }
 
     egui::CentralPanel::default()
         .frame(Frame::new().fill(theme::PAGE).inner_margin(Margin::same(0)))
@@ -447,6 +486,12 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                 });
             });
             ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), Stroke::new(1.0_f32, theme::DIVIDER));
+            if app.view == View::Drivers {
+                Frame::new().inner_margin(Margin::symmetric(14, 8)).show(ui, |ui| {
+                    crate::drivers_ui::panel(app, ui, false);
+                });
+                return;
+            }
             if app.settings.show_tips {
                 Frame::new().inner_margin(Margin::symmetric(14, 0)).show(ui, |ui| crate::help::tip(app, ui));
             }

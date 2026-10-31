@@ -1079,7 +1079,7 @@ fn operation_plan(app: &mut App, ui: &mut Ui) {
         ui.add_space(4.0);
         return;
     };
-    let p = match plan::compile(&app.selection, &ctx) {
+    let p = match app.compile_plan(&ctx) {
         Ok(p) => p,
         Err(e) => {
             theme::error_box(ui, "Plan doesn't compile", &e);
@@ -1202,7 +1202,7 @@ pub fn load_recipe(app: &mut App) {
 
 fn start_build(app: &mut App) {
     let Some(ctx) = app.plan_ctx() else { return };
-    let compiled = match plan::compile(&app.selection, &ctx) {
+    let compiled = match app.compile_plan(&ctx) {
         Ok(p) => p,
         Err(e) => return app.notify(e),
     };
@@ -1315,6 +1315,15 @@ fn result_card(ui: &mut Ui, r: &wip_engine::BuildReport) {
                     }
                     let size = r.iso_bytes.map(|b| format!("{} · ", human_bytes(b))).unwrap_or_default();
                     dim(ui, &format!("{size}{} operations applied", r.applied));
+                    if let Some(h) = &r.iso_sha256 {
+                        if ui
+                            .link("Copy SHA-256")
+                            .on_hover_text(format!("SHA-256 {h}\nAlso saved next to the ISO as .sha256"))
+                            .clicked()
+                        {
+                            ui.ctx().copy_text(h.clone());
+                        }
+                    }
                 });
             }
             None => {
@@ -1350,7 +1359,7 @@ pub fn open_folder(p: PathBuf) {
 /// Plain-language summary of what Build will do, from the compiled plan.
 fn what_happens(app: &App, ui: &mut Ui) {
     let Some(ctx) = app.plan_ctx().filter(|c| c.inventory.is_some()) else { return };
-    let Ok(p) = plan::compile(&app.selection, &ctx) else { return };
+    let Ok(p) = app.compile_plan(&ctx) else { return };
     use wip_core::plan::Op;
     let count = |f: &dyn Fn(&Op) -> bool| p.install.iter().chain(p.boot.iter()).filter(|o| f(&o.op)).count();
     let apps = count(&|o| matches!(o, Op::RemoveAppx { .. }));
@@ -1359,6 +1368,7 @@ fn what_happens(app: &App, ui: &mut Ui) {
     let regs = count(&|o| matches!(o, Op::RegSet { .. } | Op::RegDelete { .. }));
     let files = count(&|o| matches!(o, Op::DeleteFile { .. }));
     let cleanup = count(&|o| matches!(o, Op::ComponentCleanup { .. }));
+    let drivers = p.install.iter().filter(|o| matches!(o.op, Op::AddDriver { .. })).count();
     theme::card().show(ui, |ui| {
         theme::card_body(ui);
         h2(ui, "What happens when you select Build");
@@ -1368,12 +1378,16 @@ fn what_happens(app: &App, ui: &mut Ui) {
         } else {
             lines.push("1. No apps, capabilities or features change".to_string());
         }
+        if drivers > 0 {
+            lines.push(format!("{}. Add {drivers} drivers", lines.len() + 1));
+        }
         lines.push(format!(
-            "2. Write {regs} registry and service settings{}",
+            "{}. Write {regs} registry and service settings{}",
+            lines.len() + 1,
             if files > 0 { " and delete WinRE" } else { "" }
         ));
         if cleanup > 0 {
-            lines.push("3. Clean up the component store (the slowest step)".into());
+            lines.push(format!("{}. Clean up the component store (the slowest step)", lines.len() + 1));
         }
         lines.push(format!(
             "{}. Save the edition and rebuild the installation image{}",
@@ -1392,6 +1406,7 @@ fn what_happens(app: &App, ui: &mut Ui) {
         if !p.skipped.is_empty() {
             dim(ui, &format!("{} chosen options have nothing to do in this image and are skipped.", p.skipped.len()));
         }
+        dim(ui, "Good to know: big Windows feature updates can bring back some removed apps, and per-user settings apply to accounts created after installing.");
     });
     ui.add_space(4.0);
 }

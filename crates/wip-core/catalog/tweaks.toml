@@ -125,11 +125,40 @@ applies = "win11"
 actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\WindowsAI', value = "DisableAIDataAnalysis", data = { type = "dword", value = 1 } }]
 
 [[option]]
+id = "priv.recall_off"
+category = "privacy"
+title = "Make Recall unavailable (policy)"
+summary = "Microsoft's policy that turns Recall off and removes it."
+details = "Sets the WindowsAI policy AllowRecallEnablement to 0. Microsoft documents that Recall then isn't available and its files are removed after a restart. Only Copilot+ PCs can run Recall."
+risk = "safe"
+undo = "Delete the AllowRecallEnablement policy value."
+applies = "win11"
+min_build = 26100
+actions = [{ kind = "reg_set", hive = "software", key = 'Policies\Microsoft\Windows\WindowsAI', value = "AllowRecallEnablement", data = { type = "dword", value = 0 } }]
+
+[[option]]
+id = "priv.paint_ai"
+category = "privacy"
+title = "Turn off AI features in Paint"
+summary = "Image Creator, Cocreator and Generative fill."
+details = "Sets Microsoft's three Paint policies. Paint itself keeps working. Some of these features need a Microsoft account or a Copilot+ PC anyway."
+risk = "safe"
+breaks = ["Image Creator, Cocreator and Generative fill in Paint"]
+undo = "Delete the DisableImageCreator, DisableCocreator and DisableGenerativeFill values."
+applies = "win11"
+min_build = 22621
+actions = [
+  { kind = "reg_set", hive = "software", key = 'Microsoft\Windows\CurrentVersion\Policies\Paint', value = "DisableImageCreator", data = { type = "dword", value = 1 } },
+  { kind = "reg_set", hive = "software", key = 'Microsoft\Windows\CurrentVersion\Policies\Paint', value = "DisableCocreator", data = { type = "dword", value = 1 } },
+  { kind = "reg_set", hive = "software", key = 'Microsoft\Windows\CurrentVersion\Policies\Paint', value = "DisableGenerativeFill", data = { type = "dword", value = 1 } },
+]
+
+[[option]]
 id = "priv.copilot_policy"
 category = "privacy"
 title = "Turn off Windows Copilot (policy)"
 summary = "Per-user policy that hides the built-in Copilot."
-details = "Microsoft is changing how Copilot is delivered, and newer builds may ignore this policy. Combine it with removing the Copilot app."
+details = "Microsoft has deprecated this policy: it doesn't affect the new Copilot app. Kept for older Windows 11 builds; remove the Copilot app as well."
 risk = "safe"
 undo = "Delete the TurnOffWindowsCopilot value."
 applies = "win11"
@@ -423,9 +452,9 @@ id = "slim.reset_base"
 category = "slimming"
 title = "Make updates permanent (ResetBase)"
 summary = "Deeper cleanup; installed updates can no longer be uninstalled."
-details = "Runs StartComponentCleanup with ResetBase. Saves more space, but updates already in the image can't be rolled back."
-risk = "moderate"
-breaks = ["Uninstalling updates that are already in the image"]
+details = "Runs StartComponentCleanup with ResetBase. Saves more space, but updates already in the image can't be rolled back. Update-integration tools (W10UI) stopped using ResetBase on Windows 10 1903 and later because of reports that later cumulative updates then fail to install."
+risk = "high"
+breaks = ["Uninstalling updates that are already in the image", "Reported: some later cumulative updates failing to install"]
 undo = "Build a new image from the original."
 conflicts = ["slim.component_cleanup"]
 actions = [{ kind = "component_cleanup", reset_base = true }]
@@ -463,7 +492,7 @@ options = [
   "apps.feedback_hub", "apps.office_hub", "apps.bing_search", "apps.copilot", "apps.cortana",
   "priv.advertising_id", "priv.consumer_features", "priv.tips", "priv.web_search",
   "priv.telemetry_min", "priv.activity_history", "priv.tailored", "priv.language_list",
-  "priv.recall_policy", "priv.copilot_policy", "priv.cortana_policy", "priv.delivery_optimization",
+  "priv.recall_policy", "priv.recall_off", "priv.paint_ai", "priv.copilot_policy", "priv.cortana_policy", "priv.delivery_optimization",
   "feat.recall", "svc.diagtrack", "feat.smb1", "feat.powershell2",
 ]
 

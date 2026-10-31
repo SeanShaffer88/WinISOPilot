@@ -2,6 +2,21 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Drivers** page (Customize step, both layouts): add folders of unzipped drivers. Signed `.inf` packages for the edition's architecture are added to Windows; disk (storage-controller) drivers also go into Windows Setup so it can see the disk. Unsigned and other-architecture packages are skipped with the reason. A package that fails to install is skipped with a warning instead of failing the build.
+- Boot test checks that each added driver is in the installed driver store.
+- `.sha256` file next to the built ISO, and **Copy SHA-256** on the result screen.
+- Privacy options from Microsoft's documented policies: **Make Recall unavailable** (AllowRecallEnablement, Windows 11 24H2+) and **Turn off AI features in Paint** (Image Creator, Cocreator, Generative fill). Both are in the Privacy preset.
+- Review explains that feature updates can bring back some removed apps and that per-user settings apply to new accounts.
+- `--drivers` demo flag.
+
+### Changed
+- Before building, dism.exe and oscdimg.exe must be validly signed by Microsoft (WIP-E073).
+- ResetBase is now High risk (reports of later cumulative updates failing); the Copilot policy says Microsoft deprecated it.
+- Roadmap re-ranked from a review of ~130 similar tools (decisions 26–29).
+
 ## [1.0.0] - 2026-10-30
 
 ### Added

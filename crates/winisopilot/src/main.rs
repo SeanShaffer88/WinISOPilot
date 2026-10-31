@@ -5,6 +5,7 @@ mod app;
 mod customize;
 mod dialogs;
 mod download_ui;
+mod drivers_ui;
 mod extras;
 mod help;
 mod jobs;
@@ -93,6 +94,12 @@ fn main() -> eframe::Result<()> {
                     });
                 }
                 app.show_settings = flag("--settings");
+                // --drivers: the Drivers page with a sample folder.
+                if flag("--drivers") {
+                    app.step = app::Step::Customize;
+                    app.view = app::View::Drivers;
+                    app.drivers.folders.push(dialogs::demo_drivers());
+                }
                 // --scale=150: open at that scale.
                 if let Some(pct) = args.iter().find_map(|a| a.strip_prefix("--scale=")?.parse::<f32>().ok()) {
                     app.settings.text_scale = (pct / 100.0).clamp(0.75, 2.0);

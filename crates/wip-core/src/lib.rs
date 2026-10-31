@@ -7,6 +7,7 @@
 pub mod boottest;
 pub mod catalog;
 pub mod download;
+pub mod drivers;
 pub mod footprint;
 pub mod fsutil;
 pub mod history;
