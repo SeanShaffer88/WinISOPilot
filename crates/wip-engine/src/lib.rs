@@ -321,6 +321,24 @@ pub fn list_disks(job: &Job) -> Result<Vec<wip_core::usb::Disk>> {
 }
 
 /// Erases the chosen USB drive and writes bootable Windows media to it.
+/// Turns a USB stick back into one ordinary exFAT drive.
+pub fn restore_usb(
+    disk: &wip_core::usb::Disk,
+    protected_paths: &[PathBuf],
+    host: &HostInfo,
+    job: &Job,
+) -> Result<char> {
+    #[cfg(windows)]
+    {
+        win::usb::restore(disk, protected_paths, host, job)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (disk, protected_paths, host, job);
+        Err(EngineError::unsupported())
+    }
+}
+
 pub fn write_usb(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> {
     #[cfg(windows)]
     {

@@ -149,6 +149,43 @@ fn same_bytes(src: &Path, on_usb: &Path, a: &mut [u8], b: &mut Aligned) -> std::
     }
 }
 
+/// Erases the stick and makes it one ordinary exFAT drive. Same identity
+/// and eligibility checks as writing. Returns the new drive letter.
+pub fn restore(disk: &wip_core::usb::Disk, protected_paths: &[PathBuf], host: &HostInfo, job: &Job) -> Result<char> {
+    if !host.is_admin {
+        return Err(EngineError::new("WIP-E002", "Administrator rights are needed to erase a USB drive."));
+    }
+    job.stage(1, 2, "Checking the drive");
+    let now = list_disks(job)?;
+    let current = now
+        .iter()
+        .find(|d| d.number == disk.number)
+        .ok_or_else(|| EngineError::new("WIP-E081", "The chosen USB drive is no longer connected."))?;
+    if !current.same_disk(disk) {
+        return Err(EngineError::new(
+            "WIP-E082",
+            "The drive list changed since you chose a drive. Refresh and choose the drive again.",
+        ));
+    }
+    let protected: Vec<char> = protected_paths.iter().filter_map(|p| drive_letter_of(p)).collect();
+    if let Some(why) = usb::ineligible(current, &protected) {
+        return Err(EngineError::new("WIP-E084", why));
+    }
+    job.check()?;
+    job.stage(2, 2, format!("Erasing and formatting {}", current.label()));
+    let script = usb::restore_script(current, "USB");
+    let script_file = crate::app_data_dir().join(format!("diskpart-restore-{}.txt", std::process::id()));
+    wip_core::fsutil::atomic_write(&script_file, script.as_bytes())
+        .map_err(|e| EngineError::new("WIP-E088", format!("Couldn't write the diskpart script: {e}")))?;
+    job.log(format!("diskpart script:\n{script}"));
+    let out = run(&diskpart(), &["/s".into(), script_file.display().to_string()], job);
+    let _ = fs::remove_file(&script_file);
+    let text = expect_ok(out?, "Formatting the USB drive", "WIP-E089")?;
+    job.log(text.trim().to_string());
+    let (setup, data) = find_letters(current.number, job)?;
+    Ok(data.unwrap_or(setup))
+}
+
 pub fn write(req: &UsbRequest, host: &HostInfo, job: &Job) -> Result<UsbReport> {
     if !host.is_admin {
         return Err(EngineError::new("WIP-E002", "Administrator rights are needed to write a USB drive."));

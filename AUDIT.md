@@ -41,6 +41,8 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | reg query parsing, undo script content (restore/remove, feature/capability reversal, Setup-only values excluded) | Verified | `wip-core::revert` tests |
 | Prior values read from offline hives before writing; undo.ps1 run on an installed PC | **Unverified** | Needs a Windows build and install |
 | Diagnostics redaction and tailing | Verified | `wip-core::diagnostics` tests |
+| USB restore script (one MBR exFAT partition) | Verified | `wip-core::usb` test |
+| Restoring a real stick; registry read-back on a real build | **Unverified** | Needs a Windows run |
 | Drivers page renders (Guided and Advanced) | Partially verified | Linux/Mesa `--demo --drivers` screenshots |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
 | Writing a real USB stick; BIOS and UEFI boot from it | **Unverified** | Needs elevated Windows run with a real stick |
@@ -60,7 +62,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Applying changes | Only to the private exported copy; cancel checked between operations; registry hives unloaded on any failure |
 | Commit / unmount | Never cancelled part-way; discard is always available |
 | Output ISO | Refuses an existing path; partial ISO deleted if `oscdimg` fails |
-| Erasing a USB drive | Only USB-bus disks; never system/boot, read-only, offline, under 7 GB, or holding the source/working folder; identity re-checked right before diskpart; typed `ERASE`; cancel honored only before erasing and between files (the stick is then reported incomplete) |
+| Erasing a USB drive (writing or restoring) | Only USB-bus disks; never system/boot, read-only, offline, under 7 GB, or holding the source/working folder; identity re-checked right before diskpart; typed `ERASE`; cancel honored only before erasing and between files (the stick is then reported incomplete) |
 | Boot test VM | Created only in a new `WinISOPilot-BootTest-<time>` folder; VM has no network; its disk is the VM's own VHDX; removed with its folder only after a pass (unless kept) or on cancel |
 | Leftover sessions | Shown on next launch: discard (unmount without saving) or forget the record; workspace files are never deleted by the app |
 

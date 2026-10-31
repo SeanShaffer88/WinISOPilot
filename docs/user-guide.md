@@ -107,6 +107,8 @@ Choose **USB** at the top of the left panel.
    - On sticks larger than about 33 GB with FAT32, the setup partition stops at 32 GB. Tick **Use the remaining … as a second drive** to turn the rest into an exFAT drive named DATA for your own files.
 4. Select **Write to USB** and type `ERASE` to confirm.
 
+
+**Restore to a normal drive…** (under the drive list) erases the chosen stick and turns it back into one ordinary exFAT drive for files. It asks for `ERASE` like writing does.
 ## Settings
 
 Select **Settings** at the bottom of the left panel. Changes are saved straight away; close with **Done** or Esc.

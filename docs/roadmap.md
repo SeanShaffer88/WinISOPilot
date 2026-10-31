@@ -32,14 +32,14 @@ Items marked ★ come from the October 2026 review of ~130 similar tools (ideas 
 - ★ Reach card per option: measured size, linked services/tasks/drivers, exact registry change.
 - ★ Protect toggles (anti-cheat, recommended); Windows Update, Defender and recovery are always protected.
 - ★ Tier definitions that name what breaks; bulk "Safe" / "Safe + Low" selection — bulk selection done (Advanced).
-- ★ Paired revert — done in code: `undo.ps1` from values recorded before each change. Remaining: read-back check after writing (Applied / Already set / Failed).
+- ★ Paired revert — done in code: `undo.ps1` from values recorded before each change. Read-back after each registry write — done (mismatches become warnings).
 - ★ Lint for tweaks known to break Store, Update or Defender.
 
 ## 1.4 — Workflow
 - ★ Resume a build from its last checkpoint; mount-recovery wizard (remount or clean up leftover mounts).
 - ★ Per-stage time remaining and completion flash — done. Remaining: taskbar progress bar, MB/s on copies.
 - ★ Local diagnostics file (logs, plan; user paths removed; nothing uploaded) — done.
-- ★ USB: name processes locking the drive; exclusion list; restore a stick to a normal drive; optional fake-capacity test.
+- ★ USB: restore a stick to a normal drive — done. Remaining: name processes locking the drive; exclusion list; optional fake-capacity test.
 - ★ Download: resume, find an already-downloaded file by hash, specific failure messages.
 - ★ Recipe import shows a diff and risk summary. Inventory export — done (Advanced).
 

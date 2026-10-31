@@ -538,6 +538,10 @@ impl App {
             }
             Outcome::Disks(d) => self.usb.set_disks(d),
             Outcome::UsbWritten(r) => self.usb.report = Some(r),
+            Outcome::UsbRestored(letter) => {
+                self.notify(format!("Drive {letter}: is a normal USB drive again (exFAT)."));
+                self.refresh_disks();
+            }
             Outcome::BootTested(r) => self.extras.boot_report = Some(r),
             Outcome::Catalog(entries, win10) => self.dl.set_entries(entries, win10),
             Outcome::Downloaded(iso) => {

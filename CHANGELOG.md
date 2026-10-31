@@ -14,6 +14,8 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - **Updates and languages** page (Customize step): add Windows updates (`.msu`/`.cab`), language packs and Features on Demand to the install image with DISM, in Microsoft's documented order (servicing stack, language packs, FoD, cumulative update, then .NET after cleanup). Kind is guessed from Microsoft's file names (changeable in Advanced); packages named for another architecture are skipped. The boot test checks `Get-HotFix` for each KB.
 - `--updates` demo flag.
 - **Undo script** (`undo.ps1` in the working folder, linked on the result screen): before each registry or service change the image's original value is recorded; the script restores those values on an installed PC, turns optional features back, re-adds capabilities, and lists removed apps and other changes that can't be scripted.
+- Every offline registry and service write is **read back**; a value that doesn't match becomes a warning on the result screen.
+- Write to USB: **Restore to a normal drive…** erases the chosen stick (same checks and typed `ERASE`) and makes it one ordinary exFAT drive.
 - **Save diagnostics…** (error box and Settings): one local text file with version, host facts, settings, the plan and log tails; the account name, PC name and profile path are replaced. Nothing is uploaded.
 - Progress shows a rough **time left in this stage**; the taskbar button flashes when a long job finishes while the window is in the background.
 - Advanced: **Export…** saves the open image's full inventory (apps, capabilities, features, services) as JSON.

@@ -16,6 +16,8 @@ pub enum Outcome {
     LeftoverCleaned(String),
     Disks(Vec<wip_core::usb::Disk>),
     UsbWritten(wip_engine::UsbReport),
+    /// USB stick restored to a normal drive with this letter.
+    UsbRestored(char),
     BootTested(wip_engine::BootTestReport),
     /// Catalog entries; `true` when they are for Windows 10.
     Catalog(Vec<wip_core::download::EsdFile>, bool),
@@ -32,6 +34,7 @@ pub enum Kind {
     Leftover,
     ListDisks,
     WriteUsb,
+    RestoreUsb,
     BootTest,
     Catalog,
     DownloadIso,
@@ -48,6 +51,7 @@ impl Kind {
             Kind::Leftover => "Cleaning up an earlier session",
             Kind::ListDisks => "Looking for USB drives",
             Kind::WriteUsb => "Writing the USB drive",
+            Kind::RestoreUsb => "Restoring the USB drive",
             Kind::BootTest => "Testing in a virtual machine",
             Kind::Catalog => "Getting Microsoft's download list",
             Kind::DownloadIso => "Downloading Windows",

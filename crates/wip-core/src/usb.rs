@@ -238,6 +238,17 @@ pub fn diskpart_script(disk: &Disk, scheme: Scheme, label: &str, data_partition:
     s
 }
 
+/// diskpart script that turns a stick back into one ordinary exFAT drive
+/// (MBR, so every PC and camera reads it).
+pub fn restore_script(disk: &Disk, label: &str) -> String {
+    let label: String = sanitize_fat_label(label).chars().take(11).collect();
+    let label = if label.is_empty() { "USB".to_string() } else { label };
+    format!(
+        "select disk {}\r\nclean\r\nconvert mbr\r\ncreate partition primary\r\nformat quick fs=exfat label=\"{label}\"\r\nassign\r\nexit\r\n",
+        disk.number
+    )
+}
+
 /// One media file and how it gets onto the stick.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Placement {
@@ -375,6 +386,15 @@ mod tests {
         assert!(n.contains("fs=ntfs label=\"Windows 11 Pro\""));
         assert!(!n.contains("size="), "NTFS uses the whole disk");
         assert!(!n.contains("exfat"));
+    }
+
+    #[test]
+    fn restore_script_is_one_exfat_partition() {
+        let s = restore_script(&disk(3, 32 * 1_000_000_000, "USB"), "my stick!");
+        assert!(s.starts_with("select disk 3\r\nclean\r\nconvert mbr\r\n"));
+        assert!(s.contains("fs=exfat"));
+        assert_eq!(s.matches("create partition").count(), 1);
+        assert!(!s.contains("active"));
     }
 
     #[test]

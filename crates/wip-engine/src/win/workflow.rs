@@ -438,11 +438,13 @@ impl<'a> Applier<'a> {
             }
             Op::RegSet { hive, key, value, data } => {
                 self.remember(*hive, key, value, job);
-                registry::set(*hive, key, value, data, job)?
+                registry::set(*hive, key, value, data, job)?;
+                self.read_back(*hive, key, value, Some(data), job);
             }
             Op::RegDelete { hive, key, value } => {
                 self.remember(*hive, key, value, job);
-                registry::delete(*hive, key, value, job)?
+                registry::delete(*hive, key, value, job)?;
+                self.read_back(*hive, key, value, None, job);
             }
             Op::UnloadHive { hive } => {
                 registry::unload(*hive, job)?;
@@ -459,6 +461,22 @@ impl<'a> Applier<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Reads a value back after writing it; a mismatch becomes a warning.
+    fn read_back(&mut self, hive: Hive, key: &str, value: &str, want: Option<&wip_core::RegData>, job: &Job) {
+        use wip_core::revert::Prior;
+        let Ok(got) = registry::query(hive, key, value, job) else { return };
+        let ok = match (want, &got) {
+            (None, Prior::Absent) => true,
+            (Some(wip_core::RegData::Dword(w)), Prior::Dword(g)) => w == g,
+            (Some(wip_core::RegData::String(w)), Prior::String(g)) => w == g,
+            _ => false,
+        };
+        if !ok {
+            let name = if value.is_empty() { "(Default)" } else { value };
+            self.warnings.push(format!("{key}\\{name} didn't read back as written ({got:?}); see the log."));
+        }
     }
 
     /// Records a value's current state once, for the undo script.
