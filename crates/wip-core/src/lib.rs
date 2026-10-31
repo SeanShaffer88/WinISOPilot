@@ -20,6 +20,7 @@ pub mod raw;
 pub mod recipe;
 pub mod secureboot;
 pub mod settings;
+pub mod unattend;
 pub mod usb;
 
 pub use catalog::{Action, Catalog, CatalogOption, Category, Hive, Level, RegData, Risk};

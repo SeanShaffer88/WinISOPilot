@@ -1,6 +1,7 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 //! WinISOPilot: a guided Windows 10/11 installation media customizer.
 
+mod answers_ui;
 mod app;
 mod customize;
 mod dialogs;

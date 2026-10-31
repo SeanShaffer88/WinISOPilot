@@ -141,6 +141,14 @@ pub fn boot_test_card(app: &mut App, ui: &mut egui::Ui, r: &BuildReport) {
             dim(ui, "Needs an ISO file. Install the Windows ADK Deployment Tools to create one.");
             return;
         };
+        if r.answer_file {
+            theme::warn_box(
+                ui,
+                "Not available with Setup answers",
+                &["This ISO carries your own autounattend.xml, which Windows Setup would use instead of the test's answers, so the test would stop at the disk page. Build once without Setup answers to test.".into()],
+            );
+            return;
+        }
         if wip_core::boottest::setup_key(&r.test_target.edition_id).is_none() {
             theme::warn_box(
                 ui,
