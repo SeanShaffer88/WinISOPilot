@@ -11,9 +11,6 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Privacy options from Microsoft's documented policies: **Make Recall unavailable** (AllowRecallEnablement, Windows 11 24H2+) and **Turn off AI features in Paint** (Image Creator, Cocreator, Generative fill). Both are in the Privacy preset.
 - Review explains that feature updates can bring back some removed apps and that per-user settings apply to new accounts.
 - `--drivers` demo flag.
-- **Updates and languages** page (Customize step): add Windows updates (`.msu`/`.cab`), language packs and Features on Demand to the install image with DISM, in Microsoft's documented order (servicing stack, language packs, FoD, cumulative update, then .NET after cleanup). Kind is guessed from Microsoft's file names (changeable in Advanced); packages named for another architecture are skipped. The boot test checks `Get-HotFix` for each KB.
-- `--updates` demo flag.
-- **Secure Boot**: the result screen shows which certificate signed the boot manager (2011 or 2023) and what that means. Review has **Use the 2023-signed boot manager**, which follows Microsoft's Make2023BootableMedia steps with the ISO's own boot files (boot.wim mounted read-only) and builds the ISO with `efisys_ex.bin`. Off by default; skipped with a warning when the ISO predates the April 2024 updates.
 
 ### Changed
 - Before building, dism.exe and oscdimg.exe must be validly signed by Microsoft (WIP-E073).

@@ -33,9 +33,6 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Driver INF parsing (encodings, [Version], architecture decorations, signed = CatalogFile), folder scan, plan placement and skips | Verified | `wip-core::drivers` tests |
 | Adding drivers with DismAddDriver to install.wim and boot.wim #2; one failure skipped | **Unverified** | Needs an elevated Windows run; signature from mingw-w64 dismapi.h |
 | dism.exe / oscdimg Microsoft-signature check; `.sha256` sidecar | **Unverified** | Same Get-AuthenticodeSignature / Get-FileHash pattern as the verified-in-code ADK and ESD checks; needs a Windows run |
-| Boot manager signer readout and 2023 boot-file swap (paths from Microsoft's Make2023BootableMedia.ps1); ISO built with efisys_ex.bin | **Unverified** | Needs a Windows run and a Secure Boot boot on 2011- and 2023-trusting firmware; CA parsing verified by `wip-core::secureboot` tests |
-| Package kind/architecture guessing, Microsoft install-image order, KB parsing | Verified | `wip-core::packages` and boottest tests |
-| `dism /Add-Package` of MSU/CAB into install.wim, 24H2 checkpoint lookup | **Unverified** | Needs an elevated Windows run with real catalog files |
 | Drivers page renders (Guided and Advanced) | Partially verified | Linux/Mesa `--demo --drivers` screenshots |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
 | Writing a real USB stick; BIOS and UEFI boot from it | **Unverified** | Needs elevated Windows run with a real stick |

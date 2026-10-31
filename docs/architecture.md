@@ -54,10 +54,9 @@ winisopilot (egui app) ──► wip-engine (Windows work) ──► wip-core (p
 | WIP-E030–E035 | Offline registry load/write/unload |
 | WIP-E040–E048 | ISO attach, missing/split install image, edition lookup |
 | WIP-E050–E054 | Copy, export, free space, workspace, journal |
-| WIP-E060–E064 | App removal, file deletion, component cleanup, driver file missing, adding an update/language package |
+| WIP-E060–E063 | App removal, file deletion, component cleanup, driver file missing |
 | WIP-E070–E072 | Output exists, missing boot files, oscdimg failure |
 | WIP-E073 | dism.exe or oscdimg.exe not validly signed by Microsoft Corporation (build refused) |
-| WIP-E074 | Copying the 2023-signed boot files onto the media failed |
 | WIP-E080–E084 | Drive list, drive gone/changed, no drive letter, drive not allowed |
 | WIP-E085–E093 | USB source not Windows media, read/plan/split failures, diskpart, bootsect, verification mismatch |
 | WIP-E094 | Copying a file to the USB drive failed (write-through copy) |
