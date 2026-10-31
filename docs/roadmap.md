@@ -49,7 +49,7 @@ Items marked ★ come from the October 2026 review of ~130 similar tools (ideas 
 - Native ISO writer (no ADK needed).
 - WinRE servicing and boot/install/WinRE driver sync.
 - Split (`.swm`) source media.
-- Localization (★ external translation files).
+- Localization (★ external translation files) — not before a stable release; the program is English only until then (decision 35).
 - ★ Size budget (DVD / FAT32 / custom) tracked against the measured footprint.
 - ★ Headless command line — done (`--build`). Remaining: driver/update lists and answers password from the command line.
 - ★ Catalog items as separate data files, updatable without a new app version.
