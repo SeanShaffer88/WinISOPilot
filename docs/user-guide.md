@@ -120,6 +120,20 @@ Select **Settings** at the bottom of the left panel. Changes are saved straight 
 | PageUp / PageDown | Previous / next page of a list (pointer over the list) |
 | Esc | Close Settings |
 
+## Command line
+
+For automation, run from an administrator terminal:
+
+```
+WinISOPilot.exe --build --iso Win11.iso --out Custom.iso --recipe choices.json --edition-id Professional --drivers D:\Drivers --updates D:\Updates
+```
+
+- `--recipe` is a file saved with **Save choices…**; it supplies the options and output settings (including Setup answers, except the password).
+- `--edition <index>` or `--edition-id <EditionID>` picks the edition (default: the first). `--all-editions` keeps every edition.
+- `--workspace` sets where the working folder goes (default: next to `--out`).
+- `--drivers` and `--updates` can be repeated.
+- Exit code 0 = success, 1 = failed (the open image is discarded), 2 = wrong arguments. `--help` prints this.
+
 ## When something goes wrong
 
 **Save diagnostics…** (in the error box, or in Settings) writes one text file with the app version, PC facts, settings, the plan and recent logs. Your account name, PC name and profile path are replaced, and nothing is sent anywhere; read it before sharing it.

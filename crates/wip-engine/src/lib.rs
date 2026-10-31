@@ -423,6 +423,20 @@ pub fn build(
     }
 }
 
+/// Command-line runs from a GUI-subsystem exe: print to the console that
+/// started us, if there is one.
+pub fn attach_parent_console() {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
+        // SAFETY: plain Win32 call with a documented constant; failure
+        // (no parent console) is harmless.
+        unsafe {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+        }
+    }
+}
+
 /// Unmounts the workspace's image without saving any changes.
 pub fn discard(ws: &Workspace, host: &HostInfo, job: &Job) -> Result<()> {
     #[cfg(windows)]
