@@ -351,8 +351,6 @@ struct Applier<'a> {
     loaded: Vec<Hive>,
     /// Problems that didn't stop the build (e.g. one driver failing).
     warnings: Vec<String>,
-    /// Registry values as they were before the first change to each.
-    priors: Vec<wip_core::revert::PriorValue>,
 }
 
 impl<'a> Applier<'a> {
@@ -404,24 +402,6 @@ impl<'a> Applier<'a> {
                     self.warnings.push(format!("A driver couldn't be added and was skipped: {e}"));
                 }
             }
-            Op::AddPackage { path, kind } => {
-                self.close_session();
-                let p = Path::new(path);
-                if !p.is_file() {
-                    return Err(EngineError::new(
-                        "WIP-E064",
-                        format!("Package {path} is gone. Add it again, or remove it from Updates."),
-                    ));
-                }
-                let args = vec![
-                    opt("Image", self.mount),
-                    "/Add-Package".into(),
-                    opt("PackagePath", p),
-                    opt("ScratchDir", self.scratch),
-                ];
-                let what = format!("Adding {} {}", kind.label().to_lowercase(), wip_core::packages::file_name(p));
-                expect_ok(run_with_progress(self.dism_exe, &args, job)?, &what, "WIP-E064")?;
-            }
             Op::DeleteFile { path } => {
                 self.close_session();
                 let p = self.mount.join(path);
@@ -438,13 +418,11 @@ impl<'a> Applier<'a> {
             }
             Op::RegSet { hive, key, value, data } => {
                 self.remember(*hive, key, value, job);
-                registry::set(*hive, key, value, data, job)?;
-                self.read_back(*hive, key, value, Some(data), job);
+                registry::set(*hive, key, value, data, job)?
             }
             Op::RegDelete { hive, key, value } => {
                 self.remember(*hive, key, value, job);
-                registry::delete(*hive, key, value, job)?;
-                self.read_back(*hive, key, value, None, job);
+                registry::delete(*hive, key, value, job)?
             }
             Op::UnloadHive { hive } => {
                 registry::unload(*hive, job)?;
@@ -461,22 +439,6 @@ impl<'a> Applier<'a> {
             }
         }
         Ok(())
-    }
-
-    /// Reads a value back after writing it; a mismatch becomes a warning.
-    fn read_back(&mut self, hive: Hive, key: &str, value: &str, want: Option<&wip_core::RegData>, job: &Job) {
-        use wip_core::revert::Prior;
-        let Ok(got) = registry::query(hive, key, value, job) else { return };
-        let ok = match (want, &got) {
-            (None, Prior::Absent) => true,
-            (Some(wip_core::RegData::Dword(w)), Prior::Dword(g)) => w == g,
-            (Some(wip_core::RegData::String(w)), Prior::String(g)) => w == g,
-            _ => false,
-        };
-        if !ok {
-            let name = if value.is_empty() { "(Default)" } else { value };
-            self.warnings.push(format!("{key}\\{name} didn't read back as written ({got:?}); see the log."));
-        }
     }
 
     /// Records a value's current state once, for the undo script.
@@ -530,74 +492,6 @@ impl<'a> Applier<'a> {
         self.close_session();
         Ok(applied)
     }
-}
-
-/// Microsoft's Make2023BootableMedia.ps1 steps (microsoft/secureboot_objects):
-/// from boot.wim's `Windows\Boot\{EFI_EX,FONTS_EX,DVD_EX}` copy
-/// bootmgfw_EX.efi → efi\boot\bootx64.efi (bootaa64.efi on ARM64),
-/// bootmgr_EX.efi → bootmgr.efi (if present), efisys_EX.bin →
-/// efi\microsoft\boot\efisys_ex.bin (used by `make_iso`), fonts *_EX.ttf →
-/// efi\microsoft\boot\fonts\*.ttf, and boot.stl. boot.wim is mounted
-/// read-only. Returns `Ok(false)` when the image has no EFI_EX files.
-fn use_2023_boot_files(dism: &Dism, ws: &Workspace, job: &Job) -> Result<bool> {
-    let boot_wim = ws.media.join(r"sources\boot.wim");
-    let mnt = &ws.boot_mount_dir;
-    journal::record_mount(
-        &boot_wim.display().to_string(),
-        1,
-        &mnt.display().to_string(),
-        &ws.root.display().to_string(),
-    )
-    .map_err(|e| EngineError::new("WIP-E054", format!("Couldn't write the recovery journal: {e}")))?;
-    dism.mount_read_only(&boot_wim, 1, mnt, job)?;
-    let result = copy_2023_files(mnt, &ws.media);
-    let unmounted = dism.unmount(mnt, false, job);
-    journal::clear_mount(&mnt.display().to_string());
-    unmounted?;
-    result
-}
-
-fn copy_2023_files(mnt: &Path, media: &Path) -> Result<bool> {
-    let ex = mnt.join(r"Windows\Boot\EFI_EX");
-    let fonts = mnt.join(r"Windows\Boot\FONTS_EX");
-    let efisys = mnt.join(r"Windows\Boot\DVD_EX\EFI\en-US\efisys_EX.bin");
-    if !ex.join("bootmgfw_EX.efi").is_file() || !efisys.is_file() {
-        return Ok(false);
-    }
-    let err = |what: &str, e: std::io::Error| EngineError::new("WIP-E074", format!("Couldn't copy {what}: {e}"));
-    let arch_name = if media.join(r"efi\boot\bootaa64.efi").is_file() { "bootaa64.efi" } else { "bootx64.efi" };
-    let ms_boot = media.join(r"efi\microsoft\boot");
-    fs::create_dir_all(media.join(r"efi\boot")).map_err(|e| err("efi\\boot", e))?;
-    fs::create_dir_all(ms_boot.join("fonts")).map_err(|e| err("fonts", e))?;
-    fs::copy(ex.join("bootmgfw_EX.efi"), media.join(r"efi\boot").join(arch_name)).map_err(|e| err(arch_name, e))?;
-    if ex.join("bootmgr_EX.efi").is_file() {
-        fs::copy(ex.join("bootmgr_EX.efi"), media.join("bootmgr.efi")).map_err(|e| err("bootmgr.efi", e))?;
-    }
-    fs::copy(&efisys, ms_boot.join("efisys_ex.bin")).map_err(|e| err("efisys_ex.bin", e))?;
-    if let Ok(entries) = fs::read_dir(&fonts) {
-        for f in entries.flatten() {
-            let name = f.file_name().to_string_lossy().into_owned();
-            let target = name.replace("_EX", "");
-            fs::copy(f.path(), ms_boot.join("fonts").join(&target)).map_err(|e| err(&name, e))?;
-        }
-    }
-    let stl = mnt.join(r"Windows\Boot\EFI\boot.stl");
-    if stl.is_file() {
-        fs::copy(&stl, ms_boot.join("boot.stl")).map_err(|e| err("boot.stl", e))?;
-    }
-    Ok(true)
-}
-
-/// Issuer of the certificate that signed the media's UEFI boot manager
-/// (e.g. "Microsoft Windows Production PCA 2011" or "Windows UEFI CA 2023").
-fn boot_signer(media: &Path, job: &Job) -> Option<String> {
-    let efi = ["bootx64.efi", "bootaa64.efi"].iter().map(|n| media.join(r"efi\boot").join(n)).find(|p| p.is_file())?;
-    let script = format!(
-        "$s = Get-AuthenticodeSignature -LiteralPath {}; $s.SignerCertificate.Issuer",
-        wip_core::boottest::ps_lit(&efi.display().to_string())
-    );
-    let out = ps(&script, job).ok()?;
-    wip_core::secureboot::issuer_cn(out.trim())
 }
 
 /// Refuses tools that aren't validly signed by Microsoft (catalog or
@@ -670,11 +564,9 @@ pub fn build(
         session: None,
         loaded: Vec::new(),
         warnings: Vec::new(),
-        priors: Vec::new(),
     };
     let mut applied = applier.run_all(&plan.install, job)?;
     warnings.append(&mut applier.warnings);
-    let mut priors = std::mem::take(&mut applier.priors);
     drop(applier);
 
     // Measure what's left, for the footprint report. Never fails the build.
@@ -710,11 +602,9 @@ pub fn build(
             session: None,
             loaded: Vec::new(),
             warnings: Vec::new(),
-            priors: Vec::new(),
         };
         let result = a.run_all(&plan.boot, job);
         warnings.append(&mut a.warnings);
-        priors.append(&mut a.priors);
         drop(a);
         match result {
             Ok(n) => {
@@ -797,16 +687,6 @@ pub fn build(
         }
     }
 
-    let undo_script = ws.root.join("undo.ps1");
-    let script = wip_core::revert::script(plan, &priors, &ws.edition.name);
-    let undo_script = match wip_core::fsutil::atomic_write(&undo_script, script.as_bytes()) {
-        Ok(()) => Some(undo_script),
-        Err(e) => {
-            job.log(format!("Couldn't write undo.ps1: {e}"));
-            None
-        }
-    };
-
     let answer_file = output.answers.enabled;
     if answer_file {
         let path = ws.media.join("autounattend.xml");
@@ -834,7 +714,6 @@ pub fn build(
         }
     };
     let iso_bytes = iso.as_ref().and_then(|p| fs::metadata(p).ok()).map(|m| m.len());
-    let boot_signer = boot_signer(&ws.media, job);
     // SHA-256 sidecar (`name.iso.sha256`, sha256sum format) so copies can be checked.
     let iso_sha256 = iso.as_ref().and_then(|p| match super::download::file_hash(p, "SHA256", job) {
         Ok(h) if h.len() == 64 => {
@@ -866,9 +745,6 @@ pub fn build(
         media_folder: ws.media.clone(),
         iso_bytes,
         iso_sha256,
-        boot_signer,
-        answer_file,
-        undo_script,
         applied,
         footprint,
         test_target,

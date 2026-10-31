@@ -312,9 +312,6 @@ pub fn load_demo_done(app: &mut App) {
         media_folder: PathBuf::from(r"D:\ISO\WinISOPilot-demo\media"),
         iso_bytes: Some(5_300_000_000),
         iso_sha256: Some("3F9C0E5B7A1D2C4E6F8091A2B3C4D5E6F708192A3B4C5D6E7F8091A2B3C4D5E6".into()),
-        boot_signer: Some("Microsoft Windows Production PCA 2011".into()),
-        answer_file: false,
-        undo_script: Some(PathBuf::from(r"D:\ISO\WinISOPilot-demo\undo.ps1")),
         applied: 14,
         footprint: Some(fp),
         test_target: wip_core::boottest::TestTarget {
