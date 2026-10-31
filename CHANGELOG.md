@@ -6,6 +6,8 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ### Added
 - **Updates reach Windows Setup and the recovery environment**, following Microsoft's Dynamic Update guidance: servicing stack and cumulative updates also go into Windows Setup (boot.wim index 2); servicing stack plus **Safe OS** updates go into the recovery environment (Winre.wim is copied out, updated, cleaned up, exported and put back); **Setup** updates are expanded onto the media. New kinds "Safe OS update (WinRE)" and "Setup update" (set them in Advanced; the catalog's file names don't say which they are). An **INTO** column shows where each package goes.
+- `THIRD-PARTY-NOTICES.md` (generated with `cargo about`) in the repository and attached to every release.
+- Release workflow signs the exe with `signtool` when `SIGNING_PFX_BASE64` / `SIGNING_PFX_PASSWORD` secrets are set.
 
 ### Fixed
 - Welcome (Guided): installing the Deployment Tools showed its progress below the window edge; progress now replaces the "Before you start" card, and the status bar says what's running.

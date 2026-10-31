@@ -85,7 +85,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 
 ## Dependencies
 
-183 crates for the Windows target; all permissive (MIT, Apache-2.0, BSD, Zlib, ISC, Unicode-3.0, BSL-1.0, CC0-1.0). No copyleft code. Release task: ship a generated third-party notices file (e.g. `cargo about`).
+183 crates for the Windows target; all permissive (MIT, Apache-2.0, BSD, Zlib, ISC, Unicode-3.0, BSL-1.0, CC0-1.0). No copyleft code. `THIRD-PARTY-NOTICES.md` is generated with `cargo about` (Windows targets, build and dev dependencies excluded) and attached to every release; it also lists the Ubuntu Font Licence and OFL for egui's bundled fonts.
 
 ## Open verification items
 
@@ -94,4 +94,4 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 3. Real screenshots for the README (list in [docs/screenshots.md](docs/screenshots.md)).
 4. Accessibility pass (keyboard only, Narrator, 200% scaling, high contrast).
 5. Measure performance budgets (cold start, idle CPU/memory, build time) and record them.
-6. Third-party notices file, code signing, checksums.
+6. Code signing certificate (the release workflow signs when the secrets are set). Third-party notices and checksums are done.

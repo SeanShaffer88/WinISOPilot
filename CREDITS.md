@@ -29,7 +29,7 @@ Full transitive dependency licenses can be listed with `cargo license` or `cargo
 
 ## Assets
 
-The icon and logo were made for this project and are covered by the project license. The app uses egui's built-in fonts.
+The icon and logo were made for this project and are covered by the project license. The app uses egui's built-in fonts (Ubuntu Font Licence, OFL). Every crate's license text is in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Ideas from other projects (no code used)
 
