@@ -133,6 +133,8 @@ Select **Settings** at the bottom of the left panel. Changes are saved straight 
 
 ## When something goes wrong
 
+**Save diagnostics…** (in the error box, or in Settings) writes one text file with the app version, PC facts, settings, the plan and recent logs. Your account name, PC name and profile path are replaced, and nothing is sent anywhere; read it before sharing it.
+
 - Errors show a code (for example `WIP-E031`) and a plain explanation. **Copy details** copies them; **Open log folder** shows the logs.
 - The **Details** section under any task shows each step and command.
 - Error codes are listed in [architecture.md](architecture.md#error-codes).

@@ -6,6 +6,7 @@
 
 pub mod boottest;
 pub mod catalog;
+pub mod diagnostics;
 pub mod download;
 pub mod drivers;
 pub mod footprint;

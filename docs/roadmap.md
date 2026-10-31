@@ -37,11 +37,11 @@ Items marked ★ come from the October 2026 review of ~130 similar tools (ideas 
 
 ## 1.4 — Workflow
 - ★ Resume a build from its last checkpoint; mount-recovery wizard (remount or clean up leftover mounts).
-- ★ Per-stage speed and time remaining, taskbar progress, completion notification.
-- ★ One-click local diagnostics bundle (logs, plan, journal; user paths removed; nothing uploaded).
+- ★ Per-stage time remaining and completion flash — done. Remaining: taskbar progress bar, MB/s on copies.
+- ★ Local diagnostics file (logs, plan; user paths removed; nothing uploaded) — done.
 - ★ USB: name processes locking the drive; exclusion list; restore a stick to a normal drive; optional fake-capacity test.
 - ★ Download: resume, find an already-downloaded file by hash, specific failure messages.
-- ★ Recipe import shows a diff and risk summary; inventory export.
+- ★ Recipe import shows a diff and risk summary. Inventory export — done (Advanced).
 
 ## Later
 - Reusable projects (from [JLIVECD](https://github.com/neurobin/JLIVECD), ideas only): keep the extracted, unmodified ISO media in a cache keyed by the ISO's hash so "Start another" and later builds of the same ISO skip the copy step; optional named project folder that can be rebuilt with the same choices.

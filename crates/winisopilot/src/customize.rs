@@ -153,6 +153,23 @@ fn explainer(app: &App, ui: &mut Ui, compact: bool) {
     }
 }
 
+fn export_inventory(app: &mut App) {
+    let Some(inv) = &app.inventory else { return };
+    let Some(dest) = rfd::FileDialog::new()
+        .set_title("Export inventory")
+        .set_file_name("inventory.json")
+        .add_filter("JSON", &["json"])
+        .save_file()
+    else {
+        return;
+    };
+    let json = serde_json::to_string_pretty(inv).unwrap_or_default();
+    match wip_core::fsutil::atomic_write(&dest, json.as_bytes()) {
+        Ok(()) => app.notify(format!("Saved {}", dest.display())),
+        Err(e) => app.notify(format!("Couldn't save: {e}")),
+    }
+}
+
 /// Bulk-select by risk tier in the current Advanced view (undoable).
 fn tier_menu(app: &mut App, ui: &mut Ui) {
     let View::Cat(cat) = app.view else { return };
@@ -540,6 +557,13 @@ fn advanced(app: &mut App, ctx: &egui::Context) {
                     tier_menu(app, ui);
                     if ui.button("Load…").clicked() {
                         crate::pages::load_recipe(app);
+                    }
+                    if ui
+                        .add_enabled(app.inventory.is_some(), egui::Button::new("Export…"))
+                        .on_hover_text("Save everything this image contains (apps, capabilities, features, services) as JSON")
+                        .clicked()
+                    {
+                        export_inventory(app);
                     }
                     if ui.add_enabled(app.history.can_undo(), egui::Button::new("Undo")).on_hover_text("Ctrl+Z").clicked() {
                         app.undo();

@@ -40,6 +40,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 | Windows Setup honoring the answer file on 24H2/25H2 (local account, skipped pages) | **Unverified** | Needs real installs; reports say some windowsPE settings are ignored on 24H2 |
 | reg query parsing, undo script content (restore/remove, feature/capability reversal, Setup-only values excluded) | Verified | `wip-core::revert` tests |
 | Prior values read from offline hives before writing; undo.ps1 run on an installed PC | **Unverified** | Needs a Windows build and install |
+| Diagnostics redaction and tailing | Verified | `wip-core::diagnostics` tests |
 | Drivers page renders (Guided and Advanced) | Partially verified | Linux/Mesa `--demo --drivers` screenshots |
 | USB page renders (Guided and Advanced rails) | Partially verified | Linux/Mesa with `--demo --usb` sample drives |
 | Writing a real USB stick; BIOS and UEFI boot from it | **Unverified** | Needs elevated Windows run with a real stick |
@@ -72,6 +73,7 @@ Date: 2026-10-30. This audit says what has and hasn't been checked. Labels: **Ve
 - Recipes contain option IDs and output settings only; they can't carry commands, paths or credentials. Unknown IDs are dropped and reported.
 - Windows Update, Defender, firewall and recovery aren't disabled by any preset; Windows Security UI and app frameworks can't be removed.
 - Setup answers: the optional local-account password is plain text on the media (stated in the UI), removed from the installed system at first logon, never saved in recipes.
+- Diagnostics are only written to a file the user picks; account name, PC name and profile path are replaced; nothing is uploaded.
 - Drivers: only packages with a CatalogFile (signed) are added, never with ForceUnsigned; dism.exe and oscdimg.exe must be validly signed by Microsoft before a build runs.
 - `unsafe` is confined to `wip-engine/src/win/*` (FFI). Every block has a SAFETY comment.
 

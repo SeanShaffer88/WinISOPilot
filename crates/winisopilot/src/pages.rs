@@ -101,7 +101,12 @@ pub fn job_panel(app: &mut App, ui: &mut Ui) {
         };
         ui.add(bar.desired_height(14.0));
         let secs = job.started.elapsed().as_secs();
-        dim(ui, &format!("Elapsed {}:{:02}", secs / 60, secs % 60));
+        let left = match job.stage_left_secs() {
+            Some(s) if s >= 90 => format!(" · about {} min left in this stage", s.div_ceil(60)),
+            Some(s) => format!(" · about {} s left in this stage", s.max(5)),
+            None => String::new(),
+        };
+        dim(ui, &format!("Elapsed {}:{:02}{left}", secs / 60, secs % 60));
         if job.kind.cancellable() {
             if job.cancel_requested {
                 dim(ui, "Stopping after the current step finishes…");
@@ -131,7 +136,8 @@ pub fn log_tail(app: &App, ui: &mut Ui, lines: usize) {
     });
 }
 
-fn show_error(app: &App, ui: &mut Ui) {
+fn show_error(app: &mut App, ui: &mut Ui) {
+    let mut diag = false;
     if let Some(e) = &app.last_error {
         if e.is_cancelled() {
             theme::warn_box(ui, "Stopped", std::slice::from_ref(&e.message));
@@ -150,12 +156,22 @@ fn show_error(app: &App, ui: &mut Ui) {
                 if ui.button("Open log folder").clicked() {
                     open_folder(wip_engine::app_data_dir().join("logs"));
                 }
+                if ui
+                    .button("Save diagnostics…")
+                    .on_hover_text("One text file with versions, settings, the plan and logs. Your name and profile path are replaced; nothing is sent anywhere.")
+                    .clicked()
+                {
+                    diag = true;
+                }
             });
             if app.job.is_none() {
                 log_tail(app, ui, 6);
             }
         }
         ui.add_space(4.0);
+    }
+    if diag {
+        app.save_diagnostics();
     }
 }
 
