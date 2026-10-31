@@ -532,6 +532,61 @@ impl<'a> Applier<'a> {
     }
 }
 
+/// Microsoft's Dynamic Update steps for the recovery environment: copy
+/// Winre.wim out of the mounted install image, mount it, add the servicing
+/// stack and Safe OS updates, clean up, save, export (to shrink it) and put
+/// it back with its hidden/system attributes. `Ok(None)` if the edition has
+/// no Winre.wim (for example because the build removed it).
+fn service_winre(dism: &Dism, dism_exe: &Path, ws: &Workspace, ops: &[PlannedOp], job: &Job) -> Result<Option<usize>> {
+    let winre = ws.mount_dir.join(r"Windows\System32\Recovery\Winre.wim");
+    if !winre.is_file() {
+        return Ok(None);
+    }
+    let err = |what: &str, e: std::io::Error| EngineError::new("WIP-E066", format!("{what}: {e}"));
+    let work = ws.root.join("winre");
+    let mnt = ws.root.join("winre-mount");
+    fs::create_dir_all(&work).map_err(|e| err("Couldn't create the WinRE folder", e))?;
+    fs::create_dir_all(&mnt).map_err(|e| err("Couldn't create the WinRE mount folder", e))?;
+    let copy = work.join("winre.wim");
+    fs::copy(&winre, &copy).map_err(|e| err("Couldn't copy Winre.wim", e))?;
+    journal::record_mount(&copy.display().to_string(), 1, &mnt.display().to_string(), &ws.root.display().to_string())
+        .map_err(|e| EngineError::new("WIP-E054", format!("Couldn't write the recovery journal: {e}")))?;
+    dism.mount(&copy, 1, &mnt, job)?;
+    let mut a = Applier {
+        dism,
+        dism_exe,
+        mount: &mnt,
+        media: &ws.media,
+        scratch: &ws.scratch,
+        session: None,
+        loaded: Vec::new(),
+        warnings: Vec::new(),
+        priors: Vec::new(),
+    };
+    let mut all: Vec<PlannedOp> = ops.to_vec();
+    all.push(PlannedOp { origin: "packages".into(), op: Op::ComponentCleanup { reset_base: false } });
+    let result = a.run_all(&all, job);
+    drop(a);
+    let n = match result {
+        Ok(n) => n,
+        Err(e) => {
+            let _ = dism.unmount(&mnt, false, job);
+            journal::clear_mount(&mnt.display().to_string());
+            return Err(e);
+        }
+    };
+    dism.unmount(&mnt, true, job)?;
+    journal::clear_mount(&mnt.display().to_string());
+    let small = work.join("winre-exported.wim");
+    export(dism_exe, &copy, 1, &small, "max", &ws.scratch, job)?;
+    let attrib = system32().map(|s| s.join("attrib.exe")).unwrap_or_else(|| PathBuf::from("attrib.exe"));
+    let _ = run(&attrib, &["-h".into(), "-s".into(), winre.display().to_string()], job);
+    fs::copy(&small, &winre).map_err(|e| err("Couldn't put the updated Winre.wim back", e))?;
+    let _ = run(&attrib, &["+h".into(), "+s".into(), winre.display().to_string()], job);
+    let _ = fs::remove_dir_all(&work);
+    Ok(Some(n))
+}
+
 /// Microsoft's Make2023BootableMedia.ps1 steps (microsoft/secureboot_objects):
 /// from boot.wim's `Windows\Boot\{EFI_EX,FONTS_EX,DVD_EX}` copy
 /// bootmgfw_EX.efi → efi\boot\bootx64.efi (bootaa64.efi on ARM64),
@@ -677,6 +732,17 @@ pub fn build(
     let mut priors = std::mem::take(&mut applier.priors);
     drop(applier);
 
+    if !plan.winre.is_empty() {
+        job.log("Updating the recovery environment (WinRE)");
+        match service_winre(&dism, &dism_exe, ws, &plan.winre, job) {
+            Ok(Some(n)) => applied += n,
+            Ok(None) => warnings.push(
+                "This edition has no recovery environment (Winre.wim), so the Safe OS update was skipped.".into(),
+            ),
+            Err(e) => return Err(e),
+        }
+    }
+
     // Measure what's left, for the footprint report. Never fails the build.
     let after_inv = match read_inventory(&dism, &ws.mount_dir, &ws.media, job) {
         Ok(i) => Some(i),
@@ -728,6 +794,16 @@ pub fn build(
             }
         }
         journal::clear_mount(&ws.boot_mount_dir.display().to_string());
+    }
+
+    for p in &plan.media {
+        if let Op::AddPackage { path, .. } = &p.op {
+            job.log(format!("Adding Setup update {path} to the media"));
+            let expand = system32().map(|s| s.join("expand.exe")).unwrap_or_else(|| PathBuf::from("expand.exe"));
+            let args = vec![quoted(Path::new(path)), "-F:*".into(), quoted(&ws.media.join("sources"))];
+            expect_ok(run(&expand, &args, job)?, "Adding the Setup update", "WIP-E065")?;
+            applied += 1;
+        }
     }
 
     if output.boot_2023 {

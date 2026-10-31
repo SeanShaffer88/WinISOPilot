@@ -309,11 +309,17 @@ pub struct CompiledPlan {
     pub boot: Vec<PlannedOp>,
     /// Options that were selected but have nothing to do, with the reason.
     pub skipped: Vec<(String, String)>,
+    /// Operations on the recovery image (Winre.wim inside the install image).
+    #[serde(default)]
+    pub winre: Vec<PlannedOp>,
+    /// Operations on the media folder itself (Setup updates).
+    #[serde(default)]
+    pub media: Vec<PlannedOp>,
 }
 
 impl CompiledPlan {
     pub fn is_empty(&self) -> bool {
-        self.install.is_empty() && self.boot.is_empty()
+        self.install.is_empty() && self.boot.is_empty() && self.winre.is_empty() && self.media.is_empty()
     }
 }
 

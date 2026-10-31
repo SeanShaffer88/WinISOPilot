@@ -18,7 +18,7 @@ Items marked ★ come from the October 2026 review of ~130 similar tools (ideas 
 ## 1.1 — Integrate
 - Done in code: driver folders (signed INFs for the edition's architecture) into install.wim, storage drivers also into Windows Setup; one failing package is skipped, not fatal ★; dism.exe/oscdimg Microsoft-signature check before building ★; `.sha256` next to the ISO ★; Recall-off and Paint-AI policies ★.
 - ★ Secure Boot readiness — done in code: boot manager signer shown after building; optional 2023-signed boot manager from the ISO's own files. Remaining: signer shown for any ISO on the USB page; DBX revocation check. Never revoke 2011 certificates, set anti-rollback (SVN) or copy SkuSiPolicy.
-- ★ Updates, language packs and FoD into install.wim in Microsoft's order — done in code. Remaining: WinRE (SSU + Safe OS DU) and boot.wim (SSU + LCU) servicing, Setup Dynamic Update onto the media, language packs for Setup/WinRE and lang.ini; a language pack queuing the updates it needs.
+- ★ Updates, language packs and FoD into install.wim in Microsoft's order — done in code. WinRE (SSU + Safe OS DU), boot.wim #2 (SSU + LCU) and Setup DU onto the media — done in code. Remaining: boot.wim index 1, language packs for Setup/WinRE and lang.ini; a language pack queuing the updates it needs.
 - WinRE driver sync.
 
 ## 1.2 — Unattended setup
